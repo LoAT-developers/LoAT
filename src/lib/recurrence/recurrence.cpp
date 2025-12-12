@@ -277,6 +277,9 @@ bool Recurrence::solve() {
                 // workaround to handle a := b in the case that of scalars
                 t = arrays::writeConst(arrays::readConst(t->var()));
             } else {
+                if (Config::Analysis::logAccel) {
+                    std::cout << "array assignment: " << x << " := " << t << std::endl;
+                }
                 return false;
             }
         }
@@ -288,15 +291,24 @@ bool Recurrence::solve() {
         const auto store_shift = [&](const auto& c) {
             const auto s = compute_shift(c->indices());
             if (!s) {
+                if (Config::Analysis::logAccel) {
+                    std::cout << "failed to compute shift: " << c << std::endl;
+                }
                 return false;
             }
             if (std::ranges::any_of(*s, [](const auto& i) {return i->getValue() < 0;})) {
                 if (increasing.contains(c->var())) {
+                    if (Config::Analysis::logAccel) {
+                        std::cout << "not monotonic: " << c << std::endl;
+                    }
                     return false;
                 }
                 decreasing.insert(c->var());
             } else {
                 if (decreasing.contains(c->var())) {
+                    if (Config::Analysis::logAccel) {
+                        std::cout << "not monotonic: " << c << std::endl;
+                    }
                     return false;
                 }
                 increasing.insert(c->var());
@@ -324,6 +336,9 @@ bool Recurrence::solve() {
                 for (const auto cells = (*w)->val()->cells(); const auto& c: cells) {
                     // we do not support array-writes in right-hand sides
                     if (c->arr()->isArrayWrite()) {
+                        if (Config::Analysis::logAccel) {
+                            std::cout << "array-write in rhs: " << *w << std::endl;
+                        }
                         return false;
                     }
                     if (!store_shift(c)) {
@@ -332,6 +347,9 @@ bool Recurrence::solve() {
                 }
                 write = (*w)->arr();
             } else {
+                if (Config::Analysis::logAccel) {
+                    std::cout << "array write with complex condition: " << *w << std::endl;
+                }
                 // we do not support array-writes with complex conditions
                 return false;
             }
@@ -445,7 +463,9 @@ bool Recurrence::solve() {
             if (const auto post = inductive.get(pre)) {
                 if (const auto& val{written.at(*post)}; arith_eq_is_ready(pre, val)) {
                     if (!solve(pre, val)) {
-                        std::cout << "failed to solve " << pre << " = " << val << std::endl;
+                        if (Config::Analysis::logAccel) {
+                            std::cout << "failed to solve " << pre << " = " << val << std::endl;
+                        }
                         // failed to compute closed form for this lval
                         return false;
                     }

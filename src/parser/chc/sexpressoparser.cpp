@@ -91,12 +91,12 @@ void SexpressoParser::run(const std::string &filename) {
         if (ex[0].isString("assert")) {
             state.push();
             std::unordered_map<std::string, std::pair<std::vector<FunAppPtr>, Bools::Expr>> predicate_bindings;
-            auto clause = ex[1];
+            sexpresso::Sexp clause = ex[1];
             while (clause[0].isString("forall") || clause[0].isString("let") || clause[0].isString("!")) {
                 if (clause[0].isString("forall")) {
                     auto vars = clause[1];
                     for (unsigned i = 0; i < vars.childCount(); ++i) {
-                        state.create_var(vars[i][0].str(), parse_type(vars[i][1]));
+                        state.create_var(vars[i][0].str(), parse_type(vars[i][1]), true);
                     }
                     clause = clause[2];
                 } else if (clause[0].isString("let")) {

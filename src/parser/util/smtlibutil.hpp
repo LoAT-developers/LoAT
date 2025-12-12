@@ -36,15 +36,13 @@ class SMTLibParsingState {
 
 public:
 
-    Arrays<Arith>::Var get_or_create_array_var(const std::string&);
-    Arrays<Arith>::Var get_or_create_arith_var(const std::string&);
-    Bools::Var get_or_create_bool_var(const std::string&);
-    Arrays<Arith>::Var create_arith_var(const std::string&);
-    Arrays<Arith>::Var create_array_var(const std::string&);
-    Bools::Var create_bool_var(const std::string&);
-    Var create_var(const std::string&, theory::Type);
-    Var create_constant(const std::string&, theory::Type);
-    const linked_hash_set<Expr>& get_constants() const;
+    Arrays<Arith>::Var get_or_create_array_var(const std::string&, bool tmp);
+    Arrays<Arith>::Var get_or_create_arith_var(const std::string&, bool tmp);
+    Bools::Var get_or_create_bool_var(const std::string&, bool tmp);
+    Arrays<Arith>::Var create_arith_var(const std::string&, bool tmp);
+    Arrays<Arith>::Var create_array_var(const std::string&, bool tmp);
+    Bools::Var create_bool_var(const std::string&, bool tmp);
+    Var create_var(const std::string&, theory::Type, bool tmp);
     void push();
     void pop();
 

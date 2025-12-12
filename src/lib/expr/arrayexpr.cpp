@@ -565,14 +565,16 @@ ArrayPtr<Arith> arrays::mkArrayWrite(const ArrayPtr<Arith>& arr, const Bools::Ex
         const auto inner_indices = (*write)->indices();
         const auto outer_indices = indices(arr->dim(), cond);
         if (!inner_indices || !outer_indices) {
-            auto same_vals = val == (*write)->val();
+            std::optional<Arith::Expr> same_vals = val == (*write)->val() ? std::optional{val} : std::nullopt;
             if (!same_vals) {
                 if (inner_indices) {
                     linked_hash_map<ArithVarPtr, Arith::Expr> subs;
                     for (size_t i = 0; i < (*inner_indices).size(); ++i) {
                         subs.put(array_idx(i), inner_indices->at(i));
                     }
-                    same_vals |= val->subs(subs) == (*write)->val();
+                    if (val->subs(subs) == (*write)->val()) {
+                        same_vals = val;
+                    }
                 }
             }
             if (!same_vals) {
@@ -581,12 +583,14 @@ ArrayPtr<Arith> arrays::mkArrayWrite(const ArrayPtr<Arith>& arr, const Bools::Ex
                     for (size_t i = 0; i < (*outer_indices).size(); ++i) {
                         subs.put(array_idx(i), outer_indices->at(i));
                     }
-                    same_vals |= val == (*write)->val()->subs(subs);
+                    if (val == (*write)->val()->subs(subs)) {
+                        same_vals = (*write)->val();
+                    }
                 }
             }
             if (same_vals) {
                 const auto new_cond = cond || (*write)->cond();
-                return mkArrayWrite((*write)->arr(), new_cond, val);
+                return mkArrayWrite((*write)->arr(), new_cond, *same_vals);
             }
         }
     }

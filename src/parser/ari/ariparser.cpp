@@ -49,12 +49,12 @@ void ARIParser::run(const std::string &filename) {
             for (unsigned i = 1; i < child_count; ++i) {
                 switch (type.at(i-1)) {
                     case theory::Type::Int: {
-                        const auto var = state.get_or_create_arith_var(lhs[i].str());
+                        const auto var = state.get_or_create_arith_var(lhs[i].str(), false);
                         update.writeConst(var, parseArithExpr(rhs[i], state));
                         break;
                     }
                     case theory::Type::Bool: {
-                        const auto var = state.get_or_create_bool_var(lhs[i].str());
+                        const auto var = state.get_or_create_bool_var(lhs[i].str(), false);
                         update.put(var, parseBoolExpr(rhs[i], state));
                         break;
                     }

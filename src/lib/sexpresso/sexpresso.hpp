@@ -21,6 +21,7 @@ namespace sexpresso {
 		Sexp();
 		explicit Sexp(std::string const& strval);
 		explicit Sexp(std::vector<Sexp> const& sexpval);
+		Sexp(const Sexp& that);
         SexpValueKind kind {};
 		unsigned count {0};
         struct { std::vector<Sexp> sexp {}; std::string str {}; } value {};
@@ -30,6 +31,7 @@ namespace sexpresso {
 		auto addExpression(std::string const& str) -> void;
 		auto childCount() const -> size_t;
 		auto operator[](size_t idx) -> Sexp&;
+		auto operator=(const Sexp&) -> Sexp&;
 		auto getChild(size_t idx) -> Sexp&; // Call only if Sexp is a Sexp
 		auto str() -> std::string&;
 		auto getChildByPath(std::string const& path) -> Sexp*; // unsafe! careful to not have the result pointer outlive the scope of the Sexp object

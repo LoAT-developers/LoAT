@@ -177,42 +177,42 @@ ITSPtr CHCToITS::transform() {
         const auto lhs_loc = premise.empty() ? its->getInitialLocation() : its->getOrAddLocation(premise.front()->get_pred());
         constraints.emplace_back(Arith::mkEq(its->getLocVar(), arith::mkConst(lhs_loc)));
         // replace the arguments of the body predicate with the corresponding program variables
-        unsigned bool_arg{0};
-        unsigned arr_arg{0};
-        unsigned int_arg{0};
+        unsigned bool_premise_arity{0};
+        unsigned arr_premise_arity{0};
+        unsigned int_premise_arity{0};
         for (const auto& prem: premise) {
             for (const auto& ex : prem->get_args()) {
                 theory::apply(
                     ex,
                     [&](const Arith::Expr& x) {
                         if (const auto var{x->isVar()}; var && !renaming.contains((*var)->var())) {
-                            renaming.insert((*var)->var(), vars[int_arg]->var());
+                            renaming.insert((*var)->var(), vars[int_premise_arity]->var());
                         } else {
-                            constraints.emplace_back(Arith::mkEq(x, vars[int_arg]));
+                            constraints.emplace_back(Arith::mkEq(x, vars[int_premise_arity]));
                         }
-                        ++int_arg;
+                        ++int_premise_arity;
                     },
                     [&](const Arrays<Arith>::Expr& x) {
                         if (const auto var{x->isVar()}; var && !renaming.contains(*var)) {
-                            renaming.insert(*var, avars[arr_arg]);
+                            renaming.insert(*var, avars[arr_premise_arity]);
                         } else {
-                            constraints.emplace_back(Arrays<Arith>::mkEq(x, avars[arr_arg]));
+                            constraints.emplace_back(Arrays<Arith>::mkEq(x, avars[arr_premise_arity]));
                         }
-                        ++arr_arg;
+                        ++arr_premise_arity;
                     },
                     [&](const Bools::Expr& x) {
                         if (const auto var{x->isVar()}; var && !renaming.contains(*var)) {
-                            renaming.insert(*var, bvars[bool_arg]);
+                            renaming.insert(*var, bvars[bool_premise_arity]);
                         } else {
-                            constraints.emplace_back(Bools::mkEq(x, bools::mkLit(bools::mk(bvars[bool_arg]))));
+                            constraints.emplace_back(Bools::mkEq(x, bools::mkLit(bools::mk(bvars[bool_premise_arity]))));
                         }
-                        ++bool_arg;
+                        ++bool_premise_arity;
                     });
             }
         }
-        bool_arg = 0;
-        arr_arg = 0;
-        int_arg = 0;
+        unsigned bool_arg = 0;
+        unsigned arr_arg = 0;
+        unsigned int_arg = 0;
         Subs up;
         if (const auto conc{c->get_conclusion()}) {
             for (const auto &arg : (*conc)->get_args()) {
@@ -232,13 +232,13 @@ ITSPtr CHCToITS::transform() {
                         ++bool_arg;
                     });
             }
-            for (unsigned i = int_arg; i < max_int_arity; ++i) {
+            for (unsigned i = int_arg; i < int_premise_arity; ++i) {
                 up.update(vars[i], arrays::nextConst<Arith>());
             }
-            for (unsigned i = arr_arg; i < max_arr_arity; ++i) {
+            for (unsigned i = arr_arg; i < arr_premise_arity; ++i) {
                 up.put(avars[i], ArrayVar<Arith>::next(avars[i]->dim()));
             }
-            for (unsigned i = bool_arg; i < max_bool_arity; ++i) {
+            for (unsigned i = bool_arg; i < bool_premise_arity; ++i) {
                 up.put(bvars[i], bools::mkLit(bools::mk(BoolVar::next())));
             }
         }

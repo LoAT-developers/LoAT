@@ -136,7 +136,7 @@ public:
     bool contains(const Var &var) const;
     size_t size() const;
     bool empty() const;
-    bool operator==(const Renaming &that) const = default;
+    bool operator==(const Renaming &that) const = delete;
 
     template <size_t I>
     std::tuple_element_t<I, decltype(t)>::Renaming& get() {

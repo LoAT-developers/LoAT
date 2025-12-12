@@ -25,7 +25,7 @@ bool Chain::chainLinearPaths() {
                 if (const auto second_idx{*succ.begin()}; !its->isSimpleLoop(second_idx)) {
                     const auto c{Preprocess::chain({first, second_idx->renameTmpVars()})};
                     if (Config::Analysis::doLogPreproc()) {
-                        std::cout << "chaining\n\trule 1: " << first << "\n\trule 2: " << second_idx << "\n\tresult: " << c << std::endl;
+                        std::cout << "chaining\n\trule 1: " << *first << "\n\trule 2: " << *second_idx << "\n\tresult: " << *c << std::endl;
                     }
                     its->addRule(c, first, second_idx);
                     if (Config::Analysis::model) {
