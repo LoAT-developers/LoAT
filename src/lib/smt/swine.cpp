@@ -2,7 +2,7 @@
 #include "exprconverter.hpp"
 #include "swinemodel.hpp"
 
-Swine::Swine(const swine::Config& config): solver(config, z3ctx), ctx(solver) {
+Swine::Swine(const swine::Config& config): solver(config, *z3ctx), ctx(z3ctx, solver.get_exp()) {
     auto &s {solver.get_solver()};
     s.set("random_seed", 42u);
     // s.set("rlimit", 10000000u);

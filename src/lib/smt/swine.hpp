@@ -22,7 +22,7 @@ public:
 
 private:
 
-    z3::context z3ctx{};
+    std::shared_ptr<z3::context> z3ctx = std::make_shared<z3::context>();
     swine::Swine solver;
     SwineContext ctx;
     std::optional<ModelPtr> m;

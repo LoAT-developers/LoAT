@@ -10,6 +10,8 @@
 #include <unordered_set>
 #include <stack>
 
+#include "formulapreprocessing.hpp"
+
 Preprocessor::Preprocessor(const ITSPtr& its): its(its), chain(its), rule_preproc(its), cex(its) {}
 
 bool Preprocessor::successful() const {
@@ -30,11 +32,14 @@ const ITSSafetyCex& Preprocessor::get_cex() const {
     return cex;
 }
 
-bool remove_irrelevant_clauses(const ITSPtr& its, const bool forward) {
+std::optional<SmtResult> remove_irrelevant_clauses(const ITSPtr& its, const bool forward) {
     std::unordered_set<RulePtr> keep;
     std::stack<RulePtr> todo;
     for (const auto &x : forward ? its->getInitialTransitions() : its->getSinkTransitions()) {
         todo.push(x);
+    }
+    if (todo.empty()) {
+        return SmtResult::Sat;
     }
     do {
         const auto current {todo.top()};
@@ -54,16 +59,54 @@ bool remove_irrelevant_clauses(const ITSPtr& its, const bool forward) {
         }
     }
     if (deleted.empty()) {
-        return false;
+        return std::nullopt;
     }
     if (Config::Analysis::doLogPreproc()) {
         std::cout << "removed the following irrelevant transitions: " << deleted << std::endl;
     }
-    return true;
+    return SmtResult::Unknown;
 }
 
-bool remove_irrelevant_clauses(const ITSPtr& its) {
-    return remove_irrelevant_clauses(its, true) || remove_irrelevant_clauses(its, false);
+std::optional<SmtResult> remove_irrelevant_clauses(const ITSPtr& its) {
+    if (const auto res = remove_irrelevant_clauses(its, true); res && *res != SmtResult::Unknown) {
+        return res;
+    }
+    return remove_irrelevant_clauses(its, false);
+}
+
+bool remove_identity_clauses(const ITSPtr& its) {
+    linked_hash_set<RulePtr> remove;
+    if (Config::Analysis::mode == Config::Analysis::Safety) {
+
+        for (const auto& r: its->getAllTransitions()) {
+            if (!r->isDeterministic()) {
+                continue;
+            }
+            LitSet diseqs;
+            const auto subs = r->getUpdate().get<Arrays<Arith>>();
+            if (subs.size() != r->getUpdate().size()) {
+                continue;
+            }
+            auto has_arrays = false;
+            for (const auto& [k,v]: subs) {
+                if (k->dim() > 0) {
+                    has_arrays = true;
+                    break;
+                }
+                diseqs.insert(arith::mkNeq(arrays::readConst(k), arrays::readConst(v)));
+            }
+            if (!has_arrays && SmtFactory::check(r->getGuard() && bools::mkOr(diseqs)) == SmtResult::Unsat) {
+                remove.insert(r);
+            }
+        }
+        for (const auto& r: remove) {
+            its->removeRule(r);
+        }
+        if (!remove.empty() && Config::Analysis::doLogPreproc()) {
+            std::cout << "removed the following identity transitions: " << remove << std::endl;
+        }
+    }
+    return !remove.empty();
 }
 
 /**
@@ -184,7 +227,7 @@ bool remove_irrelevant_vars(const ITSPtr& its) {
     if (remove.empty()) {
         return false;
     }
-    if (Config::Analysis::logPreproc) {
+    if (Config::Analysis::doLogPreproc()) {
         std::cout << "removed the following irelevant variables: ";
         for (const auto& [x,_]: remove) {
             std::cout << " " << x;
@@ -207,7 +250,12 @@ SmtResult Preprocessor::preprocess() {
         if (Config::Analysis::doLogPreproc()) {
             std::cout << "removing irrelevant clauses..." << std::endl;
         }
-        success |= remove_irrelevant_clauses(its);
+        if (const auto satRes = remove_irrelevant_clauses(its)) {
+            if (satRes != SmtResult::Unknown) {
+                return *satRes;
+            }
+            success = true;
+        }
         if (Config::Analysis::doLogPreproc()) {
             std::cout << "finished removing irrelevant clauses" << std::endl;
         }
@@ -245,16 +293,23 @@ SmtResult Preprocessor::preprocess() {
             changed = true;
             success = true;
         }
-        if (Config::Analysis::doLogPreproc()) {
-            std::cout << "removing irrelevant variables" << std::endl;
-        }
-        if (remove_irrelevant_vars(its)) {
-            changed = true;
-            success = true;
-        }
+        // if (Config::Analysis::doLogPreproc()) {
+        //     std::cout << "removing irrelevant variables" << std::endl;
+        // }
+        // if (remove_irrelevant_vars(its)) {
+        //     changed = true;
+        //     success = true;
+        // }
     } while (changed);
     if (Config::Analysis::doLogPreproc()) {
         std::cout << "finished preprocessing rules" << std::endl;
+    }
+    if (Config::Analysis::doLogPreproc()) {
+        std::cout << "checking identity clauses..." << std::endl;
+    }
+    remove_identity_clauses(its);
+    if (Config::Analysis::doLogPreproc()) {
+        std::cout << "finished checking identity clauses" << std::endl;
     }
     if (Config::Analysis::engine == Config::Analysis::ADCL) {
         if (Config::Analysis::doLogPreproc()) {

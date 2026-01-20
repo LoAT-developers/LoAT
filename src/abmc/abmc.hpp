@@ -16,7 +16,6 @@ class ABMC final : public StepwiseAnalysis {
         unsigned prefix;
         unsigned period;
         Bools::Expr covered;
-        bool deterministic;
     };
 
     ITSPtr its;
@@ -51,7 +50,7 @@ class ABMC final : public StepwiseAnalysis {
     bool is_orig_clause(const RulePtr& idx) const;
     std::optional<unsigned> has_looping_suffix(unsigned start, std::vector<int> &lang);
     void add_learned_clause(const RulePtr& accel, unsigned backlink);
-    std::pair<std::vector<RulePtr>, ModelPtr> build_loop(int backlink) const;
+    std::pair<RulePtr, ModelPtr> build_loop(int backlink) const;
     Bools::Expr build_blocking_clause(int backlink, const Loop &loop);
     std::optional<Loop> handle_loop(unsigned backlink, const std::vector<int> &lang);
     void build_trace();

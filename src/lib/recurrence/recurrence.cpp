@@ -366,18 +366,17 @@ bool Recurrence::solve() {
     // make sure that written indices are pairwise different
     result.refinement = bools::mkAnd(different_indices);
     // map a[s] -> a[t] where a[s] is the lhs of an inductive equation and up(t) = s
-    linked_hash_set<ArithVarPtr> unchanged;
     linked_hash_map<ArithVarPtr, ArithVarPtr> inductive;
     linked_hash_set<ArithVarPtr> displacing;
     std::vector<ArithVarPtr> a_work_list;
     // checks whether the given cells are inductive, and populates 'inductive' on the way
     const auto are_inductive = [&](const auto& cells) {
         for (const auto& c : cells) {
-            if (!equations.contains(c->var())) {
-                if (!unchanged.contains(c)) {
-                    unchanged.emplace(c);
-                    a_work_list.emplace_back(c);
-                }
+            if (std::ranges::all_of(c->vars(), [&](const auto& x) {
+                return !equations.contains(x);
+            })) {
+                closed_form.put(c, c);
+                closed_form_n_minus_one.put(std::pair(c, c));
                 continue;
             }
             const auto updated_indices = update_idx(c->indices());
@@ -442,12 +441,22 @@ bool Recurrence::solve() {
                 return lval == c || closed_form.contains(c);
             });
     };
-    const auto handle_unchanged_lval = [&](const auto& lval) {
+    linked_hash_map<Arrays<Arith>::Var, Arrays<Arith>::Var> nondet;
+    const auto handle_unchanged_lval = [&](const ArithVarPtr& lval) {
         std::vector<Arith::Expr> indices;
         for (const auto& i : lval->indices()) {
             indices.emplace_back(i->subs(closed_form));
         }
-        const auto updated{arrays::mkArrayRead(lval->var(), indices)};
+        auto var = lval->var();
+        if (var->isTempVar()) {
+            auto nd = nondet.get(lval->var());
+            if (!nd) {
+                nd = ArrayVar<Arith>::next(indices.size());
+                nondet.emplace(lval->var(), nd.value());
+            }
+            var = nd.value();
+        }
+        const auto updated = arrays::mkArrayRead(var, indices);
         closed_form.put(lval, updated);
         closed_form_n_minus_one.put(std::pair(lval, updated->subs(n_to_n_minus_one)));
         if (Config::Analysis::logAccel) {
@@ -462,6 +471,7 @@ bool Recurrence::solve() {
             const auto pre{*it};
             if (const auto post = inductive.get(pre)) {
                 if (const auto& val{written.at(*post)}; arith_eq_is_ready(pre, val)) {
+                    assert(!val->hasVarWith(theory::isTempVar));
                     if (!solve(pre, val)) {
                         if (Config::Analysis::logAccel) {
                             std::cout << "failed to solve " << pre << " = " << val << std::endl;

@@ -134,13 +134,15 @@ void LoopAcceleration::compute_closed_form() {
     }
     rec = Recurrence::solve(rule->getUpdate(), config.n);
     if (rec) {
-        if (!sample_point && rec->refinement != top()) {
+        res.prefix = rec->prefix;
+        if (rec->refinement != top()) {
             // if we need to refine the rule before acceleration, we need to project it to a conjunction beforehand
-            fail();
-        } else {
-            res.prefix = rec->prefix;
-            refinement = (*sample_point)->syntacticImplicant(rec->refinement);
-            rule = rule->withGuard(rule->getGuard() && refinement);
+            if (sample_point && sample_point.value()->eval(rec->refinement)) {
+                refinement = (*sample_point)->syntacticImplicant(rec->refinement);
+                rule = rule->withGuard(rule->getGuard() && refinement);
+            } else {
+                fail();
+            }
         }
     } else {
         fail();

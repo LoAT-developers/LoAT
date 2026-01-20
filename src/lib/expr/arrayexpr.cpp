@@ -488,11 +488,11 @@ T::Expr ArrayRead<T>::syntacticImplicant(ModelPtr m, LitSet& res) const {
         indices.emplace_back(i->syntacticImplicant(m, res));
     }
     if (const auto write = arr->isArrayWrite()) {
-        if (m->eval((*write)->cond())) {
-            linked_hash_map<ArithVarPtr, Arith::Expr> subs;
-            for (size_t i = 0; i < m_indices.size(); ++i) {
-                subs.put(arrays::array_idx(i), indices.at(i));
-            }
+        Subs subs;
+        for (size_t i = 0; i < m_indices.size(); ++i) {
+            subs.update(arrays::array_idx(i), indices.at(i));
+        }
+        if (m->eval((*write)->cond()->subs(subs))) {
             return (*write)->val()->subs(subs);
         }
         return arrays::mkArrayRead((*write)->arr(), indices)->syntacticImplicant(m, res);
@@ -564,6 +564,20 @@ ArrayPtr<Arith> arrays::mkArrayWrite(const ArrayPtr<Arith>& arr, const Bools::Ex
     if (const auto write = arr->isArrayWrite()) {
         const auto inner_indices = (*write)->indices();
         const auto outer_indices = indices(arr->dim(), cond);
+        if (inner_indices && outer_indices) {
+            if (std::ranges::all_of(std::vector{inner_indices, outer_indices}, [&](const auto& indices) {
+                return std::ranges::all_of(indices.value(), [&](const Arith::Expr& i) {
+                    return i->isInt().has_value();
+                });
+            })) {
+                // both indices are constants
+                if (outer_indices < inner_indices) {
+                    // both indices are different constants -- sort them
+                    const auto new_arr = mkArrayWrite(write.value()->arr(), outer_indices.value(), val);
+                    return mkArrayWrite(new_arr, inner_indices.value(), write.value()->val());
+                }
+            }
+        }
         if (!inner_indices || !outer_indices) {
             std::optional<Arith::Expr> same_vals = val == (*write)->val() ? std::optional{val} : std::nullopt;
             if (!same_vals) {

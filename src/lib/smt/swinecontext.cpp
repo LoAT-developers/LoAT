@@ -1,31 +1,31 @@
 #include "swinecontext.hpp"
 
-SwineContext::SwineContext(swine::Swine &solver): ctx(solver.get_ctx()), solver(solver) {}
+SwineContext::SwineContext(std::shared_ptr<z3::context> &p_ctx, const z3::func_decl &p_exp): m_ctx(p_ctx), m_exp(p_exp) {}
 
 z3::expr SwineContext::pow(const z3::expr &base, const z3::expr &exp) {
-    return solver.get_exp()(base, exp);
+    return m_exp(base, exp);
 }
 
 z3::expr SwineContext::buildVar(const Bools::Var &var) {
-    return ctx.bool_const(var->getName().c_str());
+    return m_ctx->bool_const(var->getName().c_str());
 }
 
 z3::expr SwineContext::buildVar(const Arrays<Arith>::Var &var) {
-    const auto ints {ctx.int_sort()};
+    const auto ints {m_ctx->int_sort()};
     auto sort {ints};
     const auto dim {var->dim()};
     for (unsigned i = 0; i < dim; ++i) {
-        sort = ctx.array_sort(ints, sort);
+        sort = m_ctx->array_sort(ints, sort);
     }
-    return ctx.constant(var->getName().c_str(), sort);
+    return m_ctx->constant(var->getName().c_str(), sort);
 }
 
 z3::expr SwineContext::getInt(const Int &val) {
-    return ctx.int_val(val.str().c_str());
+    return m_ctx->int_val(val.str().c_str());
 }
 
 z3::expr SwineContext::getReal(const Int &num, const Int &denom) {
-    return ctx.real_val((num.str() + " / " + denom.str()).c_str());
+    return m_ctx->real_val((num.str() + " / " + denom.str()).c_str());
 }
 
 z3::expr SwineContext::plus(const z3::expr_vector &args) {
@@ -78,11 +78,11 @@ z3::expr SwineContext::bOr(z3::expr_vector &args) {
 }
 
 z3::expr SwineContext::bTrue() const {
-    return ctx.bool_val(true);
+    return m_ctx->bool_val(true);
 }
 
 z3::expr SwineContext::bFalse() const {
-    return ctx.bool_val(false);
+    return m_ctx->bool_val(false);
 }
 
 z3::expr SwineContext::negate(const z3::expr &x) {
@@ -90,11 +90,11 @@ z3::expr SwineContext::negate(const z3::expr &x) {
 }
 
 z3::expr_vector SwineContext::exprVec() {
-    return {ctx};
+    return {*m_ctx};
 }
 
 z3::expr_vector SwineContext::formulaVec() {
-    return {ctx};
+    return {*m_ctx};
 }
 
 z3::expr SwineContext::arrayRead(const z3::expr& arr, const z3::expr_vector& indices) {

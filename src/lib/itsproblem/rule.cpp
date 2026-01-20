@@ -132,6 +132,20 @@ bool Rule::isDeterministic() const {
     return !std::ranges::any_of(vars(), theory::isTempVar);
 }
 
+bool Rule::hasNonTrivialNondeterminism() const {
+    if (std::ranges::any_of(guard->vars(), theory::isTempVar)) {
+        return true;
+    }
+    for (const auto &[_,v]: update) {
+        if (theory::apply(v, [&](const auto& v) {
+            return !v->isVar() && std::ranges::any_of(guard->vars(), theory::isTempVar);
+        })) {
+            return true;
+        }
+    }
+    return false;
+}
+
 size_t Rule::hash() const {
     size_t hash {0};
     boost::hash_combine(hash, std::hash<Bools::Expr>{}(guard));

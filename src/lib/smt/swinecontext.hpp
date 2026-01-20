@@ -9,7 +9,7 @@ class SwineContext final : public ExprConversionContext<z3::expr, z3::expr, z3::
 
 public:
 
-    explicit SwineContext(swine::Swine &solver);
+    explicit SwineContext(std::shared_ptr<z3::context> &p_ctx, const z3::func_decl &p_exp);
     ~SwineContext() override = default;
 
     z3::expr getInt(const Int &val) override;
@@ -43,7 +43,7 @@ private:
     z3::expr buildVar(const Bools::Var &var) override;
     z3::expr buildVar(const Arrays<Arith>::Var &var) override;
 
-    z3::context &ctx;
-    swine::Swine &solver;
+    std::shared_ptr<z3::context> m_ctx;
+    z3::func_decl m_exp;
 
 };
