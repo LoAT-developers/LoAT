@@ -47,14 +47,7 @@ std::ostream& operator<<(std::ostream &s, const SafetyCex &cex) {
     s << "\ncounterexample:" << std::endl;
     for (size_t i = 0; i < cex.transitions.size(); ++i) {
         const auto &trans {cex.transitions.at(i)};
-        auto vars {trans->vars()};
-        for (const auto& x: vars) {
-            if (theory::isProgVar(x)) {
-                prog_vars.insert(x);
-            }
-        }
-        vars.insertAll(prog_vars);
-        s << "\t" << cex.states.at(i)->toString(prog_vars) << "\n\t-" << transitions.at(trans) << "->\n";
+        s << "\t" << cex.states.at(i)->toString(trans->vars()) << "\n\t-" << transitions.at(trans) << "->\n";
     }
     return s << "\terr";
 }

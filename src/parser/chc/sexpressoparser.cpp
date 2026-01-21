@@ -10,57 +10,39 @@ CHCPtr SexpressoParser::loadFromFile(const std::string &filename) {
     return parser.chcs;
 }
 
-std::pair<std::vector<FunAppPtr>, Bools::Expr> parsePred(sexpresso::Sexp &exp, SMTLibParsingState &state, const std::unordered_map<std::string, std::pair<std::vector<FunAppPtr>, Bools::Expr>>& predicate_bindings) {
+FunAppPtr parsePred(sexpresso::Sexp &exp, SMTLibParsingState &state) {
     std::vector<Expr> args;
     if (exp.isString()) {
-        const auto it = predicate_bindings.find(exp.str());
-        if (it == predicate_bindings.end()) {
-            return {std::vector{FunApp::mk(exp.str(), args)}, top()};
-        }
-        return it->second;
+        return FunApp::mk(exp.str(), args);
     }
     for (unsigned i = 1; i < exp.childCount(); ++i) {
         args.push_back(parseExpr(exp[i], state));
     }
-    const auto res = FunApp::mk(exp[0].str(), args);
-    return {std::vector{res}, top()};
+    return FunApp::mk(exp[0].str(), args);
 }
 
-std::pair<std::vector<FunAppPtr>, Bools::Expr> parseTopLevelBoolExpr(sexpresso::Sexp &exp, SMTLibParsingState &state, std::unordered_map<std::string, std::pair<std::vector<FunAppPtr>, Bools::Expr>>& predicate_bindings) {
-    std::vector<FunAppPtr> args;
+std::vector<FunAppPtr> parseTopLevelBoolExpr(sexpresso::Sexp &exp, SMTLibParsingState &state) {
     if (exp.isString()) {
         // get_type returns a value iff the given name has been declared as a variable, or if there is a binding for it
         if (const auto name {exp.str()}; name == "true" || name == "false" || state.get_type(name)) {
-            return {args, parseBoolExpr(exp, state)};
+            state.add_refinement(parseBoolExpr(exp, state));
+            return {};
         }
-        return parsePred(exp, state, predicate_bindings);
+        return std::vector{parsePred(exp, state)};
     }
     if (const auto f {exp[0].str()}; f == "and") {
-        std::vector<Bools::Expr> conds;
+        std::vector<FunAppPtr> args;
         for (unsigned i = 1; i < exp.childCount(); ++i) {
-            const auto [l,cond] {parseTopLevelBoolExpr(exp[i], state, predicate_bindings)};
+            const auto l {parseTopLevelBoolExpr(exp[i], state)};
             args.insert(args.end(), l.begin(), l.end());
-            conds.emplace_back(cond);
         }
-        return {args, bools::mkAnd(conds)};
+        return args;
     } else {
-        if (f == "let") {
-            auto decls = exp[1];
-            for (unsigned i = 0; i < decls.childCount(); ++i) {
-                const auto name = decls[i][0].str();
-                auto def = decls[i][1];
-                if (const auto [p, cond] = parseTopLevelBoolExpr(def, state, predicate_bindings); !p.empty()) {
-                    predicate_bindings.emplace(name, std::pair(p, cond));
-                } else {
-                    state.add_binding(name, cond);
-                }
-            }
-            return parseTopLevelBoolExpr(exp[2], state, predicate_bindings);
+        if (f == "let" || f == "ite" || f == "or" || f == "not" || f == "=>" || f == "<" || f == "<=" || f == ">" || f == ">=" || f == "=" || f == "distinct") {
+            state.add_refinement(parseBoolExpr(exp, state));
+            return {};
         }
-        if (f == "ite" || f == "or" || f == "not" || f == "=>" || f == "<" || f == "<=" || f == ">" || f == ">=" || f == "=" || f == "distinct") {
-            return {args, parseBoolExpr(exp, state)};
-        }
-        return parsePred(exp, state, predicate_bindings);
+        return std::vector{parsePred(exp, state)};
     }
 }
 
@@ -90,54 +72,28 @@ void SexpressoParser::run(const std::string &filename) {
     for (sexpresso::Sexp sexp = sexpresso::parse(content); auto &ex: sexp.arguments()) {
         if (ex[0].isString("assert")) {
             state.push();
-            std::unordered_map<std::string, std::pair<std::vector<FunAppPtr>, Bools::Expr>> predicate_bindings;
             sexpresso::Sexp clause = ex[1];
-            while (clause[0].isString("forall") || clause[0].isString("let") || clause[0].isString("!")) {
-                if (clause[0].isString("forall")) {
-                    auto vars = clause[1];
-                    for (unsigned i = 0; i < vars.childCount(); ++i) {
-                        state.create_var(vars[i][0].str(), parse_type(vars[i][1]), true);
-                    }
-                    clause = clause[2];
-                } else if (clause[0].isString("let")) {
-                    auto decls = clause[1];
-                    for (unsigned i = 0; i < decls.childCount(); ++i) {
-                        const auto name = decls[i][0].str();
-                        auto def = decls[i][1];
-                        if (const auto [p, cond] = parseTopLevelBoolExpr(def, state, predicate_bindings); !p.empty()) {
-                            predicate_bindings.emplace(name, std::pair(p, cond));
-                        } else {
-                            state.add_binding(name, cond);
-                        }
-                    }
-                    clause = clause[2];
-                } else {
-                    assert(clause[0].isString("!"));
-                    const auto child = clause[1];
-                    clause = child;
+            while (clause[0].isString("forall")) {
+                auto vars = clause[1];
+                for (unsigned i = 0; i < vars.childCount(); ++i) {
+                    state.create_var(vars[i][0].str(), parse_type(vars[i][1]), true);
                 }
+                clause = clause[2];
             }
             std::vector<FunAppPtr> premise;
             std::optional<FunAppPtr> conclusion;
             sexpresso::Sexp conc;
             if (clause[0].isString("=>")) {
-                const auto [pred, cond] = parseTopLevelBoolExpr(clause[1], state, predicate_bindings);
-                premise = pred;
-                state.add_refinement(cond);
+                premise = parseTopLevelBoolExpr(clause[1], state);
                 conc = clause[2];
             } else if (clause[0].isString("not")) {
-                const auto [pred, cond] = parseTopLevelBoolExpr(clause[1], state, predicate_bindings);
-                premise = pred;
-                state.add_refinement(cond);
+                premise = parseTopLevelBoolExpr(clause[1], state);
                 conc = sexpresso::Sexp("false");
             } else {
                 conc = clause;
             }
             if (!conc.isString("false")) {
-                const auto [p, cond] = parsePred(conc, state, predicate_bindings);
-                assert(cond == top());
-                assert(p.size() == 1);
-                conclusion = p.front();
+                conclusion = parsePred(conc, state);
             }
             const auto res = Clause::mk(premise, state.refinement(), conclusion);
             chcs->add_clause(res);

@@ -114,14 +114,7 @@ std::ostream& operator<<(std::ostream &s, const CHCCex &cex) {
     VarSet prog_vars;
     for (size_t i = 0; i < cex.transitions.size(); ++i) {
         const auto &clause{cex.transitions.at(i)};
-        auto vars{clause->vars()};
-        for (const auto& x: vars) {
-            if (theory::isProgVar(x)) {
-                prog_vars.insert(x);
-            }
-        }
-        vars.insertAll(prog_vars);
-        s << "\t" << clause << cex.states.at(i)->toString(prog_vars) << " by " << indices.at(clause) << "\n";
+        s << "\t" << clause << cex.states.at(i)->toString(clause->vars()) << " by " << indices.at(clause) << "\n";
     }
     return s;
 }
