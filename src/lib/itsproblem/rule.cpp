@@ -138,10 +138,20 @@ bool Rule::hasNonTrivialNondeterminism() const {
         return true;
     }
     for (const auto &[k,v]: update) {
-        if (gvars.contains(k) && theory::apply(v, [&](const auto v) {
+        if (theory::apply(v, [&](const auto v) {
             return std::ranges::any_of(v->vars(), theory::isTempVar);
         })) {
-            return true;
+            if (gvars.contains(k)) {
+                return true;
+            }
+            for (const auto &p: update) {
+                if (theory::apply(p, [&](const auto &p) {
+                    const auto &[k2,v2] = p;
+                    return Var(k) != Var(k2) && v2->vars().contains(k);
+                })) {
+                    return true;
+                }
+            }
         }
         if (theory::apply(v, [&](const Arrays<Arith>::Expr& v) {
             return v->hasNonTrivialNondeterminism();
