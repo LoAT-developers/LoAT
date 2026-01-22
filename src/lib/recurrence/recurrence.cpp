@@ -416,6 +416,7 @@ bool Recurrence::solve() {
         for (const auto& i : lhs->indices()) {
             indices.emplace_back(i->subs(closed_form));
         }
+        indices.emplace_back(n);
         auto nd = nondet.get(rhs->var());
         if (!nd) {
             nd = ArrayVar<Arith>::next(indices.size());

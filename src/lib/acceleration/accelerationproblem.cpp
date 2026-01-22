@@ -36,6 +36,21 @@ AccelerationProblem::AccelerationProblem(
             }
         }, l);
     }
+    const auto cdom_vars = update.coDomainVars();
+    Renaming ren;
+    for (const auto &x: cdom_vars) {
+        if (theory::isTempVar(x)) {
+            theory::apply(x, [&](const auto& x) {
+                Renaming::renameVar(x, ren);
+            });
+        }
+    }
+    for (const auto &p: update) {
+        theory::apply(p, [&](const auto &p) {
+            const auto &[k,v] = p;
+            update2.put(k, v->renameVars(ren));
+        });
+    }
     const auto subs {closed ? closed->closed_form : update};
     const auto logic {Smt::chooseLogic(bools::mkOr(todo), subs)};
     this->solver = SmtFactory::modelBuildingSolver(logic);
@@ -230,7 +245,7 @@ bool AccelerationProblem::eventualWeakDecrease(const Lit &lit) {
     solver->push();
     solver->add(bools::mkLit(dec));
     if (solver->check() == SmtResult::Sat) {
-        const auto inc {arith::mkLt(updated, updated->subs(update))};
+        const auto inc {arith::mkLt(updated, updated->subs(update2))};
         solver->add(bools::mkLit(inc));
         if (solver->check() == SmtResult::Unsat) {
             success = true;
@@ -261,7 +276,7 @@ bool AccelerationProblem::eventualIncrease(const Lit &lit, const bool strict) {
     solver->add(inc);
     if (solver->check() == SmtResult::Sat) {
         // up(t) >(=) up^2(t)
-        const auto d {strict ? arith::mkGeq(updated, updated->subs(update)) : arith::mkGt(updated, updated->subs(update))};
+        const auto d {strict ? arith::mkGeq(updated, updated->subs(update2)) : arith::mkGt(updated, updated->subs(update2))};
         const auto dec {bools::mkLit(d)};
         solver->push();
         solver->add(dec);
