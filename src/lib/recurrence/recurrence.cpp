@@ -409,8 +409,42 @@ bool Recurrence::solve() {
             return true;
         });
     };
+    linked_hash_map<Arrays<Arith>::Var, Arrays<Arith>::Var> nondet;
+    const auto handle_nondet_assignment = [&](const ArithVarPtr& lhs, const ArithVarPtr& rhs) {
+        assert(rhs->dim() == 0);
+        std::vector<Arith::Expr> indices;
+        for (const auto& i : lhs->indices()) {
+            indices.emplace_back(i->subs(closed_form));
+        }
+        auto nd = nondet.get(rhs->var());
+        if (!nd) {
+            nd = ArrayVar<Arith>::next(indices.size());
+            nondet.emplace(rhs->var(), nd.value());
+        }
+        const auto updated = arrays::mkArrayRead(*nd, indices);
+        closed_form.put(rhs, updated);
+        closed_form_n_minus_one.put(std::pair(rhs, updated->subs(n_to_n_minus_one)));
+        if (Config::Analysis::logAccel) {
+            std::cout << "closed form for " << rhs << ": " << closed_form.at(rhs) << std::endl;
+        }
+    };
+    const auto handle_unchanged_lval = [&](const ArithVarPtr& lval) {
+        std::vector<Arith::Expr> indices;
+        for (const auto& i : lval->indices()) {
+            indices.emplace_back(i->subs(closed_form));
+        }
+        const auto updated = arrays::mkArrayRead(lval->var(), indices);
+        closed_form.put(lval, updated);
+        closed_form_n_minus_one.put(std::pair(lval, updated->subs(n_to_n_minus_one)));
+        if (Config::Analysis::logAccel) {
+            std::cout << "closed form for " << lval << ": " << closed_form.at(lval) << std::endl;
+        }
+    };
     for (const auto& [lval,val] : written) {
-        if (const auto rec_cells = val->cells(true); are_inductive(rec_cells)) {
+        if (const auto var = val->isVar(); var && var.value()->isTempVar()) {
+            // non-deterministic assignment
+            handle_nondet_assignment(lval, var.value());
+        } else if (are_inductive(val->cells(true))) {
             if (Config::Analysis::logAccel) {
                 std::cout << lval << " = " << val << " is inductive" << std::endl;
             }
@@ -441,28 +475,6 @@ bool Recurrence::solve() {
                 return lval == c || closed_form.contains(c);
             });
     };
-    linked_hash_map<Arrays<Arith>::Var, Arrays<Arith>::Var> nondet;
-    const auto handle_unchanged_lval = [&](const ArithVarPtr& lval) {
-        std::vector<Arith::Expr> indices;
-        for (const auto& i : lval->indices()) {
-            indices.emplace_back(i->subs(closed_form));
-        }
-        auto var = lval->var();
-        if (var->isTempVar()) {
-            auto nd = nondet.get(lval->var());
-            if (!nd) {
-                nd = ArrayVar<Arith>::next(indices.size());
-                nondet.emplace(lval->var(), nd.value());
-            }
-            var = nd.value();
-        }
-        const auto updated = arrays::mkArrayRead(var, indices);
-        closed_form.put(lval, updated);
-        closed_form_n_minus_one.put(std::pair(lval, updated->subs(n_to_n_minus_one)));
-        if (Config::Analysis::logAccel) {
-            std::cout << "closed form for " << lval << ": " << closed_form.at(lval) << std::endl;
-        }
-    };
     // solve equations for inductive lvalues
     bool changed {true};
     while (changed) {
@@ -471,7 +483,6 @@ bool Recurrence::solve() {
             const auto pre{*it};
             if (const auto post = inductive.get(pre)) {
                 if (const auto& val{written.at(*post)}; arith_eq_is_ready(pre, val)) {
-                    assert(!val->hasVarWith(theory::isTempVar));
                     if (!solve(pre, val)) {
                         if (Config::Analysis::logAccel) {
                             std::cout << "failed to solve " << pre << " = " << val << std::endl;

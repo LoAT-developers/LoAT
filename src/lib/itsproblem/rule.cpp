@@ -137,8 +137,13 @@ bool Rule::hasNonTrivialNondeterminism() const {
         return true;
     }
     for (const auto &[_,v]: update) {
-        if (theory::apply(v, [&](const auto& v) {
-            return !v->isVar() && std::ranges::any_of(guard->vars(), theory::isTempVar);
+        if (theory::apply(v, [&](const Arrays<Arith>::Expr& v) {
+            return v->hasNonTrivialNondeterminism();
+        }, [&](const Bools::Expr& v) {
+            if (std::ranges::any_of(v->vars(), theory::isTempVar)) {
+                return !v->isVar() || !v->isVar().value()->isTempVar() || v->isVar().value()->dim() > 0;
+            }
+            return false;
         })) {
             return true;
         }
