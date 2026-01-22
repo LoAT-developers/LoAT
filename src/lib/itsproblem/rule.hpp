@@ -71,8 +71,6 @@ public:
 
     bool isDeterministic() const;
 
-    bool hasNonTrivialNondeterminism() const;
-
     RulePtr renameTmpVars() const;
 
     bool isHavoced(const Var&) const;

@@ -166,11 +166,6 @@ ArrayPtr<T> ArrayVar<T>::syntacticImplicant(ModelPtr, LitSet&) const {
 }
 
 template <class T>
-bool ArrayVar<T>::hasNonTrivialNondeterminism() const {
-    return false;
-}
-
-template <class T>
 bool ArrayWrite<T>::CacheEqual::operator()(
     const std::tuple<ArrayPtr<T>, Bools::Expr, typename T::Expr>& args1,
     const std::tuple<ArrayPtr<T>, Bools::Expr, typename T::Expr>& args2) const noexcept {
@@ -377,29 +372,6 @@ ArrayPtr<T> ArrayWrite<T>::syntacticImplicant(ModelPtr m, LitSet& res) const {
 }
 
 template <class T>
-bool ArrayWrite<T>::hasNonTrivialNondeterminism() const {
-    if (const auto var = m_val->isVar()) {
-        if (var.value()->hasNonTrivialNondeterminism()) {
-            return true;
-        }
-    } else if (std::ranges::any_of(m_val->vars(), theory::isTempVar)) {
-        return true;
-    }
-    auto cond_vars = m_cond->vars();
-    const auto d = dim();
-    for (unsigned i = 0; i < d; ++i) {
-        cond_vars.erase(arrays::array_idx(i)->var());
-    }
-    if (std::ranges::any_of(cond_vars, theory::isTempVar)) {
-        return true;
-    }
-    if  (m_arr->hasNonTrivialNondeterminism()) {
-        return true;
-    }
-    return false;
-}
-
-template <class T>
 bool ArrayRead<T>::CacheEqual::operator()(
     const std::tuple<ArrayPtr<T>, std::vector<Arith::Expr>>& args1,
     const std::tuple<ArrayPtr<T>, std::vector<Arith::Expr>>& args2) const
@@ -548,14 +520,6 @@ bool ArrayRead<T>::isPostCell() const {
 template <class T>
 bool ArrayRead<T>::isProgCell() const {
     return std::ranges::all_of(vars(), theory::isProgVar);}
-
-template <class T>
-bool ArrayRead<T>::hasNonTrivialNondeterminism() const {
-    if (std::ranges::any_of(vars(), theory::isTempVar)) {
-        return !m_arr->isVar() || dim() > 0;
-    }
-    return false;
-}
 
 ArrayReadPtr<Arith> arrays::mkArrayRead(const ArrayVarPtr<Arith>& arr, const std::vector<Arith::Expr>& indices) {
     return ArrayRead<Arith>::cache.from_cache(arr, indices);

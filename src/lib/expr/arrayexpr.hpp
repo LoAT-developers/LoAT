@@ -58,7 +58,6 @@ class Array: public std::enable_shared_from_this<Array<T>> {
     virtual ArrayPtr<T> withVar(const ArrayVarPtr<T>&) const = 0;
     virtual bool isLinear() const = 0;
     virtual bool isPoly() const = 0;
-    virtual bool hasNonTrivialNondeterminism() const = 0;
 
     virtual sexpresso::Sexp to_smtlib() const = 0;
 
@@ -137,7 +136,6 @@ public:
 
     static ArrayVarPtr<T> dummyConst();
     ArrayPtr<T> syntacticImplicant(ModelPtr, LitSet&) const override;
-    bool hasNonTrivialNondeterminism() const override;
 };
 
 template<class T>
@@ -209,7 +207,6 @@ public:
     void collectCells(CellSet&) const override;
     std::optional<std::vector<Arith::Expr>> indices() const;
     ArrayPtr<T> syntacticImplicant(ModelPtr, LitSet&) const override;
-    bool hasNonTrivialNondeterminism() const override;
 };
 
 template <class T>
@@ -257,7 +254,6 @@ public:
     bool isPoly() const;
     bool isPostCell() const;
     bool isProgCell() const;
-    bool hasNonTrivialNondeterminism() const;
 
     // mutators
     ArrayReadPtr<T> renameVars(const array_var_map<T>& map) const;
