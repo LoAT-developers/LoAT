@@ -133,10 +133,16 @@ bool Rule::isDeterministic() const {
 }
 
 bool Rule::hasNonTrivialNondeterminism() const {
-    if (std::ranges::any_of(guard->vars(), theory::isTempVar)) {
+    const auto gvars = guard->vars();
+    if (std::ranges::any_of(gvars, theory::isTempVar)) {
         return true;
     }
-    for (const auto &[_,v]: update) {
+    for (const auto &[k,v]: update) {
+        if (gvars.contains(k) && theory::apply(v, [&](const auto v) {
+            return std::ranges::any_of(v->vars(), theory::isTempVar);
+        })) {
+            return true;
+        }
         if (theory::apply(v, [&](const Arrays<Arith>::Expr& v) {
             return v->hasNonTrivialNondeterminism();
         }, [&](const Bools::Expr& v) {
