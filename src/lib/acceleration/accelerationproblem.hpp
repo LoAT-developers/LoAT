@@ -27,6 +27,7 @@ private:
 
     const std::optional<Recurrence::Result> closed;
     Subs update;
+    Subs update2;
     Bools::Expr guard;
     const AccelConfig config;
     LitSet todo {};
