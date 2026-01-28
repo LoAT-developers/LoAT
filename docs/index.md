@@ -122,7 +122,7 @@ In this constellation, AProVE and LoAT won the following awards:
 * 1st place in the category *Complexity of Integer Transition Systems* at the [*Termination and Complexity Competition 2017*](https://termcomp.imn.htwk-leipzig.de/competitions/Y2017)
 * 1st place in the category *Complexity of Integer Transition Systems* at the [*Termination and Complexity Competition 2016*](https://termcomp.imn.htwk-leipzig.de/competitions/Y2016)
 
-Nowadays, LoAT and [KoAT]() compete in the category *Complexity of Integer Transition Systems*.
+Nowadays, LoAT and [KoAT](https://koat.verify.rwth-aachen.de/) compete in the category *Complexity of Integer Transition Systems*.
 
 * 1st place in the category *Complexity of Integer Transition Systems* at the [*Termination and Complexity Competition 2025*](http://termination-portal.org/wiki/Termination_Competition_2025)
 
