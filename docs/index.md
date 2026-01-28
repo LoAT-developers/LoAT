@@ -47,7 +47,7 @@ Here, unsatisfiability of the [runnning example](example.smt2) from our paper on
 
 A typical usage of LoAT for analyzing termination looks as follows:
 ```
-loat-static --format ari --engine adcl --mode termination ../LoAT-web/docs/example.ari
+loat-static --format ari --engine adcl --mode termination example.ari
 NO
 
 LoAT:  595a95cf76ac783e87ce760ec4ccfeca66d93d43
@@ -57,7 +57,7 @@ Yices: 2.6.5
        build date: 2024-08-15
 SwInE: 141d02206bd74f86a01fa57c2dc9ed193abbfe6e
 ```
-Here, non-termination of the benchmark [`non_term.t2.ari`](example.ari) from the [Termination Problems Database](https://termination-portal.org/wiki/TPDB), the benchmark collection of the annual [*Termination and Complexity Competition (TermComp)*](https://termination-portal.org/wiki/Termination_Competition) has been proven.
+Here, non-termination of [the benchmark `non_term.t2.ari`](example.ari) from the [Termination Problems Database](https://termination-portal.org/wiki/TPDB), the benchmark collection of the annual [*Termination and Complexity Competition (TermComp)*](https://termination-portal.org/wiki/Termination_Competition) has been proven.
 
 See `loat-static --help` for more information.
 
