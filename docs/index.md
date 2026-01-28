@@ -173,7 +173,7 @@ Together with AProVE, LoAT competes in the category *Termination* of the [*Compe
   * Termination
     * 3rd place (with AProVE)
 * [SV-COMP 2025](https://sv-comp.sosy-lab.org/2025/results/results-verified/)
-  *  Termination
+  * Termination
     * 3rd place (with AProVE)
 * [SV-COMP 2022](https://sv-comp.sosy-lab.org/2022/results/results-verified/)
   * Termination
