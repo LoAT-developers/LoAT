@@ -105,18 +105,24 @@ LoAT competes in the category *LIA-Lin* (linear clauses with linear integer arit
 
 <details>
 
-### [CHC-COMP 2025](https://chc-comp.github.io/)
+<summary>Click to see LoAT's CHC-COMP results</summary>
 
-#### LIA-Lin
+<h3><a href="https://chc-comp.github.io/">CHC-COMP 2025</a></h3>
 
-* 3rd place
-* best tool (tied with [Golem](https://github.com/usi-verification-and-security/golem)) for proving unsatisfiability
+<h4>LIA-Lin</h4>
 
-### [CHC-COMP 2024](https://chc-comp.github.io/2024)
+<ul>
+<li>3rd place</li>
+<li>best tool (tied with <a href="https://github.com/usi-verification-and-security/golem">Golem</a>) for proving unsatisfiability</li>
+</ul>
 
-#### LIA-Lin
+<h3><a href="https://chc-comp.github.io/2024">CHC-COMP 2024</a></h3>
 
-* 3rd place
+<h4>LIA-Lin</h4>
+
+<ul>
+<li>3rd place</li>
+</ul>
 
 </details>
 
