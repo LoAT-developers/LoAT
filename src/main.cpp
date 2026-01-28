@@ -279,6 +279,15 @@ int main(int argc, char *argv[]) {
         std::cerr << "Error: missing filename" << std::endl;
         return 1;
     }
+    if (!std::ifstream(filename).good()) {
+        std::cerr << "Error: cannot open file " << filename << std::endl;
+        return 1;
+    }
+
+    if (!Config::Input::format) {
+        std::cerr << "Error: missing format" << std::endl;
+        return 1;
+    }
 
     if (!Config::validate()) {
         return -1;
@@ -290,7 +299,7 @@ int main(int argc, char *argv[]) {
     std::optional<CHCToITS> chc2its{};
     std::optional<Reverse> reverse{};
     const auto start{std::chrono::steady_clock::now()};
-    switch (Config::Input::format) {
+    switch (*Config::Input::format) {
         case Config::Input::Ari:
             its = ARIParser::loadFromFile(filename);
             break;
