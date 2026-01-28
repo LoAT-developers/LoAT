@@ -134,6 +134,7 @@ bool Rule::isDeterministic() const {
 
 bool Rule::hasNonTrivialNondeterminism() const {
     const auto gvars = guard->vars();
+    // temporary variables in the guard are considered to be non-trivial
     if (std::ranges::any_of(gvars, theory::isTempVar)) {
         return true;
     }
@@ -141,9 +142,11 @@ bool Rule::hasNonTrivialNondeterminism() const {
         if (theory::apply(v, [&](const auto v) {
             return std::ranges::any_of(v->vars(), theory::isTempVar);
         })) {
+            // variables that are overwritten with non-deterministic values must not occur in the guard...
             if (gvars.contains(k)) {
                 return true;
             }
+            // ...or in the updates of other variables
             for (const auto &p: update) {
                 if (theory::apply(p, [&](const auto &p) {
                     const auto &[k2,v2] = p;
@@ -154,8 +157,10 @@ bool Rule::hasNonTrivialNondeterminism() const {
             }
         }
         if (theory::apply(v, [&](const Arrays<Arith>::Expr& v) {
+            // for arrays, the right-hand side of the assignment must not have non-trivial non-determinism
             return v->hasNonTrivialNondeterminism();
         }, [&](const Bools::Expr& v) {
+            // for booleans, just deterministic assignments and assignments of the form b := tmp are allowed
             if (std::ranges::any_of(v->vars(), theory::isTempVar)) {
                 return !v->isVar() || !v->isVar().value()->isTempVar() || v->isVar().value()->dim() > 0;
             }
