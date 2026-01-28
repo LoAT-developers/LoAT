@@ -103,14 +103,14 @@ LoAT competes in several competitions.
 
 LoAT competes in the category *LIA-Lin* (linear clauses with linear integer arithmetic) of the [*CHC Competition*](https://chc-comp.github.io/) since 2023.
 
-### [2025](https://chc-comp.github.io/)
+### [CHC-COMP 2025](https://chc-comp.github.io/)
 
 #### LIA-Lin
 
 * 3rd place
 * best tool (tied with [Golem](https://github.com/usi-verification-and-security/golem)) for proving unsuitability
 
-### [2024](https://chc-comp.github.io/2024)
+### [CHC-COMP 2024](https://chc-comp.github.io/2024)
 
 #### LIA-Lin
 
@@ -125,7 +125,7 @@ Nowadays, LoAT and [KoAT](https://koat.verify.rwth-aachen.de/) compete together 
 
 Since 2022, [AProVE](http://aprove.informatik.rwth-aachen.de/) is using LoAT in its backend to prove non-termination of C programs.
 
-### [2025](http://termination-portal.org/wiki/Termination_Competition_2025)
+### [TermComp 2025](http://termination-portal.org/wiki/Termination_Competition_2025)
 
 #### Termination of Integer Transition Systems
 
@@ -135,7 +135,7 @@ Since 2022, [AProVE](http://aprove.informatik.rwth-aachen.de/) is using LoAT in 
 
 * 1st place (with KoAT)
 
-### [2024](http://termination-portal.org/wiki/Termination_Competition_2024)
+### [TermComp 2024](http://termination-portal.org/wiki/Termination_Competition_2024)
 
 #### Termination of Integer Transition Systems
 
@@ -145,21 +145,7 @@ Since 2022, [AProVE](http://aprove.informatik.rwth-aachen.de/) is using LoAT in 
 
 * 1st place (with AProVE)
 
-### [2023](http://termination-portal.org/wiki/Termination_Competition_2023)
-
-#### Termination of Integer Transition Systems
-
-* best tool for proving non-termination
-
-#### Termination of C Programs
-
-* 1st place (with AProVE)
-
-#### Termination of C Integer Programs
-
-* 1st place (with AProVE)
-
-### [2022](http://termination-portal.org/wiki/Termination_Competition_2022)
+### [TermComp 2023](http://termination-portal.org/wiki/Termination_Competition_2023)
 
 #### Termination of Integer Transition Systems
 
@@ -173,39 +159,53 @@ Since 2022, [AProVE](http://aprove.informatik.rwth-aachen.de/) is using LoAT in 
 
 * 1st place (with AProVE)
 
-### [2021](http://termination-portal.org/wiki/Termination_Competition_2021)
+### [TermComp 2022](http://termination-portal.org/wiki/Termination_Competition_2022)
+
+#### Termination of Integer Transition Systems
+
+* best tool for proving non-termination
+
+#### Termination of C Programs
+
+* 1st place (with AProVE)
+
+#### Termination of C Integer Programs
+
+* 1st place (with AProVE)
+
+### [TermComp 2021](http://termination-portal.org/wiki/Termination_Competition_2021)
 
 #### Termination of Integer Transition Systems
 
 * 2nd place
 * best tool for proving non-termination
 
-### [2020](http://termination-portal.org/wiki/Termination_Competition_2020)
+### [TermComp 2020](http://termination-portal.org/wiki/Termination_Competition_2020)
 
 #### Termination of Integer Transition Systems
 
 * 2nd place
 * best tool for proving non-termination
 
-### [2019](http://termination-portal.org/wiki/Termination_Competition_2019)
+### [TermComp 2019](http://termination-portal.org/wiki/Termination_Competition_2019)
 
 #### Complexity of Integer Transition Systems
 
 * 1st place (with AProVE and KoAT)
 
-### [2018](http://termination-portal.org/wiki/Termination_Competition_2018)
+### [TermComp 2018](http://termination-portal.org/wiki/Termination_Competition_2018)
 
 #### Complexity of Integer Transition Systems
 
 * 1st place (with AProVE and KoAT)
 
-### [2017](http://termination-portal.org/wiki/Termination_Competition_2017)
+### [TermComp 2017](http://termination-portal.org/wiki/Termination_Competition_2017)
 
 #### Complexity of Integer Transition Systems
 
 * 1st place (with AProVE and KoAT)
 
-### [2016](http://termination-portal.org/wiki/Termination_Competition_2016)
+### [TermComp 2016](http://termination-portal.org/wiki/Termination_Competition_2016)
 
 #### Complexity of Integer Transition Systems
 
@@ -215,23 +215,23 @@ Since 2022, [AProVE](http://aprove.informatik.rwth-aachen.de/) is using LoAT in 
 
 Together with AProVE, LoAT competes in the category *Termination* of the [*Competition on Software Verification*](https://sv-comp.sosy-lab.org)
 
-### [2026](https://sv-comp.sosy-lab.org/2026/results/results-verified/)
+### [SV-COMP 2026](https://sv-comp.sosy-lab.org/2026/results/results-verified/)
 
 #### Termination
 
-* 3rd place
+* 3rd place (with AProVE)
 
-### [2025](https://sv-comp.sosy-lab.org/2025/results/results-verified/)
-
-#### Termination
-
-* 3rd place
-
-### [2022](https://sv-comp.sosy-lab.org/2022/results/results-verified/)
+### [SV-COMP 2025](https://sv-comp.sosy-lab.org/2025/results/results-verified/)
 
 #### Termination
 
-* 2nd place
+* 3rd place (with AProVE)
+
+### [SV-COMP 2022](https://sv-comp.sosy-lab.org/2022/results/results-verified/)
+
+#### Termination
+
+* 2nd place (with AProVE)
 
 # Build
 
