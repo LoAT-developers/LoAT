@@ -103,7 +103,7 @@ LoAT competes in several competitions.
 
 LoAT competes in the category *LIA-Lin* (linear clauses with linear integer arithmetic) of the [*CHC Competition*](https://chc-comp.github.io/) since 2023.
 
-* [[CHC-COMP 2025](https://chc-comp.github.io/)
+* [<a href="https://chc-comp.github.io/">CHC-COMP 2025</a>
   * LIA-Lin
     * 3rd place
     * best tool (tied with [Golem](https://github.com/usi-verification-and-security/golem)) for proving unsatisfiability
