@@ -103,28 +103,13 @@ LoAT competes in several competitions.
 
 LoAT competes in the category *LIA-Lin* (linear clauses with linear integer arithmetic) of the [*CHC Competition*](https://chc-comp.github.io/) since 2023.
 
-<details>
-
-<summary>Click to see LoAT's CHC-COMP results</summary>
-
-<h3><a href="https://chc-comp.github.io/">CHC-COMP 2025</a></h3>
-
-<h4>LIA-Lin</h4>
-
-<ul>
-<li>3rd place</li>
-<li>best tool (tied with <a href="https://github.com/usi-verification-and-security/golem">Golem</a>) for proving unsatisfiability</li>
-</ul>
-
-<h3><a href="https://chc-comp.github.io/2024">CHC-COMP 2024</a></h3>
-
-<h4>LIA-Lin</h4>
-
-<ul>
-<li>3rd place</li>
-</ul>
-
-</details>
+* [[CHC-COMP 2025](https://chc-comp.github.io/)
+  * LIA-Lin
+    * 3rd place
+    * best tool (tied with [Golem](https://github.com/usi-verification-and-security/golem)) for proving unsatisfiability
+* [CHC-COMP 2024](https://chc-comp.github.io/2024)
+  * LIA-Lin
+    * 3rd place
 
 ## TermComp
 
@@ -135,113 +120,64 @@ Nowadays, LoAT and [KoAT](https://koat.verify.rwth-aachen.de/) compete together 
 
 Since 2022, [AProVE](http://aprove.informatik.rwth-aachen.de/) is using LoAT in its backend to prove non-termination of C programs.
 
-### [TermComp 2025](http://termination-portal.org/wiki/Termination_Competition_2025)
-
-#### Termination of Integer Transition Systems
-
-* best tool for proving non-termination
-
-#### Complexity of Integer Transition Systems
-
-* 1st place (with KoAT)
-
-### [TermComp 2024](http://termination-portal.org/wiki/Termination_Competition_2024)
-
-#### Termination of Integer Transition Systems
-
-* best tool for proving non-termination
-
-#### Termination of C Programs
-
-* 1st place (with AProVE)
-
-### [TermComp 2023](http://termination-portal.org/wiki/Termination_Competition_2023)
-
-#### Termination of Integer Transition Systems
-
-* best tool for proving non-termination
-
-#### Termination of C Programs
-
-* 1st place (with AProVE)
-
-#### Termination of C Integer Programs
-
-* 1st place (with AProVE)
-
-### [TermComp 2022](http://termination-portal.org/wiki/Termination_Competition_2022)
-
-#### Termination of Integer Transition Systems
-
-* best tool for proving non-termination
-
-#### Termination of C Programs
-
-* 1st place (with AProVE)
-
-#### Termination of C Integer Programs
-
-* 1st place (with AProVE)
-
-### [TermComp 2021](http://termination-portal.org/wiki/Termination_Competition_2021)
-
-#### Termination of Integer Transition Systems
-
-* 2nd place
-* best tool for proving non-termination
-
-### [TermComp 2020](http://termination-portal.org/wiki/Termination_Competition_2020)
-
-#### Termination of Integer Transition Systems
-
-* 2nd place
-* best tool for proving non-termination
-
-### [TermComp 2019](http://termination-portal.org/wiki/Termination_Competition_2019)
-
-#### Complexity of Integer Transition Systems
-
-* 1st place (with AProVE and KoAT)
-
-### [TermComp 2018](http://termination-portal.org/wiki/Termination_Competition_2018)
-
-#### Complexity of Integer Transition Systems
-
-* 1st place (with AProVE and KoAT)
-
-### [TermComp 2017](http://termination-portal.org/wiki/Termination_Competition_2017)
-
-#### Complexity of Integer Transition Systems
-
-* 1st place (with AProVE and KoAT)
-
-### [TermComp 2016](http://termination-portal.org/wiki/Termination_Competition_2016)
-
-#### Complexity of Integer Transition Systems
-
-* 1st place (with AProVE and KoAT)
+* [TermComp 2025](http://termination-portal.org/wiki/Termination_Competition_2025)
+  * Termination of Integer Transition Systems
+    * best tool for proving non-termination
+  * Complexity of Integer Transition Systems
+    * 1st place (with KoAT)
+* [TermComp 2024](http://termination-portal.org/wiki/Termination_Competition_2024)
+  * Termination of Integer Transition Systems
+    * best tool for proving non-termination
+  * Termination of C Programs
+    * 1st place (with AProVE)
+* [TermComp 2023](http://termination-portal.org/wiki/Termination_Competition_2023)
+  * Termination of Integer Transition Systems
+    * best tool for proving non-termination
+  * Termination of C Programs
+    * 1st place (with AProVE)
+  * Termination of C Integer Programs
+    * 1st place (with AProVE)
+* [TermComp 2022](http://termination-portal.org/wiki/Termination_Competition_2022)
+  * Termination of Integer Transition Systems
+    * best tool for proving non-termination
+  * Termination of C Programs
+    * 1st place (with AProVE)
+  * Termination of C Integer Programs
+    * 1st place (with AProVE)
+* [TermComp 2021](http://termination-portal.org/wiki/Termination_Competition_2021)
+  * Termination of Integer Transition Systems
+    * 2nd place
+    * best tool for proving non-termination
+* [TermComp 2020](http://termination-portal.org/wiki/Termination_Competition_2020)
+  * Termination of Integer Transition Systems
+    * 2nd place
+    * best tool for proving non-termination
+* [TermComp 2019](http://termination-portal.org/wiki/Termination_Competition_2019)
+  * Complexity of Integer Transition Systems
+    * 1st place (with AProVE and KoAT)
+* [TermComp 2018](http://termination-portal.org/wiki/Termination_Competition_2018)
+  * Complexity of Integer Transition Systems
+    * 1st place (with AProVE and KoAT)
+* [TermComp 2017](http://termination-portal.org/wiki/Termination_Competition_2017)
+  * Complexity of Integer Transition Systems
+    * 1st place (with AProVE and KoAT)
+* [TermComp 2016](http://termination-portal.org/wiki/Termination_Competition_2016)
+  * Complexity of Integer Transition Systems
+    * 1st place (with AProVE and KoAT)
 
 ## SV-COMP
 
 Together with AProVE, LoAT competes in the category *Termination* of the [*Competition on Software Verification*](https://sv-comp.sosy-lab.org)
 
-### [SV-COMP 2026](https://sv-comp.sosy-lab.org/2026/results/results-verified/)
-
-#### Termination
-
-* 3rd place (with AProVE)
-
-### [SV-COMP 2025](https://sv-comp.sosy-lab.org/2025/results/results-verified/)
-
-#### Termination
-
-* 3rd place (with AProVE)
-
-### [SV-COMP 2022](https://sv-comp.sosy-lab.org/2022/results/results-verified/)
-
-#### Termination
-
-* 2nd place (with AProVE)
+* [SV-COMP 2026](https://sv-comp.sosy-lab.org/2026/results/results-verified/)
+  * Termination
+    * 3rd place (with AProVE)
+* [SV-COMP 2025](https://sv-comp.sosy-lab.org/2025/results/results-verified/)
+  *  Termination
+    * 3rd place (with AProVE)
+* [SV-COMP 2022](https://sv-comp.sosy-lab.org/2022/results/results-verified/)
+  * Termination
+    * 2nd place (with AProVE)
 
 # Build
 
