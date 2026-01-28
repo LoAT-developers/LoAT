@@ -37,9 +37,13 @@ See `loat-static --help`.
 
 LoAT can parse the [ARI-format](https://termination-portal.org/wiki/Term_Rewriting#Integer_Transition_Systems) used at the annual [*Termination and Complexity Competition (TermComp)*](https://termination-portal.org/wiki/Termination_Competition).
 
+For examples, we refer to the [TPDB benchmarks for termination](https://github.com/TermCOMP/TPDB-ARI/tree/master/Integer_Transition_Systems) and for [complexity analysis](https://github.com/TermCOMP/TPDB-ARI/tree/master/Complexity_ITS).
+
 ## Input Format for Constrained Horn Clauses
 
 LoAT can parse the [SMTLIB-format](https://chc-comp.github.io/format.html) used at the annual [*CHC-COMP*](https://chc-comp.github.io/).
+
+For examples, we refer to the [CHC-COMP benchmarks from 2024](https://github.com/chc-comp/chc-comp24-benchmarks/tree/main/LIA-Lin).
 
 ## Discontinued Features
 
