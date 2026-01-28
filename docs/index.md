@@ -97,46 +97,141 @@ If you refer to LoAT in your paper, please cite our [IJCAR '22 system descriptio
 
 # Awards
 
-In 2023, LoAT competed at the [*CHC Competition*](https://chc-comp.github.io/) for the first time.
+LoAT competes in several competitions.
 
-* best tool (tied with [Golem](https://github.com/usi-verification-and-security/golem)) for proving unsatisfiability in the category LIA-Lin (linear clauses with linear integer arithmetic) at the [*CHC Comp 2025*](https://chc-comp.github.io/)
-* 3rd place in the category LIA-Lin at the [*CHC Comp 2025*](https://chc-comp.github.io/)
-* 3rd place in the category LIA-Lin at the [*CHC Comp 2024*](https://chc-comp.github.io/2024)
+## CHC-COMP
 
-In 2020, LoAT competed as standalone tool at the [*Termination and Complexity Competition*](http://termination-portal.org/wiki/Termination_Competition) for the first time.
+LoAT competes in the category *LIA-Lin* (linear clauses with linear integer arithmetic) of the [*CHC Competition*](https://chc-comp.github.io/) since 2023.
 
-* best tool for proving non-termination in the category *Termination of Integer Transition Systems* at the [*Termination and Complexity Competition 2025*](http://termination-portal.org/wiki/Termination_Competition_2025)
-* best tool for proving non-termination in the category *Termination of Integer Transition Systems* at the [*Termination and Complexity Competition 2024*](http://termination-portal.org/wiki/Termination_Competition_2024)
-* best tool for proving non-termination in the category *Termination of Integer Transition Systems* at the [*Termination and Complexity Competition 2023*](http://termination-portal.org/wiki/Termination_Competition_2023)
-* best tool for proving non-termination in the category *Termination of Integer Transition Systems* at the [*Termination and Complexity Competition 2022*](http://termination-portal.org/wiki/Termination_Competition_2022)
-* 2nd place in the category *Termination of Integer Transition Systems* at the [*Termination and Complexity Competition 2021*](http://termination-portal.org/wiki/Termination_Competition_2021)
-* best tool for proving non-termination in the category *Termination of Integer Transition Systems* at the [*Termination and Complexity Competition 2021*](http://termination-portal.org/wiki/Termination_Competition_2021)
-* 2nd place in the category *Termination of Integer Transition Systems* at the [*Termination and Complexity Competition 2020*](http://termination-portal.org/wiki/Termination_Competition_2020)
-* best tool for proving non-termination in the category *Termination of Integer Transition Systems* at the [*Termination and Complexity Competition 2020*](http://termination-portal.org/wiki/Termination_Competition_2020)
+### [2025](https://chc-comp.github.io/)
 
-From 2016 until the last run of this category in 2019, [AProVE](http://aprove.informatik.rwth-aachen.de/) was using LoAT as backend to prove lower bounds on the runtime complexity of integer transition systems.
-In this constellation, AProVE and LoAT won the following awards:
+#### LIA-Lin
 
-* 1st place in the category *Complexity of Integer Transition Systems* at the [*Termination and Complexity Competition 2019*](http://group-mmm.org/termination/competitions/Y2019/)
-* 1st place in the category *Complexity of Integer Transition Systems* at the [*Termination and Complexity Competition 2018*](http://group-mmm.org/termination/competitions/Y2018/)
-* 1st place in the category *Complexity of Integer Transition Systems* at the [*Termination and Complexity Competition 2017*](https://termcomp.imn.htwk-leipzig.de/competitions/Y2017)
-* 1st place in the category *Complexity of Integer Transition Systems* at the [*Termination and Complexity Competition 2016*](https://termcomp.imn.htwk-leipzig.de/competitions/Y2016)
+* 3rd place
+* best tool (tied with [Golem](https://github.com/usi-verification-and-security/golem)) for proving unsuitability
 
-Nowadays, LoAT and [KoAT](https://koat.verify.rwth-aachen.de/) compete in the category *Complexity of Integer Transition Systems*.
+### [2024](https://chc-comp.github.io/2024)
 
-* 1st place in the category *Complexity of Integer Transition Systems* at the [*Termination and Complexity Competition 2025*](http://termination-portal.org/wiki/Termination_Competition_2025)
+#### LIA-Lin
 
-Since 2021, [AProVE](http://aprove.informatik.rwth-aachen.de/) is using LoAT in its backend to prove non-termination of C programs (besides [T2](http://mmjb.github.io/T2/)).
-In this constellation, LoAT won the following awards:
+* 3rd place
 
-* 3rd place in the Category Termination at the [*Competition on Software Verification 2026*](https://sv-comp.sosy-lab.org/2026/results/results-verified/)
-* 3rd place in the Category Termination at the [*Competition on Software Verification 2025*](https://sv-comp.sosy-lab.org/2025/results/results-verified/)
-* 1st place in the Category *Termination of C programs* at the [*Termination and Complexity Competition 2024*](http://termination-portal.org/wiki/Termination_Competition_2024)
-* 1st place in the Category *Termination of C Integer programs* at the [*Termination and Complexity Competition 2023*](http://termination-portal.org/wiki/Termination_Competition_2023)
-* 1st place in the Category *Termination of C programs* at the [*Termination and Complexity Competition 2023*](http://termination-portal.org/wiki/Termination_Competition_2023)
-* 1st place in the Category *Termination of C Integer programs* at the [*Termination and Complexity Competition 2022*](http://termination-portal.org/wiki/Termination_Competition_2022)
-* 1st place in the Category *Termination of C programs* at the [*Termination and Complexity Competition 2022*](http://termination-portal.org/wiki/Termination_Competition_2022)
-* 2nd place in the Category Termination at the [*Competition on Software Verification 2022*](https://sv-comp.sosy-lab.org/2022/results/results-verified/)
+## TermComp
+
+LoAT competes in several categories of the [*Termination and Complexity Competition*](http://termination-portal.org/wiki/Termination_Competition) since 2016.
+
+From 2016 until 2019, [AProVE](http://aprove.informatik.rwth-aachen.de/) was using LoAT as backend to prove lower bounds on the runtime complexity of integer transition systems.
+Nowadays, LoAT and [KoAT](https://koat.verify.rwth-aachen.de/) compete together in this category.
+
+Since 2022, [AProVE](http://aprove.informatik.rwth-aachen.de/) is using LoAT in its backend to prove non-termination of C programs.
+
+### [2025](http://termination-portal.org/wiki/Termination_Competition_2025)
+
+#### Termination of Integer Transition Systems
+
+* best tool for proving non-termination
+
+#### Complexity of Integer Transition Systems
+
+* 1st place (with KoAT)
+
+### [2024](http://termination-portal.org/wiki/Termination_Competition_2024)
+
+#### Termination of Integer Transition Systems
+
+* best tool for proving non-termination
+
+#### Termination of C Programs
+
+* 1st place (with AProVE)
+
+### [2023](http://termination-portal.org/wiki/Termination_Competition_2023)
+
+#### Termination of Integer Transition Systems
+
+* best tool for proving non-termination
+
+#### Termination of C Programs
+
+* 1st place (with AProVE)
+
+#### Termination of C Integer Programs
+
+* 1st place (with AProVE)
+
+### [2022](http://termination-portal.org/wiki/Termination_Competition_2022)
+
+#### Termination of Integer Transition Systems
+
+* best tool for proving non-termination
+
+#### Termination of C Programs
+
+* 1st place (with AProVE)
+
+#### Termination of C Integer Programs
+
+* 1st place (with AProVE)
+
+### [2021](http://termination-portal.org/wiki/Termination_Competition_2021)
+
+#### Termination of Integer Transition Systems
+
+* 2nd place
+* best tool for proving non-termination
+
+### [2020](http://termination-portal.org/wiki/Termination_Competition_2020)
+
+#### Termination of Integer Transition Systems
+
+* 2nd place
+* best tool for proving non-termination
+
+### [2019](http://termination-portal.org/wiki/Termination_Competition_2019)
+
+#### Complexity of Integer Transition Systems
+
+* 1st place (with AProVE and KoAT)
+
+### [2018](http://termination-portal.org/wiki/Termination_Competition_2018)
+
+#### Complexity of Integer Transition Systems
+
+* 1st place (with AProVE and KoAT)
+
+### [2017](http://termination-portal.org/wiki/Termination_Competition_2017)
+
+#### Complexity of Integer Transition Systems
+
+* 1st place (with AProVE and KoAT)
+
+### [2016](http://termination-portal.org/wiki/Termination_Competition_2016)
+
+#### Complexity of Integer Transition Systems
+
+* 1st place (with AProVE and KoAT)
+
+## SV-COMP
+
+Together with AProVE, LoAT competes in the category *Termination* of the [*Competition on Software Verification*](https://sv-comp.sosy-lab.org)
+
+### [2026](https://sv-comp.sosy-lab.org/2026/results/results-verified/)
+
+#### Termination
+
+* 3rd place
+
+### [2025](https://sv-comp.sosy-lab.org/2025/results/results-verified/)
+
+#### Termination
+
+* 3rd place
+
+### [2022](https://sv-comp.sosy-lab.org/2022/results/results-verified/)
+
+#### Termination
+
+* 2nd place
 
 # Build
 
