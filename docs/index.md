@@ -31,12 +31,12 @@ Older releases can be found [here](https://github.com/aprove-developers/LoAT/rel
 
 # Using LoAT
 
-A typical usage of LoAT looks as follows:
+A typical usage of LoAT for analyzing safety/satisfiability looks as follows:
 ```
 $ loat-static --engine abmc --mode safety example.smt2
 unsat
 
-LoAT:  0a0899bdaa5f12389c7a9169780e34d7ec30f242
+LoAT:  595a95cf76ac783e87ce760ec4ccfeca66d93d43
 Yices: 2.6.5
        build mode: release
        build arch: x86_64-pc-linux-gnu
@@ -45,11 +45,25 @@ SwInE: 141d02206bd74f86a01fa57c2dc9ed193abbfe6e
 ```
 Here, unsatisfiability of the [runnning example](example.smt2) from our paper on [ABMC](https://arxiv.org/abs/2401.09973) has been proven.
 
+A typical usage of LoAT for analyzing termination looks as follows:
+```
+loat-static --format ari --engine adcl --mode termination ../LoAT-web/docs/example.ari
+NO
+
+LoAT:  595a95cf76ac783e87ce760ec4ccfeca66d93d43
+Yices: 2.6.5
+       build mode: release
+       build arch: x86_64-pc-linux-gnu
+       build date: 2024-08-15
+SwInE: 141d02206bd74f86a01fa57c2dc9ed193abbfe6e
+```
+Here, non-termination of the benchmark [`non_term.t2.ari`](example.ari) from the [Termination Problems Database](https://termination-portal.org/wiki/TPDB), the benchmark collection of the annual [*Termination and Complexity Competition (TermComp)*](https://termination-portal.org/wiki/Termination_Competition) has been proven.
+
 See `loat-static --help` for more information.
 
 ## Input Format for Transition Systems
 
-LoAT can parse the [ARI-format](https://termination-portal.org/wiki/Term_Rewriting#Integer_Transition_Systems) used at the annual [*Termination and Complexity Competition (TermComp)*](https://termination-portal.org/wiki/Termination_Competition).
+LoAT can parse the [ARI-format](https://termination-portal.org/wiki/Term_Rewriting#Integer_Transition_Systems) used at TermComp.
 
 For examples, we refer to the [TPDB benchmarks for termination](https://github.com/TermCOMP/TPDB-ARI/tree/master/Integer_Transition_Systems) and for [complexity analysis](https://github.com/TermCOMP/TPDB-ARI/tree/master/Complexity_ITS).
 
@@ -205,4 +219,3 @@ think about using one of our [releases](https://github.com/loat-developers/LoAT/
 7. `cmake -DCMAKE_BUILD_TYPE=$TYPE ..` where `$TYPE` is either `Release` or `Debug`,  depending on your use case
 8. `make -j$(nproc)`
 9. if everything worked, `./loat-static --help` should print a help message
-
