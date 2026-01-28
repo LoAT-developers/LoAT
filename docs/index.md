@@ -35,7 +35,7 @@ See `loat-static --help`.
 
 ## Input Format for Transition Systems
 
-LoAT can parse the [ARI-format](https://termination-portal.org/wiki/Term_Rewriting#Integer_Transition_Systems) used at the annual [*Termination and Complexity Competition (TermComp)](https://termination-portal.org/wiki/Termination_Competition).
+LoAT can parse the [ARI-format](https://termination-portal.org/wiki/Term_Rewriting#Integer_Transition_Systems) used at the annual [*Termination and Complexity Competition (TermComp)*](https://termination-portal.org/wiki/Termination_Competition).
 
 ## Input Format for Constrained Horn Clauses
 
@@ -95,9 +95,9 @@ If you refer to LoAT in your paper, please cite our [IJCAR '22 system descriptio
 
 In 2023, LoAT competed at the [*CHC Competition*](https://chc-comp.github.io/) for the first time.
 
-* best tool (tied with [Golem](https://github.com/usi-verification-and-security/golem) for proving unsatisfiability in the category LIA-Lin (linear clauses with linear integer arithmetic) at the [*CHC Comp 2025*](https://chc-comp.github.io/)
-* 3rd place in the category LIA-Lin (linear clauses with linear integer arithmetic) at the [*CHC Comp 2025*](https://chc-comp.github.io/)
-* 3rd place in the category LIA-Lin (linear clauses with linear integer arithmetic) at the [*CHC Comp 2024*](https://chc-comp.github.io/2024)
+* best tool (tied with [Golem](https://github.com/usi-verification-and-security/golem)) for proving unsatisfiability in the category LIA-Lin (linear clauses with linear integer arithmetic) at the [*CHC Comp 2025*](https://chc-comp.github.io/)
+* 3rd place in the category LIA-Lin at the [*CHC Comp 2025*](https://chc-comp.github.io/)
+* 3rd place in the category LIA-Lin at the [*CHC Comp 2024*](https://chc-comp.github.io/2024)
 
 In 2020, LoAT competed as standalone tool at the [*Termination and Complexity Competition*](http://termination-portal.org/wiki/Termination_Competition) for the first time.
 
@@ -118,16 +118,20 @@ In this constellation, AProVE and LoAT won the following awards:
 * 1st place in the category *Complexity of Integer Transition Systems* at the [*Termination and Complexity Competition 2017*](https://termcomp.imn.htwk-leipzig.de/competitions/Y2017)
 * 1st place in the category *Complexity of Integer Transition Systems* at the [*Termination and Complexity Competition 2016*](https://termcomp.imn.htwk-leipzig.de/competitions/Y2016)
 
+Nowadays, LoAT and [KoAT]() compete in the category *Complexity of Integer Transition Systems*.
+
+* 1st place in the category *Complexity of Integer Transition Systems* at the [*Termination and Complexity Competition 2025*](http://termination-portal.org/wiki/Termination_Competition_2025)
+
 Since 2021, [AProVE](http://aprove.informatik.rwth-aachen.de/) is using LoAT in its backend to prove non-termination of C programs (besides [T2](http://mmjb.github.io/T2/)).
 In this constellation, LoAT won the following awards:
 
 * 3rd place in the Category Termination at the [*Competition on Software Verification 2026*](https://sv-comp.sosy-lab.org/2026/results/results-verified/)
 * 3rd place in the Category Termination at the [*Competition on Software Verification 2025*](https://sv-comp.sosy-lab.org/2025/results/results-verified/)
-* 1st place in the Category *Termination of C programs* at the[*Termination and Complexity Competition 2024*](http://termination-portal.org/wiki/Termination_Competition_2024)
-* 1st place in the Category *Termination of C Integer programs* at the[*Termination and Complexity Competition 2023*](http://termination-portal.org/wiki/Termination_Competition_2023)
-* 1st place in the Category *Termination of C programs* at the[*Termination and Complexity Competition 2023*](http://termination-portal.org/wiki/Termination_Competition_2023)
-* 1st place in the Category *Termination of C Integer programs* at the[*Termination and Complexity Competition 2022*](http://termination-portal.org/wiki/Termination_Competition_2022)
-* 1st place in the Category *Termination of C programs* at the[*Termination and Complexity Competition 2022*](http://termination-portal.org/wiki/Termination_Competition_2022)
+* 1st place in the Category *Termination of C programs* at the [*Termination and Complexity Competition 2024*](http://termination-portal.org/wiki/Termination_Competition_2024)
+* 1st place in the Category *Termination of C Integer programs* at the [*Termination and Complexity Competition 2023*](http://termination-portal.org/wiki/Termination_Competition_2023)
+* 1st place in the Category *Termination of C programs* at the [*Termination and Complexity Competition 2023*](http://termination-portal.org/wiki/Termination_Competition_2023)
+* 1st place in the Category *Termination of C Integer programs* at the [*Termination and Complexity Competition 2022*](http://termination-portal.org/wiki/Termination_Competition_2022)
+* 1st place in the Category *Termination of C programs* at the [*Termination and Complexity Competition 2022*](http://termination-portal.org/wiki/Termination_Competition_2022)
 * 2nd place in the Category Termination at the [*Competition on Software Verification 2022*](https://sv-comp.sosy-lab.org/2022/results/results-verified/)
 
 # Build
