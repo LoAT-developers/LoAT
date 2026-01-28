@@ -2,6 +2,7 @@
     <title>LoAT</title>
     <style>
         p {text-align: justify;}
+        #logo {width: 40%; height: auto;}
     </style>
 </head>
 
