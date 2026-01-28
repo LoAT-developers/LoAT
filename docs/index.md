@@ -31,7 +31,21 @@ Older releases can be found [here](https://github.com/aprove-developers/LoAT/rel
 
 # Using LoAT
 
-See `loat-static --help`.
+A typical usage of LoAT looks as follows:
+```
+$ loat-static --engine abmc --mode safety example.smt2
+unsat
+
+LoAT:  0a0899bdaa5f12389c7a9169780e34d7ec30f242
+Yices: 2.6.5
+       build mode: release
+       build arch: x86_64-pc-linux-gnu
+       build date: 2024-08-15
+SwInE: 141d02206bd74f86a01fa57c2dc9ed193abbfe6e
+```
+Here, unsatisfiability of the [runnning example](example.smt2) from our paper on [ABMC](https://arxiv.org/abs/2401.09973) has been proven.
+
+See `loat-static --help` for more information.
 
 ## Input Format for Transition Systems
 
