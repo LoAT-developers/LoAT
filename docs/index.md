@@ -33,41 +33,13 @@ Older releases can be found [here](https://github.com/aprove-developers/LoAT/rel
 
 See `loat-static --help`.
 
-## Input Formats for Transition Systems
+## Input Format for Transition Systems
 
-LoAT supports the most common formats for *Integer Transition Systems*.
-
-### SMTLIB
-
-LoAT can parse the [SMTLIB-format](https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/SMTPushdownPrograms.pdf) used in the category *Termination of Integer Transition Systems* at the annual [*Termination and Complexity Competition*](http://termination-portal.org/wiki/Termination_Competition).
-
-To use this format, please use the command-line option `--format its`.
-
-### C Integer Programs
-
-LoAT can parse the [C Integer Programs](https://termination-portal.org/wiki/C_Integer_Programs) used in the category *Termination of C Integer Programs* at the annual [*Termination and Complexity Competition*](http://termination-portal.org/wiki/Termination_Competition).
-
-To use this format, please use the command-line option `--format c`.
-
-### KoAT
-
-LoAT also supports an extended version of [KoAT's input format](http://aprove.informatik.rwth-aachen.de/eval/IntegerComplexity/), which is also used in the category *Complexity of Integer Transition Systems* at the annual *Termination and Complexity Competition*.
-
-In this extension, rules can be annotated with polynomial costs:
-```
-l1(A,B) -{A^2,A^2+B}> l2(A,B) :|: B >= 0
-```
-Here, `A^2` and `A^2+B` are lower and upper bounds on the cost of the rule.
-The upper bound is ignored by LoAT.
-The lower bound has to be non-negative for every model of the transition's guard.
-
-To use this format, please use the command-line option `--format koat`.
+LoAT can parse the [ARI-format](https://termination-portal.org/wiki/Term_Rewriting#Integer_Transition_Systems) used at the annual [*Termination and Complexity Competition (TermComp)](https://termination-portal.org/wiki/Termination_Competition).
 
 ## Input Format for Constrained Horn Clauses
 
 LoAT can parse the [SMTLIB-format](https://chc-comp.github.io/format.html) used at the annual [*CHC-COMP*](https://chc-comp.github.io/).
-
-To use this format, please use the command-line option `--format horn`.
 
 ## Discontinued Features
 
@@ -76,13 +48,19 @@ Such systems are no longer supported.
 If you are interested in analyzing such systems, please use the release that was published with our [TOPLAS '20 paper](https://doi.org/10.1145/3410331).
 A link to this release, as well as further information about using it, can be found [here](https://aprove-developers.github.io/its-lowerbounds-journal/).
 
+Moreover, earlier versions of LoAT could parse the [SMTLIB-format](https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/SMTPushdownPrograms.pdf), the [KoAT format](http://aprove.informatik.rwth-aachen.de/eval/IntegerComplexity/), and the [C-Integer format](https://termination-portal.org/wiki/C_Integer_Programs) that had been used at TermComp.
+Since all of these formats have been discontinued at TermComp, they are no longer supported.
+
 # Publications
 
-The techniques implemented in LoAT are described in the following publications (in chronological order):
+The techniques implemented in LoAT are described in the following publications (in reversed chronological order):
 
+* [Infinite State Model Checking by Learning Transitive Relations](https://arxiv.org/abs/2502.04761)\
+  F. Frohn and J. Giesl\
+  CADE '25
 * [Integrating Loop Acceleration into Bounded Model Checking](https://arxiv.org/abs/2401.09973)\
   F. Frohn and J. Giesl\
-  IJCAR '24
+  FM '24
 * [ADCL: Acceleration Driven Clause Learning for Constrained Horn Clauses](https://arxiv.org/abs/2303.01827)\
   F. Frohn and J. Giesl\
   SAS '23
@@ -115,8 +93,15 @@ If you refer to LoAT in your paper, please cite our [IJCAR '22 system descriptio
 
 # Awards
 
+In 2023, LoAT competed at the [*CHC Competition*](https://chc-comp.github.io/) for the first time.
+
+* best tool (tied with [Golem](https://github.com/usi-verification-and-security/golem) for proving unsatisfiability in the category LIA-Lin (linear clauses with linear integer arithmetic) at the [*CHC Comp 2025*](https://chc-comp.github.io/)
+* 3rd place in the category LIA-Lin (linear clauses with linear integer arithmetic) at the [*CHC Comp 2025*](https://chc-comp.github.io/)
+* 3rd place in the category LIA-Lin (linear clauses with linear integer arithmetic) at the [*CHC Comp 2024*](https://chc-comp.github.io/2024)
+
 In 2020, LoAT competed as standalone tool at the [*Termination and Complexity Competition*](http://termination-portal.org/wiki/Termination_Competition) for the first time.
 
+* best tool for proving non-termination in the category *Termination of Integer Transition Systems* at the [*Termination and Complexity Competition 2025*](http://termination-portal.org/wiki/Termination_Competition_2025)
 * best tool for proving non-termination in the category *Termination of Integer Transition Systems* at the [*Termination and Complexity Competition 2024*](http://termination-portal.org/wiki/Termination_Competition_2024)
 * best tool for proving non-termination in the category *Termination of Integer Transition Systems* at the [*Termination and Complexity Competition 2023*](http://termination-portal.org/wiki/Termination_Competition_2023)
 * best tool for proving non-termination in the category *Termination of Integer Transition Systems* at the [*Termination and Complexity Competition 2022*](http://termination-portal.org/wiki/Termination_Competition_2022)
@@ -134,37 +119,27 @@ In this constellation, AProVE and LoAT won the following awards:
 * 1st place in the category *Complexity of Integer Transition Systems* at the [*Termination and Complexity Competition 2016*](https://termcomp.imn.htwk-leipzig.de/competitions/Y2016)
 
 Since 2021, [AProVE](http://aprove.informatik.rwth-aachen.de/) is using LoAT in its backend to prove non-termination of C programs (besides [T2](http://mmjb.github.io/T2/)).
-In this constellation AProVE, LoAT, and T2 won the following awards:
+In this constellation, LoAT won the following awards:
 
+* 3rd place in the Category Termination at the [*Competition on Software Verification 2026*](https://sv-comp.sosy-lab.org/2026/results/results-verified/)
 * 3rd place in the Category Termination at the [*Competition on Software Verification 2025*](https://sv-comp.sosy-lab.org/2025/results/results-verified/)
-* 1st place in the Category *Termination of C Integer programs* at the[*Termination and Complexity Competition 2024*](http://termination-portal.org/wiki/Termination_Competition_2024)
+* 1st place in the Category *Termination of C programs* at the[*Termination and Complexity Competition 2024*](http://termination-portal.org/wiki/Termination_Competition_2024)
 * 1st place in the Category *Termination of C Integer programs* at the[*Termination and Complexity Competition 2023*](http://termination-portal.org/wiki/Termination_Competition_2023)
+* 1st place in the Category *Termination of C programs* at the[*Termination and Complexity Competition 2023*](http://termination-portal.org/wiki/Termination_Competition_2023)
 * 1st place in the Category *Termination of C Integer programs* at the[*Termination and Complexity Competition 2022*](http://termination-portal.org/wiki/Termination_Competition_2022)
 * 1st place in the Category *Termination of C programs* at the[*Termination and Complexity Competition 2022*](http://termination-portal.org/wiki/Termination_Competition_2022)
 * 2nd place in the Category Termination at the [*Competition on Software Verification 2022*](https://sv-comp.sosy-lab.org/2022/results/results-verified/)
 
 # Build
 
-* think about using one of our [releases](https://github.com/loat-developers/LoAT/releases) instead
-* **Option A** using a pre-configured docker container -- recommended method if you do not plan major changes to the code
-  1. install [Docker](https://www.docker.com/)
-  3. download a docker container with pre-installed dependencies via `docker pull loat/loat-base`
-  4. log in to the docker container via `docker run -it $CONTAINER_NAME bash`
-  5. `git clone https://github.com/LoAT-developers/LoAT.git`
-  6. `mkdir LoAT/build`
-  7. `cd LoAT/build`
-  8. `cmake -DCMAKE_BUILD_TYPE=$TYPE ..` where `$TYPE` is either `Release` or `Debug`,  depending on your use case
-  9. `make -j$(nproc)`
-  10. if everything worked, `./loat-static --help` should print a help message
-* **Option B** using a devcontainer -- recommended method if you plan major changes to the code
-  1. install [Docker](https://www.docker.com/)
-  2. `git clone https://github.com/LoAT-developers/LoAT.git`
-  3. `cd LoAT/scripts`
-  4. execute each script `./extract_*.sh` to build each dependency in a docker container and copy it to `$PATH_TO_LOAT/docker/usr` on your machine
-  5. `mkdir -p $PATH_TO_LOAT/build/debug`
-  6. The configuration for the dev-container is in `$PATH_TO_LOAT/.devcontainer`, so in theory, you can use any IDE with support for dev-containers. For Visual Studio Code, open `$PATH_TO_LOAT` via `File -> Open Folder...`.
-  7. press `F1` and type `Dev Containers: Reopen in Container`
-  8. click `Build` on the bottom to trigger the build
-
-If you experience any problems, contact `florian.frohn [at] cs.rwth-aachen.de`.
+think about using one of our [releases](https://github.com/loat-developers/LoAT/releases) instead
+1. install [Docker](https://www.docker.com/)
+2. download the latest docker container with pre-installed dependencies via `docker pull loat/loat-base:$VERSION`
+3. log in to the docker container via `docker run -it loat/loat-base:$VERSION bash`
+4. `git clone https://github.com/LoAT-developers/LoAT.git`
+5. `mkdir LoAT/build`
+6. `cd LoAT/build`
+7. `cmake -DCMAKE_BUILD_TYPE=$TYPE ..` where `$TYPE` is either `Release` or `Debug`,  depending on your use case
+8. `make -j$(nproc)`
+9. if everything worked, `./loat-static --help` should print a help message
 
