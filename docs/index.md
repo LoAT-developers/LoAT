@@ -105,7 +105,11 @@ LoAT competes in the category *LIA-Lin* (linear clauses with linear integer arit
 
 <details>
 
-<summary>LoAT's CHC-COMP results</summary>
+<summary>
+
+LoAT's CHC-COMP results
+
+</summary>
 
 ### [CHC-COMP 2025](https://chc-comp.github.io/)
 
