@@ -19,6 +19,10 @@ Bools::Expr mkLit(const Lit &lit) {
 }
 
 namespace theory {
+
+    const Type Type::Int = Type(BaseType::Int, 0);
+    const Type Type::Bool = Type(BaseType::Bool, 0);
+
     std::string getName(const Var &var) {
         return std::visit([](const auto &var){return var->getName();}, var);
     }
@@ -68,8 +72,8 @@ namespace theory {
                 [](const Bools::Expr &) {
                     return Type::Bool;
                 },
-                [](const Arrays<Arith>::Expr &) {
-                    return Type::IntArray;
+                [](const Arrays<Arith>::Expr &e) {
+                    return Type(BaseType::Int, e->dim());
                 }},
             x);
     }
@@ -81,7 +85,8 @@ namespace theory {
                     return Type::Bool;
                 },
                 [&](const Arrays<Arith>::Var& x) {
-                    return x->dim() == 0 ? Type::Int : Type::IntArray;
+                    const auto dim = x->dim();
+                    return x->dim() == 0 ? Type::Int : Type(BaseType::Int, dim);
                 }},
             x);
     }
@@ -97,9 +102,9 @@ namespace theory {
     }
 
     std::string abbrev(const Type t) {
-        switch (t) {
-        case Type::Bool: return "b";
-        case Type::Int: return "i";
+        switch (t.base) {
+        case BaseType::Bool: return "b";
+        case BaseType::Int: return "i";
         default: throw std::invalid_argument("unknown type");
         }
     }
@@ -293,15 +298,16 @@ namespace theory {
     }
 
     std::ostream& operator<<(std::ostream& s, const Type& e) {
-        switch (e) {
-        case Type::Bool: {
+        switch (e.base) {
+        case BaseType::Bool: {
             return s << "Bool";
         }
-        case Type::Int: {
-            return s << "Int";
-        }
-        case Type::IntArray: {
-            return s << "Int[]";
+        case BaseType::Int: {
+            s << "Int";
+            for (size_t i = 0; i < e.dim; ++i) {
+                s << "[]";
+            }
+            return s;
         }
         default: {
             throw std::invalid_argument("unknown type");
@@ -323,4 +329,8 @@ std::ostream& operator<<(std::ostream &s, const Expr &e) {
 std::ostream& operator<<(std::ostream &s, const Lit &e) {
     std::visit([&s](const auto &e){s << e;}, e);
     return s;
+}
+
+bool operator==(const theory::Type& t1, const theory::Type& t2) {
+    return t1.base == t2.base && t1.dim == t2.dim;
 }

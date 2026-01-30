@@ -16,22 +16,23 @@ CHCModel CHCToITS::transform_model(const ITSModel& its_m) const {
         const auto pred{its->getPrintableLocationName(loc)};
         const auto& sig{signature.at(pred)};
         unsigned next_int_var{0};
-        unsigned next_arr_var{0};
+        std::unordered_map<size_t, unsigned> next_arr_var;
         unsigned next_bool_var{0};
         std::vector<Var> args;
-        for (const auto& x : sig) {
-            switch (x) {
-            case theory::Type::Int:
-                args.emplace_back(vars.at(next_int_var)->var());
-                ++next_int_var;
+        for (const auto& [base, dim] : sig) {
+            switch (base) {
+            case theory::BaseType::Int:
+                if (dim == 0) {
+                    args.emplace_back(vars.at(next_int_var)->var());
+                    ++next_int_var;
+                } else {
+                    args.emplace_back(avars.at(dim).at(next_int_var));
+                    ++next_arr_var.emplace(dim, 0).first->second;
+                }
                 break;
-            case theory::Type::Bool:
+            case theory::BaseType::Bool:
                 args.emplace_back(bvars.at(next_bool_var));
                 ++next_bool_var;
-                break;
-            case theory::Type::IntArray:
-                args.emplace_back(avars.at(next_arr_var)->var());
-                ++next_arr_var;
                 break;
             }
         }
@@ -46,7 +47,7 @@ ClausePtr CHCToITS::rule_to_clause(const RulePtr& rule, const ClausePtr& prototy
     for (const auto& prem: prototype->get_premise()) {
         std::vector<Expr> args;
         size_t next_int_var {0};
-        size_t next_arr_var {0};
+        std::unordered_map<size_t, unsigned> next_arr_var;
         size_t next_bool_var {0};
         for (const auto& x : prem->get_args()) {
             theory::apply(
@@ -56,10 +57,11 @@ ClausePtr CHCToITS::rule_to_clause(const RulePtr& rule, const ClausePtr& prototy
                     args.emplace_back(y);
                     ++next_int_var;
                 },
-                [&](const Arrays<Arith>::Expr&) {
-                    const auto y{avars.at(next_arr_var)};
-                    args.emplace_back(y);
-                    ++next_arr_var;
+                [&](const Arrays<Arith>::Expr& e) {
+                    const auto& vec{avars.at(e->dim())};
+                    auto& next = next_arr_var.emplace(e->dim(), 0).first->second;
+                    args.emplace_back(vec.at(next));
+                    ++next;
                 },
                 [&](const Bools::Expr&) {
                     const auto y{bvars.at(next_bool_var)};
@@ -73,7 +75,7 @@ ClausePtr CHCToITS::rule_to_clause(const RulePtr& rule, const ClausePtr& prototy
     if (const auto conc {prototype->get_conclusion()}) {
         std::vector<Expr> args;
         size_t next_int_var {0};
-        size_t next_arr_var {0};
+        std::unordered_map<size_t, unsigned> next_arr_var;
         size_t next_bool_var {0};
         const auto& up {rule->getUpdate()};
         for (const auto& x : (*conc)->get_args()) {
@@ -83,9 +85,11 @@ ClausePtr CHCToITS::rule_to_clause(const RulePtr& rule, const ClausePtr& prototy
                     args.emplace_back(up(vars.at(next_int_var)));
                     ++next_int_var;
                 },
-                [&](const Arrays<Arith>::Expr&) {
-                    args.emplace_back(up.get(avars.at(next_arr_var)));
-                    ++next_arr_var;
+                [&](const Arrays<Arith>::Expr& e) {
+                    const auto& vec = avars.at(e->dim());
+                    auto& next = next_arr_var.emplace(e->dim(), 0).first->second;
+                    args.emplace_back(up.get(vec.at(next)));
+                    ++next;
                 },
                 [&](const Bools::Expr&) {
                     args.emplace_back(up(vars.at(next_bool_var)));
@@ -155,17 +159,22 @@ CHCCex CHCToITS::transform_cex(const ITSSafetyCex &cex) {
 }
 
 ITSPtr CHCToITS::transform() {
-    unsigned max_int_arity {chcs->max_arity<Arith>()};
-    unsigned max_arr_arity {chcs->max_arity<Arrays<Arith>>()};
-    unsigned max_bool_arity {chcs->max_arity<Bools>()};
+    const auto max_int_arity = chcs->max_arity(theory::Type::Int);
+    const auto max_dim = chcs->max_dim(theory::BaseType::Int);
+    const auto max_bool_arity = chcs->max_arity(theory::Type::Bool);
     for (unsigned i = 0; i < max_int_arity; ++i) {
         vars.emplace_back(arrays::nextProgConst<Arith>());
     }
     for (unsigned i = 0; i < max_bool_arity; ++i) {
         bvars.emplace_back(BoolVar::nextProgVar());
     }
-    for (unsigned i = 0; i < max_arr_arity; ++i) {
-        avars.emplace_back(ArrayVar<Arith>::nextProgVar(1));
+    for (size_t i = 1; i <= max_dim; ++i) {
+        if (const auto max_arity = chcs->max_arity(theory::Type(theory::BaseType::Int, i)); max_arity > 0) {
+            auto& vec = avars.emplace(i, std::vector<Arrays<Arith>::Var>()).first->second;
+            for (size_t j = 0; j < max_arity; ++j) {
+                vec.emplace_back(ArrayVar<Arith>::nextProgVar(i));
+            }
+        }
     }
     for (const auto &c: chcs->get_clauses()) {
         if (!c->is_linear()) {
@@ -178,7 +187,7 @@ ITSPtr CHCToITS::transform() {
         constraints.emplace_back(Arith::mkEq(its->getLocVar(), arith::mkConst(lhs_loc)));
         // replace the arguments of the body predicate with the corresponding program variables
         unsigned bool_premise_arity{0};
-        unsigned arr_premise_arity{0};
+        std::unordered_map<size_t, size_t> arr_premise_arity;
         unsigned int_premise_arity{0};
         for (const auto& prem: premise) {
             for (const auto& ex : prem->get_args()) {
@@ -193,12 +202,15 @@ ITSPtr CHCToITS::transform() {
                         ++int_premise_arity;
                     },
                     [&](const Arrays<Arith>::Expr& x) {
+                        const auto dim = x->dim();
+                        auto& arity = arr_premise_arity.emplace(dim, 0).first->second;
+                        const auto& vec = avars.at(dim);
                         if (const auto var{x->isVar()}; var && !renaming.contains(*var)) {
-                            renaming.insert(*var, avars[arr_premise_arity]);
+                            renaming.insert(*var, vec[arity]);
                         } else {
-                            constraints.emplace_back(Arrays<Arith>::mkEq(x, avars[arr_premise_arity]));
+                            constraints.emplace_back(Arrays<Arith>::mkEq(x, vec[arity]));
                         }
-                        ++arr_premise_arity;
+                        ++arity;
                     },
                     [&](const Bools::Expr& x) {
                         if (const auto var{x->isVar()}; var && !renaming.contains(*var)) {
@@ -210,11 +222,11 @@ ITSPtr CHCToITS::transform() {
                     });
             }
         }
-        unsigned bool_arg = 0;
-        unsigned arr_arg = 0;
-        unsigned int_arg = 0;
         Subs up;
         if (const auto conc{c->get_conclusion()}) {
+            unsigned int_arg = 0;
+            std::unordered_map<size_t, size_t> arr_arg;
+            unsigned bool_arg = 0;
             for (const auto &arg : (*conc)->get_args()) {
                 theory::apply(
                     arg,
@@ -224,8 +236,11 @@ ITSPtr CHCToITS::transform() {
                         ++int_arg;
                     },
                     [&](const Arrays<Arith>::Expr& var) {
-                        up.put(avars[arr_arg], var);
-                        ++arr_arg;
+                        const auto dim = var->dim();
+                        const auto& vec = avars.at(dim);
+                        auto& arg = arr_arg.emplace(dim, 0).first->second;
+                        up.put(vec[arg], var);
+                        ++arg;
                     },
                     [&](const Bools::Expr& var) {
                         up.put(bvars[bool_arg], var);
@@ -235,8 +250,13 @@ ITSPtr CHCToITS::transform() {
             for (unsigned i = int_arg; i < int_premise_arity; ++i) {
                 up.update(vars[i], arrays::nextConst<Arith>());
             }
-            for (unsigned i = arr_arg; i < arr_premise_arity; ++i) {
-                up.put(avars[i], ArrayVar<Arith>::next(avars[i]->dim()));
+            for (size_t i = 1; i <= max_dim; ++i) {
+                if (const auto max = arr_premise_arity.emplace(i, 0).first->second; max > 0) {
+                    const auto& vec = avars.at(i);
+                    for (unsigned j = arr_arg.emplace(i, 0).first->second; j < max; ++j) {
+                        up.put(vec[j], ArrayVar<Arith>::next(i));
+                    }
+                }
             }
             for (unsigned i = bool_arg; i < bool_premise_arity; ++i) {
                 up.put(bvars[i], bools::mkLit(bools::mk(BoolVar::next())));

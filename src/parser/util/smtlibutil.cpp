@@ -18,13 +18,31 @@ bool SMTLibParsingState::Decls<Var, Expr>::declares(const std::string& name) con
 template <class Var, class Expr>
 SMTLibParsingState::Decls<Var, Expr>::Decls(const size_t next): next(next) {}
 
-Arrays<Arith>::Var SMTLibParsingState::get_or_create_array_var(const std::string& name, const bool tmp) {
+size_t SMTLibParsingState::next_array_var_id(const size_t dim) const {
     for (const auto& f: frames | std::views::reverse) {
-        if (const auto res = f.array_vars.get_var(name)) {
-            return *res;
+        if (const auto it = f.array_vars.find(dim); it != f.array_vars.end()) {
+            return it->second.next;
         }
     }
-    return create_array_var(name, tmp);
+    return 0;
+}
+
+std::optional<Arrays<Arith>::Var> SMTLibParsingState::get_array_var(const std::string& name) {
+    for (const auto& f: frames | std::views::reverse) {
+        for (const auto& a: f.array_vars | std::views::values) {
+            if (const auto res = a.get_var(name)) {
+                return *res;
+            }
+        }
+    }
+    return std::nullopt;
+}
+
+Arrays<Arith>::Var SMTLibParsingState::get_or_create_array_var(const std::string& name, const size_t dim, const bool tmp) {
+    if (const auto opt = get_array_var(name)) {
+        return *opt;
+    }
+    return create_array_var(name, dim, tmp);
 }
 
 Arrays<Arith>::Var SMTLibParsingState::get_or_create_arith_var(const std::string& name, const bool tmp) {
@@ -57,13 +75,14 @@ Arrays<Arith>::Var SMTLibParsingState::create_arith_var(const std::string& name,
     return res;
 }
 
-Arrays<Arith>::Var SMTLibParsingState::create_array_var(const std::string& name, const bool tmp) {
-    auto& arr = frames.back().array_vars;
-    if (arr.next == array_vars.size()) {
-        const auto var = tmp ? ArrayVar<Arith>::next(1) : ArrayVar<Arith>::nextProgVar(1);
-        array_vars.emplace_back(var);
+Arrays<Arith>::Var SMTLibParsingState::create_array_var(const std::string& name, const size_t dim, const bool tmp) {
+    auto& arr = frames.back().array_vars.emplace(dim, Decls<ArrayVar<Arith>, Arrays<Arith>::Expr>(next_array_var_id(dim))).first->second;
+    auto& vec = array_vars.emplace(dim, std::vector<Arrays<Arith>::Var>()).first->second;
+    if (arr.next == vec.size()) {
+        const auto var = tmp ? ArrayVar<Arith>::next(dim) : ArrayVar<Arith>::nextProgVar(dim);
+        vec.emplace_back(var);
     }
-    const auto res = array_vars.at(arr.next);
+    const auto res = vec.at(arr.next);
     ++arr.next;
     arr.decls.emplace(name, res);
     return res;
@@ -82,10 +101,14 @@ Bools::Var SMTLibParsingState::create_bool_var(const std::string& name, const bo
 }
 
 Var SMTLibParsingState::create_var(const std::string& name, const theory::Type type, const bool tmp) {
-    switch (type) {
-        case theory::Type::Bool: return create_bool_var(name, tmp);
-        case theory::Type::Int: return create_arith_var(name, tmp);
-        case theory::Type::IntArray: return create_array_var(name, tmp);
+    switch (type.base) {
+        case theory::BaseType::Bool: return create_bool_var(name, tmp);
+        case theory::BaseType::Int: {
+            if (type.dim == 0) {
+                return create_arith_var(name, tmp);
+            }
+            return create_array_var(name, type.dim, tmp);
+        }
     }
     throw std::invalid_argument("unknown type");
 }
@@ -93,16 +116,14 @@ Var SMTLibParsingState::create_var(const std::string& name, const theory::Type t
 SMTLibParsingState::Frame::Frame(
     std::vector<Bools::Expr> refinement,
     const size_t next_arith,
-    const size_t next_bool,
-    const size_t next_array) :
+    const size_t next_bool) :
     arith_vars(next_arith),
     bool_vars(next_bool),
-    array_vars(next_array),
     m_refinement(std::move(refinement)) {}
 
 void SMTLibParsingState::push() {
     const auto& f = frames.back();
-    frames.emplace_back(f.m_refinement, f.arith_vars.next, f.bool_vars.next, f.array_vars.next);
+    frames.emplace_back(f.m_refinement, f.arith_vars.next, f.bool_vars.next);
 }
 
 void SMTLibParsingState::pop() {
@@ -129,8 +150,10 @@ std::optional<Bools::Expr> SMTLibParsingState::get_bool_binding(const std::strin
 
 std::optional<Arrays<Arith>::Expr> SMTLibParsingState::get_array_binding(const std::string& name) {
     for (const auto& f: frames | std::views::reverse) {
-        if (const auto it = f.array_vars.bindings.find(name); it != f.array_vars.bindings.end()) {
-            return it->second;
+        for (const auto& d: f.array_vars | std::views::values) {
+            if (const auto it = d.bindings.find(name); it != d.bindings.end()) {
+                return it->second;
+            }
         }
     }
     return std::nullopt;
@@ -152,8 +175,10 @@ std::optional<theory::Type> SMTLibParsingState::get_type(const std::string& name
         if (bool_vars.declares(name)) {
             return theory::Type::Bool;
         }
-        if (array_vars.declares(name)) {
-            return theory::Type::IntArray;
+        for (const auto& [dim,decl]: array_vars) {
+            if (decl.declares(name)) {
+                return theory::Type(theory::BaseType::Int, dim);
+            }
         }
     }
     return std::nullopt;
@@ -170,7 +195,8 @@ void SMTLibParsingState::add_binding(const std::string& s, const Expr& e) {
             bool_vars.bindings.emplace(s, e);
         },
         [&](const Arrays<Arith>::Expr& e) {
-            array_vars.bindings.emplace(s, e);
+            // no need to distinguish bindings by arity, so we always use arity 1 here
+            array_vars.emplace(1, Decls<ArrayVar<Arith>, Arrays<Arith>::Expr>(next_array_var_id(1))).first->second.bindings.emplace(s, e);
         });
 }
 
@@ -184,15 +210,26 @@ Arrays<Arith>::Expr parseArray(sexpresso::Sexp &exp, SMTLibParsingState &state) 
         if (const auto binding = state.get_array_binding(name)) {
             return *binding;
         }
-        return state.get_or_create_array_var(name, true);
+        return *state.get_array_var(name);
     }
     if (exp[0].str() == "store") {
         const auto arr = parseArray(exp[1], state);
-        const auto idx = parseArithExpr(exp[2], state);
-        const auto val = parseArithExpr(exp[3], state);
-        return arrays::mkArrayWrite(arr, std::vector{idx}, val);
+        std::vector<Arith::Expr> idx;
+        idx.push_back(parseArithExpr(exp[2], state));
+        auto last_idx = exp[2];
+        auto inner_exp = exp[3];
+        for (size_t i = 1; i < arr->dim(); ++i) {
+            assert(inner_exp[0].isString("store"));
+            assert(inner_exp[1][0].isString("select"));
+            assert(inner_exp[1][1].isString(exp[1].str()));
+            assert(inner_exp[1][2].isString(last_idx.str()));
+            idx.push_back(parseArithExpr(inner_exp[2], state));
+            last_idx = inner_exp[2];
+            inner_exp = inner_exp[3];
+        }
+        return arrays::mkArrayWrite(arr, idx, parseArithExpr(inner_exp, state));
     }
-    throw std::invalid_argument("unknown array");
+    throw std::invalid_argument("unknown array: " + exp.toString());
 }
 
 Arith::Expr parseArithExpr(sexpresso::Sexp &exp, SMTLibParsingState &state) {
@@ -286,9 +323,15 @@ Arith::Expr parseArithExpr(sexpresso::Sexp &exp, SMTLibParsingState &state) {
         return mod;
     }
     if (name == "select") {
-        const auto arr = parseArray(exp[1], state);
-        const auto idx = parseArithExpr(exp[2], state);
-        return arrays::mkArrayRead(arr, std::vector{idx});
+        std::vector<Arith::Expr> idx;
+        auto select = exp;
+        while (!select.isString() && select[0].isString("select")) {
+            idx.emplace_back(parseArithExpr(select[2], state));
+            select = select[1];
+        }
+        std::ranges::reverse(idx);
+        const auto arr = parseArray(select, state);
+        return arrays::mkArrayRead(arr, idx);
     }
     throw std::invalid_argument("unknown operator " + name);
 }
@@ -316,16 +359,21 @@ theory::Type getType(const sexpresso::Sexp &exp, const SMTLibParsingState &state
         return theory::Type::Bool;
     }
     if (child[0].str() == "store") {
-        return theory::Type::IntArray;
+        // we don't know the precise dimension here, and we just use 1 to signal that it's an array
+        return theory::Type(theory::BaseType::Int, 1);
     }
     return theory::Type::Int;
 }
 
-Expr parseExpr(sexpresso::Sexp &exp, SMTLibParsingState &state) {
-    switch (getType(exp, state)) {
-    case theory::Type::Bool: return parseBoolExpr(exp, state);
-    case theory::Type::Int: return parseArithExpr(exp, state);
-    case theory::Type::IntArray: return parseArray(exp, state);
+Expr parseExpr(sexpresso::Sexp& exp, SMTLibParsingState& state) {
+    switch (const auto [base, dim]{getType(exp, state)}; base) {
+    case theory::BaseType::Bool: return parseBoolExpr(exp, state);
+    case theory::BaseType::Int: {
+        if (dim == 0) {
+            return parseArithExpr(exp, state);
+        }
+        return parseArray(exp, state);
+    }
     }
     assert(false);
 }
@@ -366,95 +414,95 @@ Bools::Expr parseBoolExpr(sexpresso::Sexp &exp, SMTLibParsingState &state) {
         return res;
     }
     if (f == "exists") {
-        state.push();
-        const auto num_vars {exp[1].childCount()};
-        for (unsigned i = 0; i < num_vars; ++i) {
-            const auto var_name {exp[1][i][0].str()};
-            const auto var_type {exp[1][i][1].str()};
-            state.create_var(var_name, theory::to_type(var_type), true);
-        }
-        const auto res {parseBoolExpr(exp[2], state)};
-        state.pop();
-        return res;
-    }
-    if (f == "and") {
-        std::vector<Bools::Expr> args;
-        for (unsigned i = 1; i < exp.childCount(); ++i) {
-            args.push_back(parseBoolExpr(exp[i], state));
-        }
-        return bools::mkAnd(args);
-    }
-    if (f == "or") {
-        std::vector<Bools::Expr> args;
-        for (unsigned i = 1; i < exp.childCount(); ++i) {
-            args.push_back(parseBoolExpr(exp[i], state));
-        }
-        return bools::mkOr(args);
-    }
-    if (f == "=>") {
-        Bools::Expr res = parseBoolExpr(exp[exp.childCount() - 1], state);
-        for (unsigned i = exp.childCount() - 2; i > 0; --i) {
-            res = !parseBoolExpr(exp[i], state) || res;
-        }
-        return res;
-    }
-    if (f == "not") {
-        return !parseBoolExpr(exp[1], state);
-    }
-    if (f == "<" || f == "<=" || f == ">" || f == ">=") {
-        std::vector<Arith::Expr> args;
-        for (unsigned i = 1; i < exp.childCount(); ++i) {
-            args.push_back(parseArithExpr(exp[i], state));
-        }
-        LitSet lits;
-        for (unsigned i = 1; i < args.size(); ++i) {
-            if (f == "<") {
-                lits.insert(arith::mkLt(args[i-1], args[i]));
-            } else if (f == "<=") {
-                lits.insert(arith::mkLeq(args[i-1], args[i]));
-            } else if (f == ">") {
-                lits.insert(arith::mkGt(args[i-1], args[i]));
-            } else if (f == ">=") {
-                lits.insert(arith::mkGeq(args[i-1], args[i]));
+            state.push();
+            const auto num_vars{exp[1].childCount()};
+            for (unsigned i = 0; i < num_vars; ++i) {
+                const auto var_name{exp[1][i][0].str()};
+                const auto var_type{exp[1][i][1].str()};
+                state.create_var(var_name, theory::to_type(var_type), true);
             }
+            const auto res{parseBoolExpr(exp[2], state)};
+            state.pop();
+            return res;
         }
-        return bools::mkAnd(lits);
-    }
-    if (f == "=" || f == "distinct") {
-        auto type = getType(exp[1], state);
-        std::vector<Bools::Expr> lits;
-        const auto build_lits = [&]<class T>(const auto& parse) {
-            std::vector<typename T::Expr> args;
+        if (f == "and") {
+            std::vector<Bools::Expr> args;
             for (unsigned i = 1; i < exp.childCount(); ++i) {
-                args.emplace_back(parse(exp[i], state));
+                args.push_back(parseBoolExpr(exp[i], state));
             }
-            if (f == "=") {
-                for (unsigned i = 1; i < args.size(); ++i) {
-                    lits.push_back(T::mkEq(args[i - 1], args[i]));
+            return bools::mkAnd(args);
+        }
+        if (f == "or") {
+            std::vector<Bools::Expr> args;
+            for (unsigned i = 1; i < exp.childCount(); ++i) {
+                args.push_back(parseBoolExpr(exp[i], state));
+            }
+            return bools::mkOr(args);
+        }
+        if (f == "=>") {
+            Bools::Expr res = parseBoolExpr(exp[exp.childCount() - 1], state);
+            for (unsigned i = exp.childCount() - 2; i > 0; --i) {
+                res = !parseBoolExpr(exp[i], state) || res;
+            }
+            return res;
+        }
+        if (f == "not") {
+            return !parseBoolExpr(exp[1], state);
+        }
+        if (f == "<" || f == "<=" || f == ">" || f == ">=") {
+            std::vector<Arith::Expr> args;
+            for (unsigned i = 1; i < exp.childCount(); ++i) {
+                args.push_back(parseArithExpr(exp[i], state));
+            }
+            LitSet lits;
+            for (unsigned i = 1; i < args.size(); ++i) {
+                if (f == "<") {
+                    lits.insert(arith::mkLt(args[i - 1], args[i]));
+                } else if (f == "<=") {
+                    lits.insert(arith::mkLeq(args[i - 1], args[i]));
+                } else if (f == ">") {
+                    lits.insert(arith::mkGt(args[i - 1], args[i]));
+                } else if (f == ">=") {
+                    lits.insert(arith::mkGeq(args[i - 1], args[i]));
                 }
-            } else {
-                for (unsigned i = 0; i < args.size() - 1; ++i) {
-                    for (unsigned j = i + 1; j < args.size(); ++j) {
-                        lits.push_back(!T::mkEq(args[i], args[j]));
+            }
+            return bools::mkAnd(lits);
+        }
+        if (f == "=" || f == "distinct") {
+            auto [base, dim] = getType(exp[1], state);
+            std::vector<Bools::Expr> lits;
+            const auto build_lits = [&]<class T>(const auto& parse) {
+                std::vector<typename T::Expr> args;
+                for (unsigned i = 1; i < exp.childCount(); ++i) {
+                    args.emplace_back(parse(exp[i], state));
+                }
+                if (f == "=") {
+                    for (unsigned i = 1; i < args.size(); ++i) {
+                        lits.push_back(T::mkEq(args[i - 1], args[i]));
+                    }
+                } else {
+                    for (unsigned i = 0; i < args.size() - 1; ++i) {
+                        for (unsigned j = i + 1; j < args.size(); ++j) {
+                            lits.push_back(!T::mkEq(args[i], args[j]));
+                        }
                     }
                 }
+            };
+            switch (base) {
+            case theory::BaseType::Int: {
+                if (dim == 0) {
+                    build_lits.operator()<Arith>(parseArithExpr);
+                } else {
+                    build_lits.operator()<Arrays<Arith>>(parseArray);
+                }
+                break;
             }
-        };
-        switch (type) {
-        case theory::Type::Int: {
-            build_lits.operator()<Arith>(parseArithExpr);
-            break;
+            case theory::BaseType::Bool: {
+                build_lits.operator()<Bools>(parseBoolExpr);
+                break;
+            }
+            }
+            return bools::mkAnd(lits);
         }
-        case theory::Type::Bool: {
-            build_lits.operator()<Bools>(parseBoolExpr);
-            break;
-        }
-        case theory::Type::IntArray: {
-            build_lits.operator()<Arrays<Arith>>(parseArray);
-            break;
-        }
-        }
-        return bools::mkAnd(lits);
+        throw std::invalid_argument("unknwon bool expression");
     }
-    throw std::invalid_argument("unknwon bool expression");
-}

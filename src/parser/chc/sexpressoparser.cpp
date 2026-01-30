@@ -57,9 +57,13 @@ theory::Type parse_type(sexpresso::Sexp& type) {
         throw std::invalid_argument("unknown type");
     }
     if (type[0].isString("Array")
-        && type[1].isString("Int")
-        && type[2].isString("Int")) {
-        return theory::Type::IntArray;
+        && type[1].isString("Int")) {
+        switch (const auto& [base, dim] = parse_type(type[2]); base) {
+        case theory::BaseType::Int: {
+            return theory::Type(base, dim + 1);
+        }
+        case theory::BaseType::Bool: ; // do nothing
+        }
     }
     throw std::invalid_argument("unknown type " + type.toString());
 }
@@ -76,7 +80,8 @@ void SexpressoParser::run(const std::string &filename) {
             while (clause[0].isString("forall")) {
                 auto vars = clause[1];
                 for (unsigned i = 0; i < vars.childCount(); ++i) {
-                    state.create_var(vars[i][0].str(), parse_type(vars[i][1]), true);
+                    const auto t = parse_type(vars[i][1]);
+                    state.create_var(vars[i][0].str(), t, true);
                 }
                 clause = clause[2];
             }

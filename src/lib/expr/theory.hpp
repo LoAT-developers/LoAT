@@ -148,3 +148,5 @@ std::ostream& operator<<(std::ostream &s, const Var &e);
 std::ostream& operator<<(std::ostream &s, const Expr &e);
 
 std::ostream& operator<<(std::ostream &s, const Lit &e);
+
+bool operator==(const theory::Type&, const theory::Type&);

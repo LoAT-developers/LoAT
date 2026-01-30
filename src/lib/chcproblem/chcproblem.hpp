@@ -42,16 +42,8 @@ public:
     FunAppPtr subs(const Subs &subs) const;
     FunAppPtr rename_vars(const Renaming &) const;
 
-    template <ITheory T>
-    unsigned max_arity() const {
-        unsigned res{0};
-        for (const auto &x : args) {
-            if (std::holds_alternative<typename T::Expr>(x)) {
-                ++res;
-            }
-        }
-        return res;
-    }
+    size_t max_arity(const theory::Type& type) const;
+    size_t max_dim(theory::BaseType) const;
 };
 
 class Clause;
@@ -96,15 +88,8 @@ public:
     ClausePtr rename_vars(const Renaming &) const;
     sexpresso::Sexp to_smtlib() const;
 
-    template <ITheory T>
-    unsigned max_arity() const {
-        unsigned p_arity = 0;
-        for (const auto& p: premise) {
-            p_arity = std::max(p_arity, p->max_arity<T>());
-        }
-        const auto c_arity = conclusion ? (*conclusion)->max_arity<T>() : 0;
-        return std::max(p_arity, c_arity);
-    }
+    size_t max_arity(const theory::Type& type) const;
+    size_t max_dim(theory::BaseType) const;
 };
 
 class CHCProblem;
@@ -130,12 +115,6 @@ public:
     linked_hash_map<std::string, std::vector<theory::Type>> get_signature() const;
     bool is_linear() const;
 
-    template <ITheory T>
-    unsigned max_arity() const {
-        unsigned res{0};
-        for (const auto &c : clauses) {
-            res = std::max(res, c->max_arity<T>());
-        }
-        return res;
-    }
+    size_t max_arity(const theory::Type& type) const;
+    size_t max_dim(theory::BaseType) const;
 };

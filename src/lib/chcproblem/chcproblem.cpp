@@ -98,6 +98,27 @@ FunAppPtr FunApp::rename_vars(const Renaming &subs) const {
     return mk(pred, new_args);
 }
 
+size_t FunApp::max_arity(const theory::Type& type) const {
+    unsigned res{0};
+    for (const auto &x : args) {
+        if (theory::to_type(x) == type) {
+            ++res;
+        }
+    }
+    return res;
+}
+
+size_t FunApp::max_dim(const theory::BaseType type) const {
+    size_t res{0};
+    for (const auto &x : args) {
+        const auto t = theory::to_type(x);
+        if (t.base == type) {
+            res = std::max(res, t.dim);
+        }
+    }
+    return res;
+}
+
 std::ostream& operator<<(std::ostream &s, const FunAppPtr& f) {
     s << f->pred << " ::";
     for (const auto &x: f->args) {
@@ -249,6 +270,24 @@ sexpresso::Sexp Clause::to_smtlib() const {
     return assertion;
 }
 
+size_t Clause::max_arity(const theory::Type& type) const {
+    size_t p_arity = 0;
+    for (const auto& p: premise) {
+        p_arity = std::max(p_arity, p->max_arity(type));
+    }
+    const auto c_arity = conclusion ? (*conclusion)->max_arity(type) : 0;
+    return std::max(p_arity, c_arity);
+}
+
+size_t Clause::max_dim(const theory::BaseType type) const {
+    size_t p_dim = 0;
+    for (const auto& p: premise) {
+        p_dim = std::max(p_dim, p->max_dim(type));
+    }
+    const auto c_dim = conclusion ? (*conclusion)->max_dim(type) : 0;
+    return std::max(p_dim, c_dim);
+}
+
 sexpresso::Sexp CHCProblem::to_smtlib() const {
     const auto preds {get_signature()};
     sexpresso::Sexp res;
@@ -297,6 +336,22 @@ bool CHCProblem::is_linear() const {
     return std::ranges::all_of(clauses, [](const auto& c) {
         return c->is_linear();
     });
+}
+
+size_t CHCProblem::max_arity(const theory::Type& type) const {
+    size_t res{0};
+    for (const auto &c : clauses) {
+        res = std::max(res, c->max_arity(type));
+    }
+    return res;
+}
+
+size_t CHCProblem::max_dim(const theory::BaseType type) const {
+    size_t res{0};
+    for (const auto &c : clauses) {
+        res = std::max(res, c->max_dim(type));
+    }
+    return res;
 }
 
 std::ostream& operator<<(std::ostream &s, const CHCPtr& t) {

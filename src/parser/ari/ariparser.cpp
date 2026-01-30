@@ -47,13 +47,15 @@ void ARIParser::run(const std::string &filename) {
             const auto child_count {lhs.childCount()};
             Subs update;
             for (unsigned i = 1; i < child_count; ++i) {
-                switch (type.at(i-1)) {
-                    case theory::Type::Int: {
+                const auto [base,dim] = type.at(i-1);
+                assert(dim == 0);
+                switch (base) {
+                    case theory::BaseType::Int: {
                         const auto var = state.get_or_create_arith_var(lhs[i].str(), false);
                         update.writeConst(var, parseArithExpr(rhs[i], state));
                         break;
                     }
-                    case theory::Type::Bool: {
+                    case theory::BaseType::Bool: {
                         const auto var = state.get_or_create_bool_var(lhs[i].str(), false);
                         update.put(var, parseBoolExpr(rhs[i], state));
                         break;

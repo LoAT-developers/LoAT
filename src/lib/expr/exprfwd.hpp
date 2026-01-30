@@ -29,11 +29,20 @@ using ptr = cpp::not_null<std::shared_ptr<const T>>;
 
 namespace theory {
 
-    enum class Type {
+    enum class BaseType {
         Int,
-        Bool,
-        IntArray
+        Bool
     };
+
+    struct Type {
+        BaseType base;
+        size_t dim;
+
+        static const Type Int;
+        static const Type Bool;
+
+    };
+
     std::string abbrev(Type t);
 }
 

@@ -12,12 +12,15 @@ z3::expr SwineContext::buildVar(const Bools::Var &var) {
 
 z3::expr SwineContext::buildVar(const Arrays<Arith>::Var &var) {
     const auto ints {m_ctx->int_sort()};
-    auto sort {ints};
     const auto dim {var->dim()};
-    for (unsigned i = 0; i < dim; ++i) {
-        sort = m_ctx->array_sort(ints, sort);
+    if (dim == 0) {
+        return m_ctx->constant(var->getName().c_str(), ints);
     }
-    return m_ctx->constant(var->getName().c_str(), sort);
+    z3::sort_vector domain {*m_ctx};
+    for (unsigned i = 0; i < dim; ++i) {
+        domain.push_back(ints);
+    }
+    return m_ctx->constant(var->getName().c_str(), m_ctx->array_sort(domain, ints));
 }
 
 z3::expr SwineContext::getInt(const Int &val) {
