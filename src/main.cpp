@@ -87,6 +87,7 @@ void parseFlags(const int argc, char *argv[]) {
             Config::Output::PrintDependencyGraph = true;
         } else if (strcmp("--log", argv[arg]) == 0) {
             Config::Analysis::log = true;
+            Config::Analysis::logAccel = true;
         } else if (strcmp("--proof", argv[arg]) == 0) {
             Config::Analysis::model = true;
         } else if (strcmp("--mode", argv[arg]) == 0) {

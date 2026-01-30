@@ -164,7 +164,7 @@ bool Rule::hasNonTrivialNondeterminism() const {
             if (std::ranges::any_of(v->vars(), theory::isTempVar)) {
                 return !v->isVar() || !v->isVar().value()->isTempVar() || v->isVar().value()->dim() > 0;
             }
-            return false;
+            return true;
         })) {
             return true;
         }

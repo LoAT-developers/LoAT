@@ -98,7 +98,7 @@ RulePtr Preprocess::preprocessRule(const RulePtr &rule) {
         current = *res;
     }
     if (current != rule && Config::Analysis::doLogPreproc()) {
-        std::cout << "got " << current << std::endl;
+        std::cout << "got " << *current << std::endl;
     }
     return current;
 }

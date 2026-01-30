@@ -600,8 +600,10 @@ bool Recurrence::solve() {
         LitSet lits;
         std::optional<Arith::Expr> m;
         for (const auto& e: lval->indices()) {
-            if (const auto& d = s.at(i); d->getValue() != 0) {
-                const auto c = arrays::array_idx(i);
+            const auto c = arrays::array_idx(i);
+            if (const auto& d = s.at(i); d->getValue() == 0) {
+                lits.insert(arith::mkEq(c, e));
+            } else {
                 const auto frac = (c - e)->divide(d->getValue());
                 lits.insert(arith::mkLeq(arith::zero(), frac));
                 lits.insert(arith::mkLt(frac, n));
