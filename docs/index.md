@@ -27,7 +27,7 @@ LoAT uses the recurrence solver [PURRS](http://www.cs.unipr.it/purrs/), the SMT 
 
 # Downloading LoAT
 
-[Here](https://github.com/loat-developers/LoAT/releases) you can find the latests releases of LoAT, including nightly releases.
+[Here](https://github.com/loat-developers/LoAT/releases) you can find the latest releases of LoAT, including nightly releases.
 Older releases can be found [here](https://github.com/aprove-developers/LoAT/releases).
 
 # Using LoAT
@@ -70,7 +70,7 @@ For examples, we refer to the [TPDB benchmarks for termination](https://github.c
 
 ## Input Format for Constrained Horn Clauses
 
-LoAT can parse the [SMTLIB-format](https://chc-comp.github.io/format.html) used at the annual [*CHC-COMP*](https://chc-comp.github.io/).
+LoAT can parse the [SMTLIB-format for CHCs](https://chc-comp.github.io/format.html) used at the annual [*CHC-COMP*](https://chc-comp.github.io/).
 
 For examples, we refer to the [CHC-COMP benchmarks from 2024](https://github.com/chc-comp/chc-comp24-benchmarks/tree/main/LIA-Lin).
 
@@ -81,7 +81,7 @@ Such systems are no longer supported.
 If you are interested in analyzing such systems, please use the release that was published with our [TOPLAS '20 paper](https://doi.org/10.1145/3410331).
 A link to this release, as well as further information about using it, can be found [here](https://aprove-developers.github.io/its-lowerbounds-journal/).
 
-Moreover, earlier versions of LoAT could parse the [SMTLIB-format](https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/SMTPushdownPrograms.pdf), the [KoAT format](http://aprove.informatik.rwth-aachen.de/eval/IntegerComplexity/), and the [C-Integer format](https://termination-portal.org/wiki/C_Integer_Programs) that had been used at TermComp.
+Moreover, earlier versions of LoAT could parse the [SMTLIB-format for programs with procedures](https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/SMTPushdownPrograms.pdf), the [KoAT format](http://aprove.informatik.rwth-aachen.de/eval/IntegerComplexity/), and the [C-Integer format](https://termination-portal.org/wiki/C_Integer_Programs) that had been used at TermComp.
 Since all of these formats have been discontinued at TermComp, they are no longer supported.
 
 # Publications
@@ -210,7 +210,8 @@ Together with AProVE, LoAT competes in the category *Termination* of the [*Compe
 
 # Build
 
-think about using one of our [releases](https://github.com/loat-developers/LoAT/releases) instead
+Think about using one of our [releases](https://github.com/loat-developers/LoAT/releases) instead.
+If that's not an option, proceed as follows:
 1. install [Docker](https://www.docker.com/)
 2. download the latest docker container with pre-installed dependencies via `docker pull loat/loat-base:$VERSION`
 3. log in to the docker container via `docker run -it loat/loat-base:$VERSION bash`
