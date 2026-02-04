@@ -68,6 +68,7 @@ namespace Config {
 
     namespace Accel {
         extern bool non_linear;
+        extern bool arrays;
     }
 
     bool validate();

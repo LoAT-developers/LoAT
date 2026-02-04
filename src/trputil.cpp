@@ -355,6 +355,7 @@ bool TRPUtil::build_cex() {
             false,
             true,
             Config::Accel::non_linear,
+            Config::Accel::arrays,
             arrays::nextConst<Arith>(),
             arith::zero()
         })};

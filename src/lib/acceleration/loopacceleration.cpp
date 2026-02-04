@@ -5,7 +5,6 @@
 #include "loopcomplexity.hpp"
 #include "rulepreprocessing.hpp"
 
-#include <numeric>
 #include <utility>
 
 LoopAcceleration::LoopAcceleration(
@@ -222,6 +221,10 @@ void LoopAcceleration::run() {
         res.status = acceleration::Disjunctive;
     } else if (!config.tryNonlinear && (!rule->getGuard()->isLinear() || !rule->getUpdate().isLinear())) {
         res.status = acceleration::Nonlinear;
+    } else if (!config.tryArrays && std::ranges::any_of(rule->getUpdate().get<Arrays<Arith>>() | std::views::keys, [&](const auto& k) {
+        return k->dim() > 0;
+    })) {
+        res.status = acceleration::Arrays;
     } else {
         chain();
         switch (SmtFactory::check(Preprocess::chain({rule, rule->renameTmpVars()})->getGuard())) {

@@ -12,6 +12,7 @@ std::ostream& operator<<(std::ostream &s, const Status x) {
     case Success: return s << "success";
     case Nonterminating: return s << "nonterminating";
     case Nonlinear: return s << "nonlinear";
+    case Arrays: return s << "arrays";
     }
     return s;
 }

@@ -219,10 +219,9 @@ Arrays<Arith>::Expr parseArray(sexpresso::Sexp &exp, SMTLibParsingState &state) 
         auto last_idx = exp[2];
         auto inner_exp = exp[3];
         for (size_t i = 1; i < arr->dim(); ++i) {
-            assert(inner_exp[0].isString("store"));
-            assert(inner_exp[1][0].isString("select"));
-            assert(inner_exp[1][1].isString(exp[1].str()));
-            assert(inner_exp[1][2].isString(last_idx.str()));
+            if (!inner_exp[0].isString("store") || !inner_exp[1][0].isString("select") || !inner_exp[1][1].isString(exp[1].str()) || !inner_exp[1][2].isString(last_idx.str())) {
+                throw std::invalid_argument("failed to parse " + exp.toString());
+            }
             idx.push_back(parseArithExpr(inner_exp[2], state));
             last_idx = inner_exp[2];
             inner_exp = inner_exp[3];
