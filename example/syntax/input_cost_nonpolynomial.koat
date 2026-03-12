@@ -1,8 +1,0 @@
-# A simple example that should fail, as we only accept polynomial costs in the input
-(GOAL COMPLEXITY)
-(STARTTERM (FUNCTIONSYMBOLS start))
-(VAR x y)
-(RULES
-  start(x, y) -> f(x, y)
-  f(x, y) -{2^x,2^x}> f(x-1, y) [ x > 0 ]
-)

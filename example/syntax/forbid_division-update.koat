@@ -1,7 +1,0 @@
-# A simple example to ensure that division is not allowed in the input in updates
-(GOAL COMPLEXITY)
-(STARTTERM (FUNCTIONSYMBOLS start))
-(VAR x y)
-(RULES
-  start(x, y) -> f(x/2, y)
-)

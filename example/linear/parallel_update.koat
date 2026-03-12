@@ -1,9 +1,0 @@
-# This example can be used to check that updates are executed in parallel,
-# and that recurrence equations are computed correctly.
-
-(GOAL COMPLEXITY)
-(STARTTERM (FUNCTIONSYMBOLS f))
-(VAR x i)
-(RULES
-  f(x, i) -> f(x+i, i-1) [ i > 0 ]
-)

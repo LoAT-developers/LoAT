@@ -1,7 +1,0 @@
-# A simplified program with linear cost and guard (SMT encoding is applicable)
-(GOAL COMPLEXITY)
-(STARTTERM (FUNCTIONSYMBOLS l0))
-(VAR x y z u free)
-(RULES
-l0(x,y,z) -{-x,0}> l1(x,y,z) :|: x-y > 0 && x < 0
-)
