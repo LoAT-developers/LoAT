@@ -67,3 +67,5 @@ grammars/*
 # automatically generated
 /include
 /lib
+
+/usr
