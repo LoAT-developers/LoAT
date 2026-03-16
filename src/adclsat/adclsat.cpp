@@ -116,6 +116,10 @@ void ADCLSat::handle_loop(const unsigned start) {
         add_blocking_clause(range, id, projected);
     }
     trace.pop_back();
+    while (!trace.empty()) {
+        trace.pop_back();
+        solver->pop();
+    }
 }
 
 std::optional<SmtResult> ADCLSat::do_step() {
@@ -186,10 +190,16 @@ std::optional<SmtResult> ADCLSat::do_step() {
             return {};
         }
         case SmtResult::Sat:
+            model = solver->model();
+            solver->push();
+            solver->add(arith::mkGt(trace_var, arith::mkConst(last_orig_clause)));
+            if (solver->check() == SmtResult::Sat) {
+                model = solver->model();
+            }
+            solver->pop();
             break;
     }
     backtracking = false;
-    model = solver->model();
     solver->pop();
     const auto id{(*model)->get(trace_var->renameVars(subs))};
     if (Config::Analysis::log) {

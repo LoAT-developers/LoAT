@@ -205,7 +205,14 @@ Bools::Expr TRPUtil::encode_transition(const Bools::Expr &t, const Int &id) cons
 
 Int TRPUtil::add_learned_clause(const Range &range, const Bools::Expr &accel) {
     if (Config::Analysis::log) {
-        std::cout << "learned transition: " << accel << " with id " << next_id << std::endl;
+        std::cout << "learned transition: " << accel << " with id " << next_id << " (";
+        for (int i = range.start(); i <= range.end(); ++i) {
+            std::cout << trace.at(i).id;
+            if (i != range.end()) {
+                std::cout << ", ";
+            }
+        }
+        std::cout << ")" << std::endl;
     }
     const auto id = next_id;
     ++next_id;
