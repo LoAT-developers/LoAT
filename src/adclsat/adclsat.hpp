@@ -8,8 +8,8 @@ class ADCLSat final: public TRPUtil {
     DependencyGraph<Bools::Expr> dg_over_approx;
 
     void add_blocking_clause(const Range &range, const Int &id, Bools::Expr loop) override;
-    std::optional<unsigned> has_looping_suffix();
-    void handle_loop(unsigned start);
+    std::optional<Range> has_looping_infix();
+    void handle_loop(const Range&);
 
 public:
 

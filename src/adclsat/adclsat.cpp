@@ -38,17 +38,17 @@ ADCLSat::ADCLSat(const ITSPtr& its, const Config::TRPConfig &config): TRPUtil(it
     }
 }
 
-std::optional<unsigned> ADCLSat::has_looping_suffix() {
-    const auto last {trace.size() - 1};
-    for (unsigned start = last; start + 1 > 0; --start) {
-        if (dependency_graph.hasEdge(trace.back().implicant, trace[start].implicant) && (start < last || trace[start].id <= last_orig_clause)) {
-            if (start == last) {
-                if (const auto loop{trace[start].implicant};
-                    SmtFactory::check(loop->renameVars(get_subs(0, 1)) && loop->renameVars(get_subs(1, 1))) == SmtResult::Unsat) {
-                    continue;
+std::optional<Range> ADCLSat::has_looping_infix() {
+    for (unsigned i = 0; i < trace.size(); ++i) {
+        for (unsigned start = 0; start + i < trace.size(); ++start) {
+            if (dependency_graph.hasEdge(trace[start + i].implicant, trace[start].implicant) && (i > 0 || trace[start].id <= last_orig_clause)) {
+                if (i == 0) {
+                    if (const auto loop {trp.mbp(trace[start].implicant, trace[start].model, theory::isTempCell)}; SmtFactory::check(loop->renameVars(get_subs(0,1)) && loop->renameVars(get_subs(1,1))) == SmtResult::Unsat) {
+                        continue;
+                    }
                 }
+                return {Range::from_interval(start, start + i)};
             }
-            return start;
         }
     }
     return {};
@@ -63,8 +63,7 @@ void ADCLSat::add_blocking_clause(const Range &range, const Int &id, const Bools
     }
 }
 
-void ADCLSat::handle_loop(const unsigned start) {
-    const auto range {Range::from_interval(start, trace.size() - 1)};
+void ADCLSat::handle_loop(const Range& range) {
     auto [loop, model]{specialize(range, theory::isTempCell)};
     solver->pop();
     if (add_blocking_clauses(range, model)) {
@@ -96,7 +95,7 @@ void ADCLSat::handle_loop(const unsigned start) {
             return x == Cell(n);
         });
     }
-    const auto fst_elem {trace.at(start)};
+    const auto fst_elem {trace.at(range.start())};
     const auto last_elem {trace.back()};
     const auto fst {encode_transition(rule_map.at(fst_elem.id), fst_elem.id)};
     const auto last {encode_transition(rule_map.at(last_elem.id), last_elem.id)};
@@ -110,13 +109,11 @@ void ADCLSat::handle_loop(const unsigned start) {
     if (dg_over_approx.getSinks().contains(last)) {
         dg_over_approx.markSink(node);
     }
-    if (range.length() == 1) {
+    if (range.start() == trace.size() - 1) {
         projections.emplace_back(id, projected);
-    } else {
-        add_blocking_clause(range, id, projected);
     }
     trace.pop_back();
-    while (!trace.empty()) {
+    while (trace.size() > range.start()) {
         trace.pop_back();
         solver->pop();
     }
@@ -151,12 +148,12 @@ std::optional<SmtResult> ADCLSat::do_step() {
         }
         solver->pop();
     }
-    if (const auto start{has_looping_suffix()}) {
+    if (const auto range{has_looping_infix()}) {
         if (Config::Analysis::log) {
-            std::cout << "found loop starting at " << start << std::endl;
+            std::cout << "found loop at [" << range->start() << ", " << range->end() << "]" << std::endl;
         }
         backtracking = true;
-        handle_loop(*start);
+        handle_loop(*range);
         return {};
     }
     const auto subs{get_subs(trace.size(), 1)};
