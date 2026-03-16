@@ -408,7 +408,7 @@ Bools::Expr parseBoolExpr(sexpresso::Sexp &exp, SMTLibParsingState &state) {
             const auto declName {decl[0].str()};
             state.add_binding(declName, parseExpr(decl[1], state));
         }
-        auto res {parseBoolExpr(exp[2], state)};
+        auto res {parseBoolExpr(exp[2], state) && state.refinement()};
         state.pop();
         return res;
     }
