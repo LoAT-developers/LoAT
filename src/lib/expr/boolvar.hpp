@@ -16,7 +16,7 @@ namespace bools {
     BoolVarPtr mkVar(int idx);
 }
 
-class BoolVar: std::enable_shared_from_this<BoolVar> {
+class BoolVar: public std::enable_shared_from_this<BoolVar> {
 
     friend BoolVarPtr bools::mkVar(int idx);
     friend class ConsHash<BoolVar, int>;
