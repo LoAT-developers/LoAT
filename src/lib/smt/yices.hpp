@@ -40,6 +40,7 @@ private:
     YicesContext ctx;
     ctx_config_t *config;
     context_t *solver{};
+    unsigned pushes_since_unsat = 0;
 
     static Rational getRealFromModel(model_t *model, type_t symbol);
 

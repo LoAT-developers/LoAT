@@ -44,20 +44,32 @@ Yices::Yices(const Logic logic): ctx(YicesContext()), config(yices_new_config())
         throw std::logic_error("error from yices");
     }
     solver = yices_new_context(config);
+    yices::check_err();
 }
 
 void Yices::add(const Bools::Expr e) {
     if (yices_assert_formula(solver, ExprConverter<term_t, term_t, std::vector<term_t>, std::vector<term_t>>::convert(e, ctx)) < 0) {
         throw YicesError();
     }
+    yices::check_err();
 }
 
 void Yices::push() {
-    yices_push(solver);
+    if (yices_context_status(solver) == STATUS_UNSAT) {
+        ++pushes_since_unsat;
+    } else {
+        yices_push(solver);
+        yices::check_err();
+    }
 }
 
 void Yices::pop() {
-    yices_pop(solver);
+    if (pushes_since_unsat > 0) {
+        --pushes_since_unsat;
+    } else {
+        yices_pop(solver);
+        yices::check_err();
+    }
 }
 
 SmtResult Yices::processResult(const smt_status status) {
@@ -76,11 +88,14 @@ SmtResult Yices::processResult(const smt_status status) {
 }
 
 SmtResult Yices::check() {
-    return processResult(yices_check_context(solver, nullptr));
+    const auto res = processResult(yices_check_context(solver, nullptr));
+    yices::check_err();
+    return res;
 }
 
 ModelPtr Yices::model() {
     auto m {std::shared_ptr<model_t>(yices_get_model(solver, true), &yices_free_model)};
+    yices::check_err();
     return cpp::assume_not_null(std::make_shared<YicesModel>(ctx, m, Subs()));
 }
 
@@ -92,11 +107,14 @@ void Yices::enableModels() {}
 
 void Yices::resetSolver() {
     yices_reset_context(solver);
+    pushes_since_unsat = 0;
+    yices::check_err();
 }
 
 Yices::~Yices() {
     yices_free_config(config);
     yices_free_context(solver);
+    yices::check_err();
 }
 
 std::ostream& Yices::print(std::ostream& os) const {
@@ -110,6 +128,7 @@ Rational Yices::getRealFromModel(model_t *model, const type_t symbol) {
         std::cerr << yices_error_string() << std::endl;
         throw std::logic_error("error during conversion of model");
     }
+    yices::check_err();
     assert(denom != 0);
     Rational res {num};
     res = res / denom;

@@ -10,6 +10,10 @@ public:
     YicesError();
 };
 
+namespace yices {
+    void check_err();
+}
+
 class YicesContext final : public ExprConversionContext<term_t, term_t, std::vector<term_t>, std::vector<term_t>> {
 
 public:
