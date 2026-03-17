@@ -142,7 +142,7 @@ std::pair<RulePtr, ModelPtr> ABMC::build_loop(const int backlink) const {
 }
 
 Bools::Expr ABMC::build_blocking_clause(const int backlink, const Loop &loop) {
-    if (!blocking_clauses || loop.prefix > 1 || loop.period > 1) {
+    if (!blocking_clauses) {
         return top();
     }
     const auto orig {loop.idx->subs(Subs::build(n->var(), arrays::update(n, arith::one())))};
