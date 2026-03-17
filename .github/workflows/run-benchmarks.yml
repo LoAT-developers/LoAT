@@ -51,6 +51,8 @@ on:
         - chc25-lia-lin-arrays
         - tpdb-ari-termination
         - tpdb-ari-complexity
+        - sv-arrays
+        - sv-neg-arrays
 
 permissions:
   # deployments permission to deploy GitHub pages website
@@ -109,6 +111,12 @@ jobs:
 
       - if: ${{ inputs.benchmarks == 'tpdb-complexity' }}
         uses: ./actions/.github/actions/tpdb-complexity
+
+      - if: ${{ inputs.benchmarks == 'sv-arrays' }}
+        uses: ./actions/.github/actions/sv-arrays
+
+      - if: ${{ inputs.benchmarks == 'sv-neg-arrays' }}
+        uses: ./actions/.github/actions/sv-neg-arrays
 
       - if: ${{ startsWith(inputs.release, 'chc-comp-2024') }}
         uses: ./actions/.github/actions/get-loat-chc-comp-2024

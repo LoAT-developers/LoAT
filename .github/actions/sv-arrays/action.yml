@@ -1,0 +1,14 @@
+name: 'SV Array Benchmarks'
+runs:
+  using: "composite"
+  steps:
+
+    - uses: actions/checkout@v4
+      with:
+        repository: loat/developers/sv-array-benchmarks
+        path: sv-array-benchmarks
+
+    - run: |
+        mkdir benchmarks
+        mv sv-array-benchmarks/*.smt2 benchmarks
+      shell: bash

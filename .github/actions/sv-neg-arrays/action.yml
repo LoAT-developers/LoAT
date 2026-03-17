@@ -1,0 +1,14 @@
+name: 'SV Array Benchmarks with negated assertions'
+runs:
+  using: "composite"
+  steps:
+
+    - uses: actions/checkout@v4
+      with:
+        repository: loat/developers/sv-neg-array-benchmarks
+        path: sv-neg-array-benchmarks
+
+    - run: |
+        mkdir benchmarks
+        mv sv-neg-array-benchmarks/*.smt2 benchmarks
+      shell: bash
