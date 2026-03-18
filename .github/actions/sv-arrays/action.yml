@@ -1,12 +1,19 @@
 name: 'SV Array Benchmarks'
+
+inputs:
+  pat:
+    description: 'personal access token'
+    required: true
+
 runs:
   using: "composite"
   steps:
 
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         repository: LoAT-developers/sv-array-benchmarks
         path: sv-array-benchmarks
+        token: ${{ inputs.pat }}
 
     - run: |
         mkdir benchmarks

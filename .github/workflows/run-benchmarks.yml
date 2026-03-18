@@ -115,12 +115,12 @@ jobs:
       - if: ${{ inputs.benchmarks == 'sv-arrays' }}
         uses: ./actions/.github/actions/sv-arrays
         with:
-          token: ${{ secrets.LOAT_DEVELOPERS_PAT }}
+          pat: ${{ secrets.LOAT_DEVELOPERS_PAT }}
 
       - if: ${{ inputs.benchmarks == 'sv-neg-arrays' }}
         uses: ./actions/.github/actions/sv-neg-arrays
         with:
-          token: ${{ secrets.LOAT_DEVELOPERS_PAT }}
+          pat: ${{ secrets.LOAT_DEVELOPERS_PAT }}
 
       - if: ${{ startsWith(inputs.release, 'chc-comp-2024') }}
         uses: ./actions/.github/actions/get-loat-chc-comp-2024
