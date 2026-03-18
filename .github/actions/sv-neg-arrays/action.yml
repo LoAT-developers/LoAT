@@ -1,7 +1,5 @@
 name: 'SV Array Benchmarks with negated assertions'
 
-name: 'SV Array Benchmarks'
-
 inputs:
   pat:
     description: 'personal access token'
