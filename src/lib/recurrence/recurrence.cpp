@@ -622,11 +622,24 @@ bool Recurrence::solve() {
     };
     // build closed-form array expressions by considering the closed forms for the written lvalues one at a time
     for (const auto& [lval,r]: written) {
+        const auto update_prefix = [&]() {
+            unsigned prefix = 1;
+            for (const auto &c: r->cells()) {
+                const auto it = prefixes.find(c);
+                const auto c_prefix = it == prefixes.end() ? 0 : it->second;
+                prefix = std::max(prefix, c_prefix + 1);
+            }
+            prefixes.emplace(lval, prefix);
+            result.prefix = std::max(result.prefix, prefix);
+        };
         if (lval->dim() == 0) {
             if (inductive.contains(lval)) {
                 result.closed_form.update(lval, closed_form.at(lval));
             } else {
-                result.closed_form.update(lval, r->subs(closed_form));
+                update_prefix();
+                const auto new_val = r->subs(closed_form_n_minus_one.get<ArithVarPtr, Arith::Expr>());
+                result.closed_form.update(lval, new_val);
+                closed_form_n_minus_one.put(std::pair{lval, new_val->subs(n_to_n_minus_one)});
             }
         } else {
             const auto var = lval->var();
@@ -637,16 +650,20 @@ bool Recurrence::solve() {
             if (const auto opt = inductive.get(lval)) {
                 new_val = closed_form.at(*opt);
             } else {
-                new_val = r->subs(closed_form);
+                update_prefix();
+                new_val = r->subs(closed_form_n_minus_one.get<ArithVarPtr, Arith::Expr>());
             }
             if (std::ranges::all_of(s, [](const auto& i) {
                 return i->is(0);
             })) {
                 result.closed_form.put(var, arrays::mkArrayWrite(old_val, lval->indices(), new_val));
+                closed_form_n_minus_one.put(std::pair{lval, new_val->subs(n_to_n_minus_one)});
             } else {
                 const auto [cond,instantiation_of_n] = mk_last_write(lval);
                 const auto instantiate_n = Subs::build(n, instantiation_of_n);
-                result.closed_form.put(var, arrays::mkArrayWrite(old_val, cond, new_val->subs(instantiate_n)));
+                const auto instantiated_new_val = new_val->subs(instantiate_n);
+                result.closed_form.put(var, arrays::mkArrayWrite(old_val, cond, instantiated_new_val));
+                closed_form_n_minus_one.put(std::pair{lval, instantiated_new_val->subs(n_to_n_minus_one)});
             }
         }
     }
