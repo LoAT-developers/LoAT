@@ -1,4 +1,12 @@
 name: 'SV Array Benchmarks with negated assertions'
+
+name: 'SV Array Benchmarks'
+
+inputs:
+  pat:
+    description: 'personal access token'
+    required: true
+
 runs:
   using: "composite"
   steps:
@@ -7,6 +15,7 @@ runs:
       with:
         repository: LoAT-developers/sv-neg-array-benchmarks
         path: sv-neg-array-benchmarks
+        token: ${{ inputs.pat }}
 
     - run: |
         mkdir benchmarks
