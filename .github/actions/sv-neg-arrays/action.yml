@@ -6,7 +6,7 @@ runs:
     - uses: actions/checkout@v4
       with:
         repository: LoAT-developers/sv-neg-array-benchmarks
-        token: ${{ secrets.GITHUB_TOKEN }}
+        token: ${{ secrets.LOAT_DEVELOPERS_PAT }}
         path: sv-neg-array-benchmarks
 
     - run: |
