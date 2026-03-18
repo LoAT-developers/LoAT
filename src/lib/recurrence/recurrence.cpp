@@ -637,6 +637,7 @@ bool Recurrence::solve() {
                 result.closed_form.update(lval, closed_form.at(lval));
             } else {
                 update_prefix();
+                // for non-inductive scalars, we instantiate n with n-1, as the last write always took place in the last iteration
                 const auto new_val = r->subs(closed_form_n_minus_one.get<ArithVarPtr, Arith::Expr>());
                 result.closed_form.update(lval, new_val);
                 closed_form_n_minus_one.put(std::pair{lval, new_val->subs(n_to_n_minus_one)});
@@ -651,7 +652,8 @@ bool Recurrence::solve() {
                 new_val = closed_form.at(*opt);
             } else {
                 update_prefix();
-                new_val = r->subs(closed_form_n_minus_one.get<ArithVarPtr, Arith::Expr>());
+                // for non-inductive arrays, n will be instantiated according to the iteration where the last write access took place below
+                new_val = r->subs(closed_form);
             }
             if (std::ranges::all_of(s, [](const auto& i) {
                 return i->is(0);
