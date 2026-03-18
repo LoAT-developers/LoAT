@@ -114,11 +114,9 @@ jobs:
 
       - if: ${{ inputs.benchmarks == 'sv-arrays' }}
         uses: ./actions/.github/actions/sv-arrays
-        secrets: inherit
 
       - if: ${{ inputs.benchmarks == 'sv-neg-arrays' }}
         uses: ./actions/.github/actions/sv-neg-arrays
-        secrets: inherit
 
       - if: ${{ startsWith(inputs.release, 'chc-comp-2024') }}
         uses: ./actions/.github/actions/get-loat-chc-comp-2024
@@ -141,6 +139,7 @@ jobs:
           path: |
             benchmarks/**/*.json
             benchmarks/*.version
+        secrets: inherit
 
   finalize-benchmark-results:
     needs: [chc-comp-benchmark]
