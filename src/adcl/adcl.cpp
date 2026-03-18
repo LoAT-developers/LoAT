@@ -414,7 +414,7 @@ std::pair<RulePtr, ModelPtr> ADCL::build_loop(const int backlink) const {
     s.collectCoDomainVars(vars);
     auto model {solver->model()->composeBackwards(s)};
     if (Config::Analysis::log) {
-        std::cout << "found loop of length " << (trace.size() - backlink) << ":\n" << loop << std::endl;
+        std::cout << "found loop of length " << (trace.size() - backlink) << ":\n" << *loop << std::endl;
     }
     return {loop, model};
 }
