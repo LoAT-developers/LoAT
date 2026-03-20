@@ -106,16 +106,18 @@ std::ostream& operator<<(std::ostream &s, const Step &step) {
     return s << step.clause_idx << "[" << step.implicant << "]";
 }
 
-std::optional<unsigned> ADCL::has_looping_suffix(const int start) const {
+std::optional<Range> ADCL::has_looping_infix(const int start) const {
     if (trace.empty()) {
         return {};
     }
-    const auto last_clause = trace.back().clause_idx;
-    std::vector<long> sequence;
-    for (int pos = start; pos >= 0; --pos) {
-        if (const Step &step = trace[pos]; chcs->areAdjacent(last_clause, step.clause_idx)) {
-            if (auto upos = static_cast<unsigned>(pos); upos < trace.size() - 1 || is_orig_clause(step.clause_idx)) {
-                return upos;
+    for (int end = start; end < trace.size(); end++) {
+        const auto last_clause = trace.at(end).clause_idx;
+        std::vector<long> sequence;
+        for (int pos = start; pos >= 0; --pos) {
+            if (const Step &step = trace[pos]; dependency_graph.hasEdge(last_clause, step.clause_idx)) {
+                if (auto upos = static_cast<unsigned>(pos); upos < trace.size() - 1 || is_orig_clause(step.clause_idx)) {
+                    return Range::from_interval(upos, end);
+                }
             }
         }
     }
@@ -198,6 +200,9 @@ void ADCL::backtrack() {
 }
 
 void ADCL::add_to_trace(const Step &step) {
+    if (!trace.empty()) {
+        dependency_graph.addEdge(trace.back().clause_idx, step.clause_idx);
+    }
     trace.emplace_back(step);
     blocked_clauses.emplace_back();
 }
@@ -395,33 +400,33 @@ Automaton ADCL::get_language(const Step &step) const {
     return *redundancy->get_language(step.clause_idx);
 }
 
-Automaton ADCL::build_language(const int backlink) const {
-    auto lang = get_language(trace[backlink]);
-    for (size_t i = backlink + 1; i < trace.size(); ++i) {
+Automaton ADCL::build_language(const Range& range) const {
+    auto lang = get_language(trace[range.start()]);
+    for (size_t i = range.start() + 1; i <= range.end(); ++i) {
         redundancy->concat(lang, get_language(trace[i]));
     }
     return lang;
 }
 
-std::pair<RulePtr, ModelPtr> ADCL::build_loop(const int backlink) const {
+std::pair<RulePtr, ModelPtr> ADCL::build_loop(const Range& range) const {
     std::vector<RulePtr> rules;
-    for (size_t i = backlink; i < trace.size(); ++i) {
+    for (size_t i = range.start(); i <= range.end(); ++i) {
         rules.emplace_back(trace[i].implicant->renameVars(trace[i].tmp_var_renaming));
     }
     const auto loop {Preprocess::chain(rules)};
-    const auto s {trace[backlink].var_renaming};
+    const auto s {trace[range.start()].var_renaming};
     auto vars {loop->vars()};
     s.collectCoDomainVars(vars);
     auto model {solver->model()->composeBackwards(s)};
     if (Config::Analysis::log) {
-        std::cout << "found loop of length " << (trace.size() - backlink) << ":\n" << *loop << std::endl;
+        std::cout << "found loop at " << range << ":\n" << *loop << std::endl;
     }
     return {loop, model};
 }
 
-void ADCL::add_learned_clause(const RulePtr& accel, const unsigned backlink) const {
-    const auto fst = trace.at(backlink).clause_idx;
-    const auto last = trace.back().clause_idx;
+void ADCL::add_learned_clause(const RulePtr& accel, const Range& range) const {
+    const auto fst = trace.at(range.start()).clause_idx;
+    const auto last = trace.at(range.end()).clause_idx;
     chcs->addLearnedRule(accel, fst, last);
 }
 
@@ -452,7 +457,7 @@ ITSCex* ADCL::the_cex() {
     return &cex;
 }
 
-std::unique_ptr<LearningState> ADCL::learn_clause(const RulePtr& rule, const ModelPtr &model, const unsigned backlink) {
+std::unique_ptr<LearningState> ADCL::learn_clause(const RulePtr& rule, const ModelPtr &model, const Range& range) {
     const auto simp {Preprocess::preprocessRule(rule)};
     if (Config::Analysis::safety() && simp->getUpdate().isIdempotent()) {
         // The learned clause would be trivially redundant w.r.t. the looping suffix (but not necessarily w.r.t. a single clause).
@@ -483,7 +488,7 @@ std::unique_ptr<LearningState> ADCL::learn_clause(const RulePtr& rule, const Mod
     }
     LearnedClauses res{.res = {}, .prefix = prefix, .period = period};
     if (Config::Analysis::tryNonterm() && nonterm != bot()) {
-        const auto query {chcs->addQuery(nonterm, trace.at(backlink).clause_idx)};
+        const auto query {chcs->addQuery(nonterm, trace.at(range.start()).clause_idx)};
         res.res.emplace_back(query);
         if (Config::Analysis::model) {
             the_cex()->add_recurrent_set(rule, query);
@@ -501,7 +506,7 @@ std::unique_ptr<LearningState> ADCL::learn_clause(const RulePtr& rule, const Mod
                     simplified = *inst;
                 }
             }
-            add_learned_clause(simplified, backlink);
+            add_learned_clause(simplified, range);
             res.res.emplace_back(simplified);
             if (Config::Analysis::model) {
                 the_cex()->add_accel(rule, simplified);
@@ -519,7 +524,7 @@ std::unique_ptr<LearningState> ADCL::learn_clause(const RulePtr& rule, const Mod
     }
     if (Config::Analysis::model) {
         std::vector<RulePtr> rules;
-        for (unsigned i = backlink; i < trace.size(); ++i) {
+        for (unsigned i = range.start(); i <= range.end(); ++i) {
             if (const auto e{trace.at(i)}; is_orig_clause(e.clause_idx) && e.implicant != e.clause_idx) {
                 const auto imp{e.implicant->renameVars(e.tmp_var_renaming)};
                 the_cex()->add_implicant(e.clause_idx, imp);
@@ -557,8 +562,8 @@ void ADCL::drop_until(const int new_size) {
     }
 }
 
-std::unique_ptr<LearningState> ADCL::handle_loop(const unsigned backlink) {
-    const auto lang {build_language(backlink)};
+std::unique_ptr<LearningState> ADCL::handle_loop(const Range& range) {
+    const auto lang {build_language(range)};
     auto closure {lang};
     redundancy->transitive_closure(closure);
     locked.erase(closure);
@@ -577,8 +582,8 @@ std::unique_ptr<LearningState> ADCL::handle_loop(const unsigned backlink) {
         std::cout << "learning clause for the following language:" << std::endl;
         std::cout << closure << std::endl;
     }
-    const auto [loop, model] {build_loop(backlink)};
-    auto state {learn_clause(loop, model, backlink)};
+    const auto [loop, model] {build_loop(range)};
+    auto state {learn_clause(loop, model, range)};
     redundancy->mark_as_accelerated(closure);
     if (!state->succeeded()) {
         if (state->unroll()) {
@@ -598,9 +603,9 @@ std::unique_ptr<LearningState> ADCL::handle_loop(const unsigned backlink) {
     }
     const auto accel_state {*state->succeeded()};
     const auto& [res, prefix, period] {*accel_state};
-    const bool do_drop {drop || (backlink == trace.size() - 1  && prefix <= 1 && period == 1)};
+    const bool do_drop {drop || (range.length() == 1  && prefix <= 1 && period == 1)};
     if (do_drop) {
-        drop_until(backlink);
+        drop_until(range.start());
     }
     bool done {!do_drop};
     if (Config::Analysis::log) {
@@ -688,12 +693,12 @@ SmtResult ADCL::analyze() {
         const size_t next_restart = luby_unit * luby.second;
         std::unique_ptr<LearningState> state;
         if (!trace.empty()) {
-            for (auto backlink = has_looping_suffix(trace.size() - 1);
-                 backlink;
-                 backlink = has_looping_suffix(*backlink - 1)) {
-                auto step {trace[*backlink]};
-                const auto simple_loop {*backlink == trace.size() - 1};
-                state = handle_loop(*backlink);
+            for (auto range = has_looping_infix(trace.size() - 1);
+                 range;
+                 range = has_looping_infix(range->start() - 1)) {
+                auto step {trace[range->start()]};
+                const auto simple_loop {range->length() == 1};
+                state = handle_loop(*range);
                 if (state->restart()) {
                     break;
                 }

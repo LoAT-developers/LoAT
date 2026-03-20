@@ -7,6 +7,7 @@
 #include "smtfactory.hpp"
 #include "itssafetycex.hpp"
 #include "itscpxcex.hpp"
+#include "range.hpp"
 
 #include <optional>
 
@@ -148,6 +149,8 @@ class ADCL {
 
     ITSPtr chcs;
 
+    DependencyGraph<RulePtr> dependency_graph {};
+
     SmtPtr solver {SmtFactory::solver()};
 
     const bool drop;
@@ -233,23 +236,23 @@ class ADCL {
      * from the looping suffix of the trace
      * @param backlink the start of the looping suffix of the trace
      */
-    Automaton build_language(int backlink) const;
+    Automaton build_language(const Range& range) const;
 
     /**
      * computes a clause that is equivalent to the looping suffix of the trace
      * @param backlink the start of the looping suffix of the trace
      */
-    std::pair<RulePtr, ModelPtr> build_loop(int backlink) const;
+    std::pair<RulePtr, ModelPtr> build_loop(const Range& range) const;
 
     /**
      * adds a learned clause to all relevant data structures
      */
-    void add_learned_clause(const RulePtr& accel, unsigned backlink) const;
+    void add_learned_clause(const RulePtr& accel, const Range&) const;
 
     /**
      * tries to accelerate the given clause
      */
-    std::unique_ptr<LearningState> learn_clause(const RulePtr& rule, const ModelPtr& model, unsigned backlink);
+    std::unique_ptr<LearningState> learn_clause(const RulePtr& rule, const ModelPtr& model, const Range& range);
 
     bool check_consistency() const;
 
@@ -258,12 +261,12 @@ class ADCL {
     /**
      * does everything that needs to be done if the trace has a looping suffix
      */
-    std::unique_ptr<LearningState> handle_loop(unsigned backlink);
+    std::unique_ptr<LearningState> handle_loop(const Range& range);
 
     /**
      * @return the start position of the looping suffix of the trace, if any, or -1
      */
-    std::optional<unsigned> has_looping_suffix(int start) const;
+    std::optional<Range> has_looping_infix(int start) const;
 
     /**
      * Generates a fresh copy of the program variables and fixes their value according to the update of the
