@@ -6,7 +6,7 @@
 class Swine final : public Smt {
 
 public:
-    explicit Swine(const swine::Config& config = swine::Config());
+    explicit Swine(const Logic l, const swine::Config& config = swine::Config());
     void add(Bools::Expr e) override;
     void push() override;
     void pop() override;
@@ -26,6 +26,7 @@ private:
     swine::Swine solver;
     SwineContext ctx;
     std::optional<ModelPtr> m;
+    const LogicProperties l_props;
 
     struct Frame {
         std::unordered_map<ArrayWritePtr<Arith>, Arrays<Arith>::Var> abstractions;

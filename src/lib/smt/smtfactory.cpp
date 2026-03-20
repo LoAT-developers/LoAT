@@ -15,7 +15,7 @@ SmtPtr solver(const Logic logic) {
             res = std::unique_ptr<Smt>(new Yices(logic));
             break;
         default:
-            res = std::unique_ptr<Smt>(new Swine());
+            res = std::unique_ptr<Smt>(new Swine(logic));
             break;
         }
         break;
@@ -24,7 +24,7 @@ SmtPtr solver(const Logic logic) {
         switch (logic) {
         case Logic::QF_EA:
         case Logic::QF_AEA:
-            res = std::unique_ptr<Smt>(new Swine());
+            res = std::unique_ptr<Smt>(new Swine(logic));
             break;
         default:
             res = std::unique_ptr<Smt>(new Yices(logic));
@@ -33,7 +33,7 @@ SmtPtr solver(const Logic logic) {
         break;
     }
     case Config::Analysis::Swine: {
-        res = std::unique_ptr<Smt>(new Swine());
+        res = std::unique_ptr<Smt>(new Swine(logic));
         break;
     }
     }
@@ -47,7 +47,7 @@ SmtPtr solver() {
         solver = std::unique_ptr<Smt>(new Yices(Logic::QF_ANA));
         break;
     default:
-        solver = std::unique_ptr<Smt>(new Swine());
+        solver = std::unique_ptr<Smt>(new Swine(Logic::QF_ANA));
         break;
     }
     return solver;

@@ -36,6 +36,8 @@ public:
     // Mutation of Rules
     void removeRule(const RulePtr& transition);
 
+    bool hasArrays() const;
+
 private:
 
     RulePtr addRule(const RulePtr& rule, LocationIdx start, LocationIdx target, const linked_hash_set<RulePtr> &preds, const linked_hash_set<RulePtr> &succs);

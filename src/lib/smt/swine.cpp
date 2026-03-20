@@ -2,7 +2,7 @@
 #include "exprconverter.hpp"
 #include "swinemodel.hpp"
 
-Swine::Swine(const swine::Config& config): solver(config, *z3ctx), ctx(z3ctx, solver.get_exp()) {
+Swine::Swine(const Logic l, const swine::Config& config): solver(config, *z3ctx), ctx(z3ctx, solver.get_exp()), l_props(get_properties(l)) {
     auto &s {solver.get_solver()};
     s.set("random_seed", 42u);
     // s.set("rlimit", 10000000u);
@@ -12,13 +12,17 @@ Swine::Swine(const swine::Config& config): solver(config, *z3ctx), ctx(z3ctx, so
 using Converter = ExprConverter<z3::expr, z3::expr, z3::expr_vector, z3::expr_vector>;
 
 void Swine::add(const Bools::Expr e) {
-    const auto cells = e->cells().get<ArithVarPtr>();
-    for (const auto& c: cells) {
-        frames.back().indices.emplace(c->indices());
+    if (l_props.no_arrays) {
+        solver.add(Converter::convert(e, ctx));
+    } else {
+        const auto cells = e->cells().get<ArithVarPtr>();
+        for (const auto& c: cells) {
+            frames.back().indices.emplace(c->indices());
+        }
+        const auto abstraction = std::get<Bools::Expr>(abstract(e));
+        frames.back().assertions.emplace(abstraction);
+        solver.add(Converter::convert(abstraction, ctx));
     }
-    const auto abstraction = std::get<Bools::Expr>(abstract(e));
-    frames.back().assertions.emplace(abstraction);
-    solver.add(Converter::convert(abstraction, ctx));
 }
 
 void Swine::push() {
@@ -41,6 +45,9 @@ SmtResult Swine::check() {
             return SmtResult::Unknown;
         case z3::sat:
             m = cpp::assume_not_null(std::make_shared<SwineModel>(ctx, solver.get_model(), Subs()));
+            if (l_props.no_arrays) {
+                return SmtResult::Sat;
+            }
             BoolExprSet concrete_conjuncts;
             BoolExprSet abstract_conjuncts;
             for (const auto& f : frames) {

@@ -19,7 +19,7 @@ class ABMC final : public StepwiseAnalysis {
     };
 
     ITSPtr its;
-    SmtPtr solver {SmtFactory::solver()};
+    SmtPtr solver;
     bool approx {false};
     unsigned last_orig_clause {};
     Bools::Expr query {bot()};

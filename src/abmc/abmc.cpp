@@ -13,6 +13,7 @@ using namespace Config::ABMC;
 
 ABMC::ABMC(const ITSPtr& its):
     its(its),
+    solver(SmtFactory::solver(its->hasArrays() ? Logic::QF_AEA : Logic::QF_EA)),
     cex(its) {
     vars.insert(trace_var->var());
     cells.insert(trace_var);

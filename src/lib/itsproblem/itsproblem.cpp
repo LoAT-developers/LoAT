@@ -215,6 +215,17 @@ size_t ITSProblem::size() const {
     return graph.size();
 }
 
+bool ITSProblem::hasArrays() const {
+    for (const auto &x: getVars()) {
+        if (theory::apply(x, [&](const auto &x) {
+            return x->dim() > 0;
+        })) {
+            return true;
+        }
+    }
+    return false;
+}
+
 std::ostream& operator<<(std::ostream &s, const ITSPtr& its) {
     s << "Start location: ";
     s << its->getPrintableLocationName(its->getInitialLocation()) << "\n\n";
