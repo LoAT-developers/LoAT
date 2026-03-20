@@ -735,7 +735,7 @@ SmtResult ADCL::analyze() {
                 }
             }
         }
-        if ((state && state->restart()) || !check_consistency()) {
+        if (luby_count >= next_restart || (state && state->restart()) || !check_consistency()) {
             if (Config::Analysis::log) std::cout << "restarting after " << luby_count << " iterations" << std::endl;
             // restart
             while (!trace.empty()) {
