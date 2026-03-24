@@ -29,7 +29,6 @@ ADCLSat::ADCLSat(const ITSPtr& its, const Config::TRPConfig &config): TRPUtil(it
             }
         }
         if (t.get_dg().getRoots().contains(trans)) {
-            std::cout << "found root" << std::endl;
             dg_over_approx.markRoot(encoded);
         }
         if (t.get_dg().getSinks().contains(trans)) {
@@ -205,7 +204,8 @@ std::optional<SmtResult> ADCLSat::do_step() {
     }
     const auto trans{rule_map.at(id)};
     const auto m{(*model)->composeBackwards(subs)};
-    const auto imp{m->syntacticImplicant(trans)};
+    const auto [imp_non_bool, imp_bool] = m->structuralImplicant(trans);
+    const auto imp = imp_non_bool && imp_bool;
     solver->push();
     solver->add(imp->renameVars(subs));
     const auto smt_res{solver->check()};

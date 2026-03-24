@@ -14,8 +14,18 @@ Bools::Expr int_mbp(const Bools::Expr &t, const ModelPtr &model, const ArithVarP
     Int flcm{1};
     // least common multiple of all divisors (or modulus) in divisibility constraints for x
     Int mlcm{1};
-    auto lits{t->lits()};
-    auto &arith_lits{lits.get<Arith::Lit>()};
+    auto lits = t->isConjunction() ? t->getChildren() : BoolExprSet{t};
+    linked_hash_set<Arith::Lit> arith_lits;
+    for (auto it = lits.begin(); it != lits.end();) {
+        if (const auto tl = (*it)->getTheoryLit()) {
+            if (std::holds_alternative<Arith::Lit>(*tl)) {
+                arith_lits.insert(std::get<Arith::Lit>(*tl));
+                it = lits.erase(it);
+                continue;
+            }
+        }
+        ++it;
+    }
     // Iterate over all arithmetic literals to populate the sets above.
     // Erases literals that contain x as side effect.
     for (auto it = arith_lits.begin(); it != arith_lits.end();) {
@@ -162,7 +172,7 @@ Bools::Expr int_mbp(const Bools::Expr &t, const ModelPtr &model, const ArithVarP
     for (const auto &d : scaled_divs) {
         arith_lits.insert(arith::mkEq(arith::mkMod(substitute + d.res, arith::mkConst(d.modulo)), arith::zero()));
     }
-    return bools::mkAnd(lits);
+    return bools::mkAnd(arith_lits) && bools::mkAnd(lits);
 }
 
 Bools::Expr do_mbp(const Bools::Expr& t, const ModelPtr& model, const Cell& x, const Config::TRPConfig::MbpKind mode) {

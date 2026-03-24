@@ -33,6 +33,11 @@ Bools::Expr BoolExpr::build(const Children& lits, const ConcatOperator op) {
         case 1:
             return *children.begin();
         default:
+            for (const auto &x: children) {
+                if (children.contains(!x)) {
+                    return op == ConcatAnd ? bot() : top();
+                }
+            }
             return from_cache(children, op);
         }
     } else {
