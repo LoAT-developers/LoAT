@@ -65,9 +65,18 @@ BoolJunction::~BoolJunction() {
 }
 
 bool BoolJunction::isConjunction() const {
-    return isAnd() && std::ranges::all_of(children, [](const auto& c){
-               return c->isConjunction();
-           });
+    return isAnd() && std::ranges::all_of(children, [](const auto &c) {
+        return c->isConjunction();
+    });
+}
+
+bool BoolJunction::isStructualImplicant() const {
+    return (isAnd() && std::ranges::all_of(children, [](const auto &c) {
+        return c->isStructualImplicant();
+    })) || (
+        isOr() && forall([](const auto& l) {
+            return std::holds_alternative<Bools::Lit>(l);
+        }));
 }
 
 LitSet BoolJunction::universallyValidLits() const {

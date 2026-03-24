@@ -81,6 +81,7 @@ public:
     virtual bool forall(const std::function<bool(const Lit&)> &pred) const = 0;
     virtual LitSet universallyValidLits() const = 0;
     virtual bool isConjunction() const = 0;
+    virtual bool isStructualImplicant() const = 0;
     virtual void collectLits(LitSet &res) const = 0;
     virtual size_t size() const = 0;
 
@@ -170,6 +171,7 @@ public:
     bool forall(const std::function<bool(const Lit&)> &pred) const override;
     ~BoolTheoryLit() override;
     bool isConjunction() const override;
+    bool isStructualImplicant() const override;
     LitSet universallyValidLits() const override;
     void collectLits(LitSet &res) const override;
     size_t size() const override;
@@ -206,6 +208,7 @@ public:
     bool forall(const std::function<bool(const Lit&)> &pred) const override;
     ~BoolJunction() override;
     bool isConjunction() const override;
+    bool isStructualImplicant() const override;
     LitSet universallyValidLits() const override;
     void collectLits(LitSet &res) const override;
     size_t size() const override;

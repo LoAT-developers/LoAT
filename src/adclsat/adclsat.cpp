@@ -64,7 +64,7 @@ void ADCLSat::add_blocking_clause(const Range &range, const Int &id, const Bools
 }
 
 void ADCLSat::handle_loop(const Range& range) {
-    auto [loop, model]{specialize(range, theory::isTempCell)};
+    auto [loop_non_bool, loop_bool, model]{specialize(range, theory::isTempCell)};
     solver->pop();
     if (add_blocking_clauses(range, model)) {
         if (Config::Analysis::log) {
@@ -76,7 +76,7 @@ void ADCLSat::handle_loop(const Range& range) {
     if (Config::Analysis::log) {
         std::cout << "***** Accelerate *****" << std::endl;
     }
-    auto ti{trp.compute(loop, model)};
+    auto ti{trp.compute(loop_non_bool, loop_bool, model)};
     Int id;
     Bools::Expr projected{top()};
     const auto n {trp.get_n()};

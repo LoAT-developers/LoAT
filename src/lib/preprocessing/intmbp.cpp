@@ -3,7 +3,7 @@
 #include "smtfactory.hpp"
 
 Bools::Expr int_mbp(const Bools::Expr &t, const ModelPtr &model, const ArithVarPtr& x, const Config::TRPConfig::MbpKind mode) {
-    assert(t->isConjunction());
+    assert (t->isStructualImplicant());
     // divisibility constraints for x
     linked_hash_set<Divisibility> divs;
     // lower bounds for x

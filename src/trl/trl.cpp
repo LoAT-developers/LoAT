@@ -44,7 +44,8 @@ std::optional<Range> TRL::has_looping_infix() {
 }
 
 bool TRL::handle_loop(const Range &range) {
-    auto [loop, model]{specialize(range, theory::isTempCell)};
+    auto [loop_non_bool, loop_bool, model]{specialize(range, theory::isTempCell)};
+    auto loop = loop_non_bool && loop_bool;
     Bools::Expr termination_argument {top()};
     if (Config::Analysis::termination()) {
         if (const auto rf {prove_term(loop, model)}) {
@@ -56,6 +57,7 @@ bool TRL::handle_loop(const Range &range) {
                             (*rf)->renameVars(post_to_pre),
                             (*rf)->renameVars(t.pre_to_post()))
                     });
+            loop_non_bool = loop_non_bool && termination_argument;
             loop = loop && termination_argument;
         } else {
             return false;
@@ -64,7 +66,7 @@ bool TRL::handle_loop(const Range &range) {
     if (TRPUtil::add_blocking_clauses(range, model)) {
         return true;
     }
-    auto ti{trp.compute(loop, model)};
+    auto ti{trp.compute(loop_non_bool, loop_bool, model)};
     if (Config::Analysis::termination()) {
         ti = ti && termination_argument;
     }
@@ -149,7 +151,8 @@ void TRL::build_trace() {
         const auto id{(*model)->get(trace_var->renameVars(s))};
         const auto rule{encode_transition(rule_map.at(id), id)};
         const auto comp{(*model)->composeBackwards(s)};
-        const auto imp{comp->syntacticImplicant(rule) && Arith::mkEq(trace_var, arith::mkConst(id))};
+        const auto [non_bool_imp, bool_imp] = comp->structuralImplicant(rule);
+        const auto imp= non_bool_imp && bool_imp && Arith::mkEq(trace_var, arith::mkConst(id));
         if (prev) {
             dependency_graph.addEdge(prev->first, imp);
         }

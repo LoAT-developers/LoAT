@@ -139,8 +139,9 @@ std::pair<Bools::Expr, ModelPtr> TRPUtil::compress(const Range &range) {
             // sigma2 maps vars from chained to the corresponding vars from loop
             // temporary variables in rule remain unchanged
             // temporary variables in loop that clash with rule are renamed
+            // TODO use projections here already to keep intermediate results small?
             const auto [chained, sigma1, sigma2]{Preprocess::chain(rule, *loop)};
-            // all pre-vars and temp vars that already occured in rule correspond to vars from rule
+            // all pre-vars and temp vars that already occurred in rule correspond to vars from rule
             auto fst_vars{t.pre_vars()};
             rule->collectVars(fst_vars);
             for (const auto &x : t.post_vars()) {
@@ -200,23 +201,25 @@ Int TRPUtil::add_learned_clause(const Range &range, const Bools::Expr &accel) {
     return id;
 }
 
-Bools::Expr TRPUtil::specialize(const Bools::Expr& e, const ModelPtr &model, const std::function<bool(const Cell &)> &eliminate) const {
-    const auto sip{model->syntacticImplicant(e)};
+std::pair<Bools::Expr, Bools::Expr> TRPUtil::specialize(const Bools::Expr& e, const ModelPtr &model, const std::function<bool(const Cell &)> &eliminate) const {
+    const auto [sip_non_bool, sip_bool]{model->structuralImplicant(e)};
     if (Config::Analysis::log) {
-        std::cout << "sip: " << sip << std::endl;
+        std::cout << "sip: " << (sip_non_bool && sip_bool) << std::endl;
     }
-    const auto simp{Preprocess::preprocessFormula(sip)};
-    if (Config::Analysis::log && simp != sip) {
-        std::cout << "simp: " << simp << std::endl;
+    const auto simp_non_bool{Preprocess::preprocessFormula(sip_non_bool)};
+    const auto simp_bool{Preprocess::preprocessFormula(sip_bool)};
+    if (Config::Analysis::log && (simp_non_bool != sip_bool || simp_bool != sip_bool)) {
+        std::cout << "simp: " << (simp_non_bool && simp_bool) << std::endl;
     }
-    const auto mbp_res{trp.mbp(simp, model, eliminate)};
-    if (Config::Analysis::log && mbp_res != simp) {
-        std::cout << "mbp: " << mbp_res << std::endl;
+    const auto mbp_non_bool{trp.mbp(simp_non_bool, model, eliminate)};
+    const auto mbp_bool{trp.mbp(simp_bool, model, eliminate)};
+    if (Config::Analysis::log && (mbp_non_bool != simp_non_bool || mbp_bool != simp_bool)) {
+        std::cout << "mbp: " << (mbp_non_bool && mbp_bool) << std::endl;
     }
-    return mbp_res;
+    return {mbp_non_bool, mbp_bool};
 }
 
-std::pair<Bools::Expr, ModelPtr> TRPUtil::specialize(const Range &range, const std::function<bool(const Cell &)> &eliminate) {
+std::tuple<Bools::Expr, Bools::Expr, ModelPtr> TRPUtil::specialize(const Range &range, const std::function<bool(const Cell &)> &eliminate) {
     assert (!range.empty());
     const auto [transition, model]{compress(range)};
     if (Config::Analysis::log) {
@@ -224,7 +227,8 @@ std::pair<Bools::Expr, ModelPtr> TRPUtil::specialize(const Range &range, const s
         std::cout << transition << std::endl;
         std::cout << "model: " << model->toString(vars) << std::endl;
     }
-    return {specialize(transition, model, eliminate), model};
+    const auto [res_non_bool, res_bool] = specialize(transition, model, eliminate);
+    return {res_non_bool, res_bool, model};
 }
 
 std::optional<Arith::Expr> TRPUtil::prove_term(const Bools::Expr& loop, const ModelPtr &model) {

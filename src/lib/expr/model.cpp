@@ -188,6 +188,77 @@ Bools::Expr Model::syntacticImplicant(const Bools::Expr& e) {
     return bools::mkAnd(res);
 }
 
+bool Model::structuralImplicant(const Bools::Expr& e, BoolExprSet& non_bool_res, BoolExprSet& bool_res) {
+    const auto purely_bool = e->forall([](const auto& l) {
+        return std::holds_alternative<Bools::Lit>(l);
+    });
+    if (purely_bool) {
+        if (eval(e)) {
+            bool_res.insert(e);
+            return true;
+        }
+        return false;
+    }
+    if (e->isAnd()) {
+        BoolExprSet sub_non_bool, sub_bool;
+        for (const auto &c : e->getChildren()) {
+            if (!structuralImplicant(c, sub_non_bool, sub_bool)) {
+                return false;
+            }
+        }
+        non_bool_res.insert(sub_non_bool.begin(), sub_non_bool.end());
+        bool_res.insert(sub_bool.begin(), sub_bool.end());
+        return true;
+    }
+    if (e->isOr()) {
+        for (const auto &c : e->getChildren()) {
+            if (structuralImplicant(c, non_bool_res, bool_res)) {
+                return true;
+            }
+        }
+        return false;
+    }
+    if (const auto lit = e->getTheoryLit()) {
+        const auto self = cpp::assume_not_null(this->shared_from_this());
+        if (eval(*lit)) {
+            theory::apply(
+                *lit,
+                [&](const Bools::Lit &l) {
+                    bool_res.insert(bools::mkLit(l));
+                },
+                [&](const auto &l) {
+                    LitSet imps;
+                    l->syntacticImplicant(self, imps);
+                    for (const auto &imp: imps) {
+                        non_bool_res.insert(bools::mkLit(imp));
+                    }
+                });
+            return true;
+        } else {
+            return false;
+        }
+    }
+    throw std::invalid_argument("unknown kind of BoolExpr");
+}
+
+std::pair<Bools::Expr, Bools::Expr> Model::structuralImplicant(const Bools::Expr& e) {
+    if (!eval(e)) {
+        std::cerr << "structural implicant failed; model:" << std::endl;
+        std::cerr << this->toString(e->cells()) << std::endl;
+        std::cerr << "formula: " << e << std::endl;
+        std::cerr << "violated literals:" << std::endl;
+        for (const auto& l: e->lits()) {
+            if (!eval(l)) {
+                std::cerr << l << std::endl;
+            }
+        }
+        throw std::invalid_argument("structural implicant failed");
+    }
+    BoolExprSet non_bool_res, bool_res;
+    structuralImplicant(e, non_bool_res, bool_res);
+    return {bools::mkAnd(non_bool_res), bools::mkAnd(bool_res)};
+}
+
 Rational Model::evalToRational(const Arith::Expr& e) {
     return evalToRational(e, subs);
 }

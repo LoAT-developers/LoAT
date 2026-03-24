@@ -277,27 +277,60 @@ Bools::Expr TRP::recurrent(const Bools::Expr& loop, const ModelPtr &model) {
     return res;
 }
 
-Bools::Expr TRP::compute(const Bools::Expr& loop, const ModelPtr &model) {
+Bools::Expr TRP::handle_bool(const Bools::Expr& loop_bool) {
+    BoolExprSet res;
+    const auto lits = loop_bool->isAnd() ? loop_bool->getChildren() : BoolExprSet{loop_bool};
+    for (const auto& l: lits) {
+        const auto vars = l->vars();
+        if (std::ranges::all_of(vars, theory::isProgVar)) {
+            res.insert(l);
+            const auto renamed = l->renameVars(pre_to_post);
+            if (SmtFactory::check(loop_bool && !renamed) == SmtResult::Unsat) {
+                res.insert(renamed);
+            }
+        } else if (std::ranges::all_of(vars, theory::isPostVar)) {
+            res.insert(l);
+            const auto renamed = l->renameVars(post_to_pre);
+            if (SmtFactory::check(loop_bool && !renamed) == SmtResult::Unsat) {
+                res.insert(renamed);
+            }
+        } else {
+            const auto fst = loop_bool->renameVars(post_to_intermediate);
+            const auto snd = loop_bool->renameVars(pre_to_intermediate);
+            if (SmtFactory::check(fst && snd && !l) == SmtResult::Unsat) {
+                res.insert(l);
+            }
+        }
+    }
+    return bools::mkAnd(res);
+}
+
+Bools::Expr TRP::compute(const Bools::Expr& loop_non_bool, const Bools::Expr& loop_bool, const ModelPtr &model) {
+    const auto loop = loop_non_bool && loop_bool;
     if (SmtFactory::check(loop->renameVars(post_to_intermediate) && loop->renameVars(pre_to_intermediate) && !loop) == SmtResult::Unsat) {
         return loop;
     }
-    const auto pre{mbp(loop, model, [](const auto &x) {
+    const auto pre = mbp(loop_non_bool, model, [](const auto &x) {
         return !theory::isProgCell(x);
-    })};
+    });
     if (Config::Analysis::log) {
         std::cout << "pre: " << pre << std::endl;
     }
-    const auto step{recurrent(loop, model)};
+    const auto step = recurrent(loop_non_bool, model);
     if (Config::Analysis::log) {
         std::cout << "recurrence analysis: " << step << std::endl;
     }
-    const auto post{mbp(loop, model, [](const auto &x) {
+    const auto post = mbp(loop_non_bool, model, [](const auto &x) {
         return !theory::isPostCell(x);
-    })};
+    });
     if (Config::Analysis::log) {
         std::cout << "post: " << post << std::endl;
     }
-    return removeRedundantInequations(pre && step && post);
+    const auto rec_bool = handle_bool(loop_bool);
+    if (Config::Analysis::log) {
+        std::cout << "bool: " << rec_bool << std::endl;
+    }
+    return removeRedundantInequations(pre && step && post) && rec_bool;
 }
 
 ArithVarPtr TRP::get_n() const {

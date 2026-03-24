@@ -55,6 +55,10 @@ bool BoolTheoryLit::isConjunction() const {
     return true;
 }
 
+bool BoolTheoryLit::isStructualImplicant() const {
+    return true;
+}
+
 LitSet BoolTheoryLit::universallyValidLits() const {
     LitSet res;
     res.insert(lit);

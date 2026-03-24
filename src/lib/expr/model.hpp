@@ -28,6 +28,9 @@ public:
     Bools::Expr syntacticImplicant(const Bools::Expr&);
     bool syntacticImplicant(const Bools::Expr& e, LitSet& res);
 
+    std::pair<Bools::Expr, Bools::Expr> structuralImplicant(const Bools::Expr&);
+    bool structuralImplicant(const Bools::Expr& e, BoolExprSet& non_bool_res, BoolExprSet& bool_res);
+
     ModelPtr composeBackwards(const Renaming&) const;
     ModelPtr composeBackwards(const Subs&) const;
 

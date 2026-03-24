@@ -19,11 +19,12 @@ class TRP {
     void recurrent_cycles(const Bools::Expr& loop, const linked_hash_set<ArithVarPtr>& pre_cells);
     void recurrent_bounds(const Bools::Expr& loop, const linked_hash_set<ArithVarPtr>& pre_cells, const ModelPtr& model);
     Bools::Expr recurrent(const Bools::Expr& loop, const ModelPtr &model);
+    Bools::Expr handle_bool(const Bools::Expr& loop_bool);
 
 public:
 
     TRP(const Renaming &pre_to_post, const Config::TRPConfig &config);
-    Bools::Expr compute(const Bools::Expr& loop, const ModelPtr &model);
+    Bools::Expr compute(const Bools::Expr& loop_non_bool, const Bools::Expr& loop_bool, const ModelPtr &model);
     ArithVarPtr get_n() const;
     Bools::Expr mbp(const Bools::Expr &trans, const ModelPtr &model, const std::function<bool(const Cell &)> &eliminate) const;
 

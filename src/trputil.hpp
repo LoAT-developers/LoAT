@@ -48,8 +48,8 @@ protected:
     const Renaming& get_subs(unsigned start, unsigned steps);
     Bools::Expr encode_transition(const Bools::Expr &t, const Int &id) const;
     Int add_learned_clause(const Range &range, const Bools::Expr &accel);
-    Bools::Expr specialize(const Bools::Expr& e, const ModelPtr &model, const std::function<bool(const Cell&)> &eliminate) const;
-    std::pair<Bools::Expr, ModelPtr> specialize(const Range &range, const std::function<bool(const Cell&)> &eliminate);
+    std::pair<Bools::Expr, Bools::Expr> specialize(const Bools::Expr& e, const ModelPtr &model, const std::function<bool(const Cell&)> &eliminate) const;
+    std::tuple<Bools::Expr, Bools::Expr, ModelPtr> specialize(const Range &range, const std::function<bool(const Cell&)> &eliminate);
     std::optional<Arith::Expr> prove_term(const Bools::Expr& loop, const ModelPtr &model);
     bool build_cex();
     virtual void add_blocking_clause(const Range &range, const Int &id, Bools::Expr loop) = 0;
