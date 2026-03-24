@@ -4,17 +4,13 @@
 Subs impliedEquivalences(const Bools::Expr& e) {
     Subs res;
     std::vector<Bools::Expr> todo;
-    const auto find_elim = [](const Bools::Expr &c) {
-        std::optional<Bools::Var> elim;
+    const auto find_elim = [](const Bools::Expr &c) -> std::optional<Bools::Var> {
         for (const auto vars {c->vars().get<Bools::Var>()}; const auto &x: vars) {
             if (x->isTempVar()) {
-                if (elim) {
-                    return std::optional<Bools::Var>{};
-                }
-                elim = x;
+                return x;
             }
         }
-        return elim;
+        return std::nullopt;
     };
     if (e->isAnd()) {
         const auto children {e->getChildren()};
