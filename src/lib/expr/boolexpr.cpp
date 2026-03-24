@@ -65,7 +65,7 @@ Bools::Expr BoolExpr::build(const Children& lits, const ConcatOperator op) {
             return *children.begin();
         default:
             for (const auto &x: children) {
-                if (children.contains(!x)) {
+                if (x->isTheoryLit() && children.contains(!x)) {
                     return op == ConcatAnd ? bot() : top();
                 }
             }
