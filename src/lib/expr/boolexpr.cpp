@@ -13,12 +13,6 @@ Bools::Expr BoolExpr::build(const Children& lits, const ConcatOperator op) {
     static_assert(std::is_same_v<Elem, Bools::Expr> || std::is_constructible_v<Lit, Elem>);
     BoolExprSet children;
     if constexpr (std::is_same_v<Elem, Bools::Expr>) {
-        if (op == ConcatAnd && std::find(lits.begin(), lits.end(), bot()) != lits.end()) {
-            return bot();
-        }
-        if (op == ConcatOr && std::find(lits.begin(), lits.end(), top()) != lits.end()) {
-            return top();
-        }
         for (const auto &x: lits) {
             if (op == ConcatAnd && x->isAnd() || op == ConcatOr && x->isOr()) {
                 const auto cs {x->getChildren()};
@@ -26,6 +20,43 @@ Bools::Expr BoolExpr::build(const Children& lits, const ConcatOperator op) {
             } else {
                 children.insert(x);
             }
+        }
+        if (op == ConcatAnd) {
+            BoolExprSet units;
+            linked_hash_map<Lit, Bools::Expr> prop;
+            bool changed;
+            do {
+                changed = false;
+                for (auto it = children.begin(); it != children.end();) {
+                    const auto& x = *it;
+                    if (const auto l = x->getTheoryLit()) {
+                        if (units.insert(x).second) {
+                            changed = true;
+                            prop.put(*l, top());
+                            prop.put(theory::negate(*l), bot());
+                        }
+                        it = children.erase(it);
+                    } else {
+                        ++it;
+                    }
+                }
+                if (changed) {
+                    BoolExprSet new_children;
+                    for (const auto& x: children) {
+                        new_children.insert(x->map([&](const auto& l) {
+                            return prop.get(l).value_or(bools::mkLit(l));
+                        }));
+                    }
+                    children = new_children;
+                }
+            } while (changed);
+            children.insert(units.begin(), units.end());
+        }
+        if (op == ConcatAnd && children.contains(bot())) {
+            return bot();
+        }
+        if (op == ConcatOr && children.contains(top())) {
+            return top();
         }
         switch (children.size()) {
         case 0:
