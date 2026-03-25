@@ -279,27 +279,42 @@ Bools::Expr TRP::recurrent(const Bools::Expr& loop, const ModelPtr &model) {
 
 Bools::Expr TRP::handle_bool(const Bools::Expr& loop_bool) {
     BoolExprSet res;
+    const auto logic = Smt::chooseLogic(loop_bool);
+    SmtPtr ind = SmtFactory::solver(logic);
+    SmtPtr trans = SmtFactory::solver(logic);
+    ind->add(loop_bool);
+    const auto fst = loop_bool->renameVars(post_to_intermediate);
+    const auto snd = loop_bool->renameVars(pre_to_intermediate);
+    trans->add(fst);
+    trans->add(snd);
     const auto lits = loop_bool->isAnd() ? loop_bool->getChildren() : BoolExprSet{loop_bool};
     for (const auto& l: lits) {
         const auto vars = l->vars();
         if (std::ranges::all_of(vars, theory::isProgVar)) {
             res.insert(l);
             const auto renamed = l->renameVars(pre_to_post);
-            if (SmtFactory::check(loop_bool && !renamed) == SmtResult::Unsat) {
+            ind->push();
+            ind->add(renamed);
+            if (ind->check() == SmtResult::Unsat) {
                 res.insert(renamed);
             }
+            ind->pop();
         } else if (std::ranges::all_of(vars, theory::isPostVar)) {
             res.insert(l);
             const auto renamed = l->renameVars(post_to_pre);
-            if (SmtFactory::check(loop_bool && !renamed) == SmtResult::Unsat) {
+            ind->push();
+            ind->add(renamed);
+            if (ind->check() == SmtResult::Unsat) {
                 res.insert(renamed);
             }
+            ind->pop();
         } else {
-            const auto fst = loop_bool->renameVars(post_to_intermediate);
-            const auto snd = loop_bool->renameVars(pre_to_intermediate);
-            if (SmtFactory::check(fst && snd && !l) == SmtResult::Unsat) {
+            trans->push();
+            trans->add(!l);
+            if (trans->check() == SmtResult::Unsat) {
                 res.insert(l);
             }
+            trans->pop();
         }
     }
     return bools::mkAnd(res);
