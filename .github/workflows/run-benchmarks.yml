@@ -48,6 +48,7 @@ on:
         - chc22-lia-lin
         - chc23-lia-lin
         - chc24-lia-lin
+        - chc25-lia-lin
         - chc25-lia-lin-arrays
         - tpdb-ari-termination
         - tpdb-ari-complexity
@@ -90,6 +91,11 @@ jobs:
 
       - if: ${{ inputs.benchmarks == 'chc25-lia-lin-arrays' }}
         uses: ./actions/.github/actions/chc25-lia-lin-arrays
+
+      - if: ${{ inputs.benchmarks == 'chc25-lia-lin' }}
+        uses: ./actions/.github/actions/chc25-lia-lin
+        with:
+          pat: ${{ secrets.LOAT_DEVELOPERS_PAT }}
 
       - if: ${{ inputs.benchmarks == 'chc24-lia-lin' }}
         uses: ./actions/.github/actions/chc24-lia-lin
