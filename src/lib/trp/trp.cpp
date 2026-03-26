@@ -281,12 +281,7 @@ Bools::Expr TRP::handle_bool(const Bools::Expr& loop_bool) {
     BoolExprSet res;
     const auto logic = Smt::chooseLogic(loop_bool);
     SmtPtr ind = SmtFactory::solver(logic);
-    SmtPtr trans = SmtFactory::solver(logic);
     ind->add(loop_bool);
-    const auto fst = loop_bool->renameVars(post_to_intermediate);
-    const auto snd = loop_bool->renameVars(pre_to_intermediate);
-    trans->add(fst);
-    trans->add(snd);
     const auto lits = loop_bool->isAnd() ? loop_bool->getChildren() : BoolExprSet{loop_bool};
     for (const auto& l: lits) {
         const auto vars = l->vars();
@@ -308,13 +303,6 @@ Bools::Expr TRP::handle_bool(const Bools::Expr& loop_bool) {
                 res.insert(renamed);
             }
             ind->pop();
-        } else {
-            trans->push();
-            trans->add(!l);
-            if (trans->check() == SmtResult::Unsat) {
-                res.insert(l);
-            }
-            trans->pop();
         }
     }
     return bools::mkAnd(res);
