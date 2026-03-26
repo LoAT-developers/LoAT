@@ -55,10 +55,12 @@ std::optional<Range> ADCLSat::has_looping_infix() {
 
 void ADCLSat::add_blocking_clause(const Range &range, const Int &id, const Bools::Expr loop) {
     const auto s{get_subs(range.start(), range.length())};
+    auto &map{blocked_per_step.emplace(range.end(), std::map<Int, Bools::Expr>()).first->second};
+    auto it{map.emplace(id, top()).first};
     if (range.length() == 1) {
-        solver->add((!loop || bools::mkLit(arith::mkGeq(trace_var, arith::mkConst(id))))->renameVars(s));
+        it->second = it->second && (!loop || bools::mkLit(arith::mkGeq(trace_var, arith::mkConst(id))))->renameVars(s);
     } else {
-        solver->add(!loop->renameVars(s));
+        it->second = it->second && !loop->renameVars(s);
     }
 }
 
@@ -163,9 +165,7 @@ std::optional<SmtResult> ADCLSat::do_step() {
     if (!trace.empty() && trace.back().id > last_orig_clause) {
         solver->add(arith::mkNeq(trace_var, arith::mkConst(trace.back().id))->renameVars(subs));
     }
-    for (const auto &[id, b] : projections) {
-        solver->add(!b->renameVars(subs) || bools::mkLit(arith::mkGeq(trace_var->renameVars(subs), arith::mkConst(id))));
-    }
+    add_blocking_clauses(trace.size());
     switch (solver->check()) {
         case SmtResult::Unknown:
             return SmtResult::Unknown;

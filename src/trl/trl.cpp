@@ -129,19 +129,6 @@ void TRL::add_blocking_clause(const Range &range, const Int &id, const Bools::Ex
     }
 }
 
-void TRL::add_blocking_clauses() {
-    const auto s1{get_subs(depth, 1)};
-    const auto s2{get_subs(depth + 1, 1)};
-    for (const auto &[id, b] : projections) {
-        solver->add(!b->renameVars(s1) || bools::mkLit(arith::mkGeq(trace_var->renameVars(s1), arith::mkConst(id))));
-    }
-    if (const auto it{blocked_per_step.find(depth)}; it != blocked_per_step.end()) {
-        for (const auto& b : it->second | std::views::values) {
-            solver->add(b);
-        }
-    }
-}
-
 void TRL::build_trace() {
     trace.clear();
     model = solver->model();
@@ -201,7 +188,7 @@ std::optional<SmtResult> TRL::do_step() {
             if (Config::Analysis::termination() && depth > 0) {
                 solver->add(bools::mkLit(arith::mkGeq(safety_var->renameVars(get_subs(depth - 1, 1)), safety_var->renameVars(s))));
             }
-            add_blocking_clauses();
+            add_blocking_clauses(depth);
             switch (solver->check()) {
                 case SmtResult::Unsat:
                     return SmtResult::Sat;
