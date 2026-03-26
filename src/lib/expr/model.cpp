@@ -193,11 +193,21 @@ bool Model::structuralImplicant(const Bools::Expr& e, BoolExprSet& non_bool_res,
         return std::holds_alternative<Bools::Lit>(l);
     });
     if (purely_bool) {
+        const auto vars = e->vars();
         if (eval(e)) {
-            bool_res.insert(e);
-            return true;
+            const auto all_pre = std::ranges::all_of(vars, theory::isProgVar);
+            if (all_pre) {
+                bool_res.insert(e);
+                return true;
+            }
+            const auto all_post = std::ranges::all_of(vars, theory::isPostVar);
+            if (all_post) {
+                bool_res.insert(e);
+                return true;
+            }
+        } else {
+            return false;
         }
-        return false;
     }
     if (e->isAnd()) {
         BoolExprSet sub_non_bool, sub_bool;

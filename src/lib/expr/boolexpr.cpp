@@ -52,11 +52,17 @@ Bools::Expr BoolExpr::build(const Children& lits, const ConcatOperator op) {
             } while (changed);
             children.insert(units.begin(), units.end());
         }
-        if (op == ConcatAnd && children.contains(bot())) {
-            return bot();
+        if (op == ConcatAnd) {
+            if (children.contains(bot())) {
+                return bot();
+            }
+            children.erase(top());
         }
         if (op == ConcatOr && children.contains(top())) {
-            return top();
+            if (children.contains(top())) {
+                return top();
+            }
+            children.erase(bot());
         }
         switch (children.size()) {
         case 0:
