@@ -75,7 +75,7 @@ bool Recurrence::solve(const ArithVarPtr& x, const Arith::Expr& rhs) {
         return false;
     }
     auto m_x_plus_q{rhs->subs(closed_form_n_minus_one.get<ArithVarPtr, Arith::Expr>())};
-    const auto vars{m_x_plus_q->cells()};
+    const auto vars{rhs->cells()};
     auto prefix{0u};
     auto cf{m_x_plus_q};
     for (const auto &x : vars) {
