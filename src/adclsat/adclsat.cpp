@@ -132,10 +132,10 @@ void ADCLSat::handle_loop(const Range& range) {
         projections.emplace_back(id, projected);
     }
     trace.pop_back();
-    while (trace.size() > range.start()) {
-        trace.pop_back();
-        solver->pop();
-    }
+    // while (trace.size() > range.start()) {
+    //     trace.pop_back();
+    //     solver->pop();
+    // }
 }
 
 std::optional<SmtResult> ADCLSat::do_step() {
