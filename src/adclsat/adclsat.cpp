@@ -67,6 +67,23 @@ void ADCLSat::add_blocking_clause(const Range &range, const Int &id, const Bools
 void ADCLSat::handle_loop(const Range& range) {
     auto [loop_non_bool, loop_bool, model]{specialize(range, theory::isTempCell)};
     solver->pop();
+    unsigned current_nesting_level = 1;
+    for (unsigned i = range.start(); i < range.end(); ++i) {
+        const auto id = trace.at(i).id;
+        if (trace.at(i).id > last_orig_clause) {
+            current_nesting_level = std::max(current_nesting_level, nesting_level.at(id) + 1);
+            if (nesting_level.at(id) >= nesting) {
+                if (Config::Analysis::log) {
+                    std::cout << "***** Too deeply nested *****" << std::endl;
+                }
+                // the ID doesn't matter here, as the length of the loop is > 1
+                add_blocking_clause(range, id, loop_non_bool && loop_bool);
+                trace.pop_back();
+                deepen = true;
+                return;
+            }
+        }
+    }
     if (add_blocking_clauses(range, model)) {
         if (Config::Analysis::log) {
             std::cout << "***** Covered *****" << std::endl;
@@ -96,6 +113,7 @@ void ADCLSat::handle_loop(const Range& range) {
             return x == Cell(n);
         });
     }
+    nesting_level.emplace(id, current_nesting_level);
     const auto fst_elem {trace.at(range.start())};
     const auto last_elem {trace.back()};
     const auto fst {encode_transition(rule_map.at(fst_elem.id), fst_elem.id)};
@@ -171,6 +189,16 @@ std::optional<SmtResult> ADCLSat::do_step() {
             return SmtResult::Unknown;
         case SmtResult::Unsat: {
             if (trace.empty()) {
+                if (deepen) {
+                    solver->pop();
+                    while (!trace.empty()) {
+                        solver->pop();
+                        trace.pop_back();
+                        deepen = false;
+                        ++nesting;
+                        return {};
+                    }
+                }
                 return safe ? SmtResult::Sat : SmtResult::Unknown;
             }
             backtracking = true;
