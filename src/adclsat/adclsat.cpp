@@ -68,9 +68,11 @@ void ADCLSat::handle_loop(const Range& range) {
                 trace.pop_back();
                 solver->pop();
             }
+            backtracking = false;
             return;
         }
     }
+    backtracking = true;
     auto [loop_non_bool, loop_bool, model]{specialize(range, true, theory::isTempCell)};
     solver->pop();
     unsigned current_nesting_level = 1;
@@ -126,7 +128,7 @@ void ADCLSat::handle_loop(const Range& range) {
     }
     nesting_level.emplace(id, current_nesting_level);
     const auto fst_elem {trace.at(range.start())};
-    const auto last_elem {trace.back()};
+    const auto last_elem {trace.at(range.end())};
     const auto preds {dg_over_approx.getPredecessors(fst_elem.id)};
     const auto succs {dg_over_approx.getSuccessors(last_elem.id)};
     dg_over_approx.addNode(id, preds, succs, true);
@@ -136,7 +138,7 @@ void ADCLSat::handle_loop(const Range& range) {
     if (dg_over_approx.getSinks().contains(last_elem.id)) {
         dg_over_approx.markSink(id);
     }
-    if (range.start() == trace.size() - 1) {
+    if (range.length() == 1) {
         projections.emplace_back(id, projected);
     }
     trace.pop_back();
@@ -192,7 +194,6 @@ std::optional<SmtResult> ADCLSat::do_step() {
         if (Config::Analysis::log) {
             std::cout << "found loop at [" << range->start() << ", " << range->end() << "]" << std::endl;
         }
-        backtracking = true;
         handle_loop(*range);
         return {};
     }
