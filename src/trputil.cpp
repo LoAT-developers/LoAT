@@ -128,11 +128,17 @@ const Renaming &TRPUtil::get_subs(const unsigned start, const unsigned steps) {
     return pre_vec.at(steps - 1);
 }
 
-std::pair<Bools::Expr, ModelPtr> TRPUtil::compress(const Range &range) {
+std::pair<Bools::Expr, ModelPtr> TRPUtil::compress(const Range &range, const bool concrete) {
     std::optional<Bools::Expr> loop;
     Renaming var_renaming;
     for (long i = range.end(); i >= 0 && i >= static_cast<long>(range.start()); --i) {
-        const auto rule{trace[i].implicant};
+        const auto id = trace[i].id;
+        Bools::Expr rule = top();
+        if (concrete && id > last_orig_clause) {
+            rule = concretization.at(id);
+        } else {
+            rule = trace[i].implicant;
+        }
         const auto s{get_subs(i, 1)};
         if (loop) {
             // sigma1 maps vars from chained to the corresponding vars from rule
@@ -191,7 +197,22 @@ Int TRPUtil::add_learned_clause(const Range &range, const Bools::Expr &accel) {
     }
     const auto id = next_id;
     ++next_id;
-    rule_map.emplace(id, accel);
+    if (Config::Analysis::abstraction_refinement) {
+        concretization.emplace(id, accel);
+        BoolExprSet lits;
+        assert(accel->isAnd());
+        for (const auto &c: accel->getChildren()) {
+            const auto vars = c->vars();
+            if (vars.contains(its->getLocVar()->var())
+                || vars.contains(its->getLocVar()->var()->postVar())
+                || vars.contains(trace_var->var())) {
+                lits.emplace(c);
+            }
+        }
+        rule_map.emplace(id, bools::mkAnd(lits));
+    } else {
+        rule_map.emplace(id, accel);
+    }
     std::vector<std::pair<Int, Bools::Expr>> loop;
     for (size_t i = range.start(); i <= range.end(); ++i) {
         const auto &e {trace.at(i)};
@@ -219,13 +240,13 @@ std::pair<Bools::Expr, Bools::Expr> TRPUtil::specialize(const Bools::Expr& e, co
     return {mbp_non_bool, mbp_bool};
 }
 
-std::tuple<Bools::Expr, Bools::Expr, ModelPtr> TRPUtil::specialize(const Range &range, const std::function<bool(const Cell &)> &eliminate) {
+std::tuple<Bools::Expr, Bools::Expr, ModelPtr> TRPUtil::specialize(const Range &range, const bool concrete, const std::function<bool(const Cell &)> &eliminate) {
     assert (!range.empty());
-    const auto [transition, model]{compress(range)};
+    auto [transition, model]{compress(range, concrete)};
     if (Config::Analysis::log) {
         std::cout << "compressed:" << std::endl;
         std::cout << transition << std::endl;
-        std::cout << "model: " << model->toString(vars) << std::endl;
+        std::cout << "model: " << model->toString(transition->vars()) << std::endl;
     }
     const auto [res_non_bool, res_bool] = specialize(transition, model, eliminate);
     return {res_non_bool, res_bool, model};
@@ -428,6 +449,40 @@ bool TRPUtil::add_blocking_clauses(const Range &range, const ModelPtr& model) {
         }
     }
     return false;
+}
+
+std::optional<Int> TRPUtil::refine_abstraction(const Range& range) {
+    for (unsigned i = range.start(); i <= range.end(); ++i) {
+        const auto& frame = trace.at(i);
+        if (frame.id > last_orig_clause) {
+            const auto current = rule_map.at(frame.id);
+            const auto conc = concretization.at(frame.id);
+            assert(current->isAnd());
+            assert(conc->isAnd());
+            const auto current_children = current->getChildren();
+            if (conc != current) {
+                const auto& subs = get_subs(i, 1);
+                for (const auto& c: conc->getChildren()) {
+                    if (!current_children.contains(c)) {
+                        solver->add(c->renameVars(subs));
+                        if (solver->check() == SmtResult::Unsat) {
+                            rule_map.erase(frame.id);
+                            rule_map.emplace(frame.id, current && c);
+                            Int backtrack_point = i;
+                            for (auto &[i,b]: blocked_per_step) {
+                                if (b.erase(frame.id) > 0) {
+                                    backtrack_point = std::min(backtrack_point, i);
+                                }
+                            }
+                            return backtrack_point;
+                        }
+                        model = solver->model();
+                    }
+                }
+            }
+        }
+    }
+    return std::nullopt;
 }
 
 ITSSafetyCex TRPUtil::get_cex() {

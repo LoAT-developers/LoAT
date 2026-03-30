@@ -12,27 +12,24 @@
 #include "loopacceleration.hpp"
 
 ADCLSat::ADCLSat(const ITSPtr& its, const Config::TRPConfig &config): TRPUtil(its, config) {
-    linked_hash_map<Bools::Expr, Bools::Expr> map;
+    std::unordered_map<Bools::Expr, Int> rev;
     for (const auto &[id,trans]: rule_map) {
-        const auto encoded {encode_transition(trans, id)};
-        map.emplace(trans, encoded);
+        rev.emplace(trans, id);
+    }
+    for (const auto &[id,trans]: rule_map) {
         const auto preds {t.get_dg().getPredecessors(trans)};
         const auto succs {t.get_dg().getSuccessors(trans)};
         for (const auto &p: preds) {
-            if (map.contains(p)) {
-                dg_over_approx.addEdge(map.at(p), encoded);
-            }
+            dg_over_approx.addEdge(rev.at(p), id);
         }
         for (const auto &s: succs) {
-            if (map.contains(s)) {
-                dg_over_approx.addEdge(encoded, map.at(s));
-            }
+            dg_over_approx.addEdge(id, rev.at(s));
         }
         if (t.get_dg().getRoots().contains(trans)) {
-            dg_over_approx.markRoot(encoded);
+            dg_over_approx.markRoot(id);
         }
         if (t.get_dg().getSinks().contains(trans)) {
-            dg_over_approx.markSink(encoded);
+            dg_over_approx.markSink(id);
         }
     }
 }
@@ -65,7 +62,16 @@ void ADCLSat::add_blocking_clause(const Range &range, const Int &id, const Bools
 }
 
 void ADCLSat::handle_loop(const Range& range) {
-    auto [loop_non_bool, loop_bool, model]{specialize(range, theory::isTempCell)};
+    if (Config::Analysis::abstraction_refinement) {
+        if (const auto backtrack_point = refine_abstraction(range)) {
+            while (trace.size() > *backtrack_point) {
+                trace.pop_back();
+                solver->pop();
+            }
+            return;
+        }
+    }
+    auto [loop_non_bool, loop_bool, model]{specialize(range, true, theory::isTempCell)};
     solver->pop();
     unsigned current_nesting_level = 1;
     for (unsigned i = range.start(); i < range.end(); ++i) {
@@ -76,9 +82,14 @@ void ADCLSat::handle_loop(const Range& range) {
                 if (Config::Analysis::log) {
                     std::cout << "***** Too deeply nested *****" << std::endl;
                 }
+                const auto [abstract_non_bool, abstract_bool, _] = specialize(range, false, theory::isTempCell);
                 // the ID doesn't matter here, as the length of the loop is > 1
-                add_blocking_clause(range, id, loop_non_bool && loop_bool);
+                add_blocking_clause(range, id, abstract_non_bool && abstract_bool);
                 trace.pop_back();
+                while (trace.size() > range.start()) {
+                    trace.pop_back();
+                    solver->pop();
+                }
                 deepen = true;
                 return;
             }
@@ -116,17 +127,14 @@ void ADCLSat::handle_loop(const Range& range) {
     nesting_level.emplace(id, current_nesting_level);
     const auto fst_elem {trace.at(range.start())};
     const auto last_elem {trace.back()};
-    const auto fst {encode_transition(rule_map.at(fst_elem.id), fst_elem.id)};
-    const auto last {encode_transition(rule_map.at(last_elem.id), last_elem.id)};
-    const auto preds {dg_over_approx.getPredecessors(fst)};
-    const auto succs {dg_over_approx.getSuccessors(last)};
-    const auto node {encode_transition(ti, id)};
-    dg_over_approx.addNode(node, preds, succs, true);
-    if (dg_over_approx.getRoots().contains(fst)) {
-        dg_over_approx.markRoot(node);
+    const auto preds {dg_over_approx.getPredecessors(fst_elem.id)};
+    const auto succs {dg_over_approx.getSuccessors(last_elem.id)};
+    dg_over_approx.addNode(id, preds, succs, true);
+    if (dg_over_approx.getRoots().contains(fst_elem.id)) {
+        dg_over_approx.markRoot(id);
     }
-    if (dg_over_approx.getSinks().contains(last)) {
-        dg_over_approx.markSink(node);
+    if (dg_over_approx.getSinks().contains(last_elem.id)) {
+        dg_over_approx.markSink(id);
     }
     if (range.start() == trace.size() - 1) {
         projections.emplace_back(id, projected);
@@ -145,16 +153,29 @@ std::optional<SmtResult> ADCLSat::do_step() {
             std::cout << e.implicant << std::endl;
         }
     }
-    const std::optional<Bools::Expr> last =
+    const std::optional<Int> last =
         trace.empty()
-            ? std::optional<Bools::Expr>{}
-            : std::optional{encode_transition(rule_map.at(trace.back().id), trace.back().id)};
+            ? std::optional<Int>{}
+            : std::optional{trace.back().id};
     if (!backtracking && (!last || dg_over_approx.getSinks().contains(*last))) {
         solver->push();
         solver->add(t.err()->renameVars(get_subs(trace.size(), 1)));
         switch (solver->check()) {
             case SmtResult::Sat:
             case SmtResult::Unknown:
+                if (Config::Analysis::abstraction_refinement) {
+                    if (Config::Analysis::log) {
+                        std::cout << "proving safety failed, abstraction refinement" << std::endl;
+                    }
+                    if (const auto backtrack_point = refine_abstraction(Range::from_length(0, trace.size()))) {
+                        solver->pop();
+                        while (trace.size() > *backtrack_point) {
+                            trace.pop_back();
+                            solver->pop();
+                        }
+                        return std::nullopt;
+                    }
+                }
                 if (Config::Analysis::log) {
                     std::cout << "proving safety failed, trying to construct counterexample" << std::endl;
                 }
@@ -177,7 +198,11 @@ std::optional<SmtResult> ADCLSat::do_step() {
     }
     const auto subs{get_subs(trace.size(), 1)};
     solver->push();
-    const auto steps = last ? dg_over_approx.getSuccessors(*last) : dg_over_approx.getRoots();
+    const auto ids = last ? dg_over_approx.getSuccessors(*last) : dg_over_approx.getRoots();
+    std::vector<Bools::Expr> steps;
+    for (const auto& id: ids) {
+        steps.emplace_back(encode_transition(rule_map.at(id), id));
+    }
     const auto step {bools::mkOr(steps)};
     solver->add(step->renameVars(subs));
     if (!trace.empty() && trace.back().id > last_orig_clause) {

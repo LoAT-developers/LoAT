@@ -44,7 +44,7 @@ std::optional<Range> TRL::has_looping_infix() {
 }
 
 bool TRL::handle_loop(const Range &range) {
-    auto [loop_non_bool, loop_bool, model]{specialize(range, theory::isTempCell)};
+    auto [loop_non_bool, loop_bool, model]{specialize(range, false, theory::isTempCell)};
     auto loop = loop_non_bool && loop_bool;
     Bools::Expr termination_argument {top()};
     if (Config::Analysis::termination()) {
