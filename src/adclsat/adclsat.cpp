@@ -12,6 +12,7 @@
 #include "loopacceleration.hpp"
 
 ADCLSat::ADCLSat(const ITSPtr& its, const Config::TRPConfig &config): TRPUtil(its, config) {
+    Config::Analysis::abstraction_refinement = false;
     std::unordered_map<Bools::Expr, Int> rev;
     for (const auto &[id,trans]: rule_map) {
         rev.emplace(trans, id);
