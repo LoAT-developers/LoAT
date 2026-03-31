@@ -71,7 +71,11 @@ void ADCLSat::add_tmp_blocking_clause(const Range &range, const Bools::Expr loop
 
 void ADCLSat::handle_loop(const Range& range) {
     if (Config::Analysis::abstraction_refinement) {
-        if (const auto backtrack_point = refine_fully(range)) {
+        auto backtrack_point = refine_core(range);
+        if (!backtrack_point) {
+            backtrack_point = refine_abstraction(range);
+        }
+        if (backtrack_point) {
             if (Config::Analysis::log) {
                 std::cout << "refined loop" << std::endl;
             }
@@ -184,7 +188,12 @@ std::optional<SmtResult> ADCLSat::do_step() {
                     if (Config::Analysis::log) {
                         std::cout << "proving safety failed, abstraction refinement" << std::endl;
                     }
-                    if (const auto backtrack_point = refine_abstraction(Range::from_length(0, trace.size()))) {
+                    const auto range = Range::from_length(0, trace.size());
+                    auto backtrack_point = refine_core(range);
+                    if (!backtrack_point) {
+                        backtrack_point = refine_abstraction(range);
+                    }
+                    if (backtrack_point) {
                         solver->pop();
                         while (trace.size() > *backtrack_point) {
                             trace.pop_back();
