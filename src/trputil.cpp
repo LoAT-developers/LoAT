@@ -490,47 +490,6 @@ std::optional<Int> TRPUtil::refine_abstraction(const Range& range) {
     return std::nullopt;
 }
 
-std::optional<Int> TRPUtil::refine_core(const Range& range) {
-    for (unsigned i = range.start(); i <= range.end(); ++i) {
-        const auto& frame = trace.at(i);
-        if (frame.id > last_orig_clause) {
-            const auto current = frame.implicant;
-            const auto conc = concretization.at(frame.id);
-            assert(current->isAnd());
-            assert(conc->isAnd());
-            const auto current_children = current->getChildren();
-            if (conc != current) {
-                const auto& subs = get_subs(i, 1);
-                BoolExprSet core;
-                for (const auto& c: conc->getChildren()) {
-                    if (!current_children.contains(c)) {
-                        solver->push();
-                        solver->add(c->renameVars(subs));
-                        const auto res = solver->check();
-                        solver->pop();
-                        if (res == SmtResult::Unsat) {
-                            core.insert(c);
-                        }
-                    }
-                }
-                if (!core.empty()) {
-                    core.insert(current);
-                    rule_map.erase(frame.id);
-                    rule_map.emplace(frame.id, bools::mkAnd(core));
-                    Int backtrack_point = i;
-                    for (auto &[i,b]: blocked_per_step) {
-                        if (b.erase(frame.id) > 0) {
-                            backtrack_point = std::min(backtrack_point, i);
-                        }
-                    }
-                    return backtrack_point;
-                }
-            }
-        }
-    }
-    return std::nullopt;
-}
-
 std::optional<Int> TRPUtil::refine_fully(const Range& range) {
     for (unsigned i = range.start(); i <= range.end(); ++i) {
         const auto& frame = trace.at(i);
