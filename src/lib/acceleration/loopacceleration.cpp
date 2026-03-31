@@ -240,6 +240,13 @@ void LoopAcceleration::run() {
                 if (rec && !config.tryNonlinear && !rec->closed_form.isLinear()) {
                     res.status = acceleration::Nonlinear;
                 } else {
+                    const auto guard_vars = rule->getGuard()->vars();
+                    if (rec && std::ranges::any_of(rec->assumed_to_be_unconstrained, [&](const auto& var) {
+                        return guard_vars.contains(var);
+                    })) {
+                        rec = {};
+                        res.status = acceleration::ClosedFormFailed;
+                    }
                     accelerate();
                     if (config.tryNonterm && res.nonterm == bot()) {
                         try_nonterm();

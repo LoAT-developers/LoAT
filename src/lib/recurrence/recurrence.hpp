@@ -13,6 +13,7 @@ public:
     using Idx = std::vector<Arith::Expr>;
 
     struct Result {
+        VarSet assumed_to_be_unconstrained;
         Subs closed_form {};
         Bools::Expr refinement {top()};
         unsigned int prefix {0};

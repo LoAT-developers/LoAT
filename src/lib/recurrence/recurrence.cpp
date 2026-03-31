@@ -412,12 +412,18 @@ bool Recurrence::solve() {
     linked_hash_map<Arrays<Arith>::Var, Arrays<Arith>::Var> nondet;
     const auto handle_nondet_assignment = [&](const ArithVarPtr& lhs, const ArithVarPtr& rhs) {
         assert(rhs->dim() == 0);
+        if (lhs->dim() == 0) {
+            closed_form.put(rhs, rhs);
+            closed_form_n_minus_one.put(std::pair(rhs, rhs));
+            return;
+        }
         std::vector<Arith::Expr> indices;
         for (const auto& i : lhs->indices()) {
             indices.emplace_back(i->subs(closed_form));
         }
         auto nd = nondet.get(rhs->var());
         if (!nd) {
+            result.assumed_to_be_unconstrained.insert(rhs->var());
             nd = ArrayVar<Arith>::next(indices.size());
             nondet.emplace(rhs->var(), nd.value());
         }
