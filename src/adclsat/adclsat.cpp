@@ -70,7 +70,7 @@ void ADCLSat::add_tmp_blocking_clause(const Range &range, const Bools::Expr loop
 
 void ADCLSat::handle_loop(const Range& range) {
     if (Config::Analysis::abstraction_refinement) {
-        if (const auto backtrack_point = refine_abstraction(range)) {
+        if (const auto backtrack_point = refine_fully(range)) {
             if (Config::Analysis::log) {
                 std::cout << "refined loop" << std::endl;
             }
