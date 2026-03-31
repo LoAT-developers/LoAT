@@ -52,11 +52,15 @@ Bools::Expr ITSToSafety::rule_to_formula(const RulePtr& r, const VarSet &prog_va
                 }
                 if (const auto y{up->isVar()}; y && (*y)->isTempVar() && !subs.contains(*y)) {
                     subs.put(*y, Arrays<Arith>::varToExpr(x->postVar()));
+                } else {
+                    conjuncts.push_back(bools::mkLit(arrays::mkEq(x->postVar(), up)));
                 }
-                conjuncts.push_back(bools::mkLit(arrays::mkEq(x->postVar(), up)));
             });
     }
     const auto res {bools::mkAnd(conjuncts)->subs(subs)};
+    if (Config::Analysis::model) {
+        rev_map.emplace(res, r);
+    }
     return res;
 }
 
@@ -66,9 +70,6 @@ SafetyProblem ITSToSafety::transform() {
         if (theory::isProgVar(x)) {
             sp.add_pre_var(x);
             sp.add_post_var(theory::postVar(x));
-        } else if (theory::isPostVar(x)) {
-            sp.add_pre_var(theory::progVar(x));
-            sp.add_post_var(x);
         }
     }
     for (const auto& y : sp.post_vars()) {
@@ -150,9 +151,10 @@ ITSSafetyCex ITSToSafety::transform_cex(const SafetyCex &cex) const {
     }
     for (size_t i = 0; i < steps; ++i) {
         const auto& [model, transition]{cex.get_step(i)};
-        res.do_step(rev_map.at(transition), model->composeBackwards(pre_to_post));
+        const auto rule = rev_map.at(transition);
+        res.do_step(rule, model->composeBackwards(pre_to_post));
     }
-    const auto last {cex.get_state(steps - 1)->composeBackwards(post_to_pre)};
+    const auto last {cex.get_state(steps)};
     for (const auto &[b,t]: rev_err_map) {
         if (last->eval(b)) {
             res.add_final_transition(t);

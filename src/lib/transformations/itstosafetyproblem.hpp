@@ -18,7 +18,7 @@ class ITSToSafety {
 public:
     explicit ITSToSafety(ITSPtr  its);
 
-    static Bools::Expr rule_to_formula(const RulePtr& r, const VarSet &prog_vars);
+    Bools::Expr rule_to_formula(const RulePtr& r, const VarSet &prog_vars);
 
     ITSModel transform_model(const Bools::Expr&) const;
 
