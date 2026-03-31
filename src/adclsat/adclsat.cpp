@@ -12,7 +12,6 @@
 #include "loopacceleration.hpp"
 
 ADCLSat::ADCLSat(const ITSPtr& its, const Config::TRPConfig &config): TRPUtil(its, config) {
-    Config::Analysis::abstraction_refinement = false;
     std::unordered_map<Bools::Expr, Int> rev;
     for (const auto &[id,trans]: rule_map) {
         rev.emplace(trans, id);
@@ -189,7 +188,11 @@ std::optional<SmtResult> ADCLSat::do_step() {
                         std::cout << "proving safety failed, abstraction refinement" << std::endl;
                     }
                     const auto range = Range::from_length(0, trace.size());
-                    if (const auto backtrack_point = refine_abstraction(range)) {
+                    auto backtrack_point = refine_core(range);
+                    if (!backtrack_point) {
+                        backtrack_point = refine_abstraction(range);
+                    }
+                    if (backtrack_point) {
                         solver->pop();
                         while (trace.size() > *backtrack_point) {
                             trace.pop_back();
