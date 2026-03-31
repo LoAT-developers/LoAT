@@ -460,7 +460,7 @@ std::optional<Int> TRPUtil::refine_abstraction(const Range& range) {
     for (unsigned i = range.start(); i <= range.end(); ++i) {
         const auto& frame = trace.at(i);
         if (frame.id > last_orig_clause) {
-            const auto current = rule_map.at(frame.id);
+            const auto current = frame.implicant;
             const auto conc = concretization.at(frame.id);
             assert(current->isAnd());
             assert(conc->isAnd());

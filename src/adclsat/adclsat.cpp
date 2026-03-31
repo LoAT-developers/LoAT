@@ -179,7 +179,7 @@ std::optional<SmtResult> ADCLSat::do_step() {
         switch (solver->check()) {
             case SmtResult::Sat:
             case SmtResult::Unknown:
-                if (Config::Analysis::abstraction_refinement) {
+                if (Config::Analysis::abstraction_refinement && !trace.empty()) {
                     if (Config::Analysis::log) {
                         std::cout << "proving safety failed, abstraction refinement" << std::endl;
                     }
