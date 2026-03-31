@@ -12,7 +12,6 @@
 #include "loopacceleration.hpp"
 
 ADCLSat::ADCLSat(const ITSPtr& its, const Config::TRPConfig &config): TRPUtil(its, config) {
-    Config::Analysis::abstraction_refinement = false;
     std::unordered_map<Bools::Expr, Int> rev;
     for (const auto &[id,trans]: rule_map) {
         rev.emplace(trans, id);
@@ -87,31 +86,31 @@ void ADCLSat::handle_loop(const Range& range) {
     auto [loop_non_bool, loop_bool, model]{specialize(range, Config::Analysis::abstraction_refinement, theory::isTempCell)};
     solver->pop();
     unsigned current_nesting_level = 1;
-    for (unsigned i = range.start(); i < range.end(); ++i) {
-        const auto id = trace.at(i).id;
-        if (trace.at(i).id > last_orig_clause) {
-            current_nesting_level = std::max(current_nesting_level, nesting_level.at(id) + 1);
-            if (nesting_level.at(id) >= nesting) {
-                if (Config::Analysis::log) {
-                    std::cout << "***** Too deeply nested *****" << std::endl;
-                }
-                if (Config::Analysis::abstraction_refinement) {
-                    const auto [abstract_non_bool, abstract_bool, _] = specialize(range, false, theory::isTempCell);
-                    add_tmp_blocking_clause(range, abstract_non_bool && abstract_bool);
-                } else {
-                    add_tmp_blocking_clause(range, loop_non_bool && loop_bool);
-                }
-                trace.pop_back();
-                while (trace.size() > range.start()) {
-                    trace.pop_back();
-                    solver->pop();
-                }
-                backtracking = false;
-                deepen = true;
-                return;
-            }
-        }
-    }
+    // for (unsigned i = range.start(); i < range.end(); ++i) {
+    //     const auto id = trace.at(i).id;
+    //     if (trace.at(i).id > last_orig_clause) {
+    //         current_nesting_level = std::max(current_nesting_level, nesting_level.at(id) + 1);
+    //         if (nesting_level.at(id) >= nesting) {
+    //             if (Config::Analysis::log) {
+    //                 std::cout << "***** Too deeply nested *****" << std::endl;
+    //             }
+    //             if (Config::Analysis::abstraction_refinement) {
+    //                 const auto [abstract_non_bool, abstract_bool, _] = specialize(range, false, theory::isTempCell);
+    //                 add_tmp_blocking_clause(range, abstract_non_bool && abstract_bool);
+    //             } else {
+    //                 add_tmp_blocking_clause(range, loop_non_bool && loop_bool);
+    //             }
+    //             trace.pop_back();
+    //             while (trace.size() > range.start()) {
+    //                 trace.pop_back();
+    //                 solver->pop();
+    //             }
+    //             backtracking = false;
+    //             deepen = true;
+    //             return;
+    //         }
+    //     }
+    // }
     if (add_blocking_clauses(range, model)) {
         if (Config::Analysis::log) {
             std::cout << "***** Covered *****" << std::endl;
