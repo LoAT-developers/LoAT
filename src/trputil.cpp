@@ -411,11 +411,6 @@ void TRPUtil::add_blocking_clauses(unsigned depth) {
             solver->add(b);
         }
     }
-    if (const auto it{tmp_blocked_per_step.find(depth)}; it != tmp_blocked_per_step.end()) {
-        for (const auto& b : it->second) {
-            solver->add(b);
-        }
-    }
 }
 
 bool TRPUtil::add_blocking_clauses(const Range &range, const ModelPtr& model) {

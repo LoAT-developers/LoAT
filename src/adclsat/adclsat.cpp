@@ -32,7 +32,6 @@ ADCLSat::ADCLSat(const ITSPtr& its, const Config::TRPConfig &config): TRPUtil(it
             dg_over_approx.markSink(id);
         }
     }
-    solver->push(); // backtracking point to remove blocking clauses of level 0 for iterative deepening
 }
 
 std::optional<Range> ADCLSat::has_looping_infix() {
@@ -62,12 +61,6 @@ void ADCLSat::add_blocking_clause(const Range &range, const Int &id, const Bools
     }
 }
 
-void ADCLSat::add_tmp_blocking_clause(const Range &range, const Bools::Expr loop) {
-    const auto s{get_subs(range.start(), range.length())};
-    auto &set{tmp_blocked_per_step.emplace(range.end(), BoolExprSet()).first->second};
-    set.insert(!loop->renameVars(s));
-}
-
 void ADCLSat::handle_loop(const Range& range) {
     if (Config::Analysis::abstraction_refinement) {
         if (const auto backtrack_point = refine_abstraction(range)) {
@@ -85,32 +78,6 @@ void ADCLSat::handle_loop(const Range& range) {
     backtracking = true;
     auto [loop_non_bool, loop_bool, model]{specialize(range, Config::Analysis::abstraction_refinement, theory::isTempCell)};
     solver->pop();
-    unsigned current_nesting_level = 1;
-    // for (unsigned i = range.start(); i < range.end(); ++i) {
-    //     const auto id = trace.at(i).id;
-    //     if (trace.at(i).id > last_orig_clause) {
-    //         current_nesting_level = std::max(current_nesting_level, nesting_level.at(id) + 1);
-    //         if (nesting_level.at(id) >= nesting) {
-    //             if (Config::Analysis::log) {
-    //                 std::cout << "***** Too deeply nested *****" << std::endl;
-    //             }
-    //             if (Config::Analysis::abstraction_refinement) {
-    //                 const auto [abstract_non_bool, abstract_bool, _] = specialize(range, false, theory::isTempCell);
-    //                 add_tmp_blocking_clause(range, abstract_non_bool && abstract_bool);
-    //             } else {
-    //                 add_tmp_blocking_clause(range, loop_non_bool && loop_bool);
-    //             }
-    //             trace.pop_back();
-    //             while (trace.size() > range.start()) {
-    //                 trace.pop_back();
-    //                 solver->pop();
-    //             }
-    //             backtracking = false;
-    //             deepen = true;
-    //             return;
-    //         }
-    //     }
-    // }
     if (add_blocking_clauses(range, model)) {
         if (Config::Analysis::log) {
             std::cout << "***** Covered *****" << std::endl;
@@ -140,7 +107,6 @@ void ADCLSat::handle_loop(const Range& range) {
             return x == Cell(n);
         });
     }
-    nesting_level.emplace(id, current_nesting_level);
     const auto fst_elem {trace.at(range.start())};
     const auto last_elem {trace.at(range.end())};
     const auto preds {dg_over_approx.getPredecessors(fst_elem.id)};
@@ -231,16 +197,6 @@ std::optional<SmtResult> ADCLSat::do_step() {
             return SmtResult::Unknown;
         case SmtResult::Unsat: {
             if (trace.empty()) {
-                if (deepen) {
-                    solver->pop(); // current step
-                    solver->pop(); // blocking clauses that were just added
-                    solver->pop(); // blocking clauses at level 0
-                    solver->push(); // new backtracking point for blocking clauses at level 0
-                    deepen = false;
-                    tmp_blocked_per_step.clear();
-                    ++nesting;
-                    return {};
-                }
                 return safe ? SmtResult::Sat : SmtResult::Unknown;
             }
             backtracking = true;

@@ -46,7 +46,6 @@ protected:
     bool safe {true};
     // step -> ID of corresponding transition formula -> blocked transition
     std::unordered_map<Int, std::map<Int, Bools::Expr>> blocked_per_step {};
-    std::unordered_map<Int, BoolExprSet> tmp_blocked_per_step {};
 
     TRPUtil(const ITSPtr &its, const Config::TRPConfig &config);
 
