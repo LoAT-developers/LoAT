@@ -12,6 +12,7 @@
 #include "loopacceleration.hpp"
 
 ADCLSat::ADCLSat(const ITSPtr& its, const Config::TRPConfig &config): TRPUtil(its, config) {
+    Config::Analysis::abstraction_refinement = false;
     std::unordered_map<Bools::Expr, Int> rev;
     for (const auto &[id,trans]: rule_map) {
         rev.emplace(trans, id);
@@ -32,6 +33,7 @@ ADCLSat::ADCLSat(const ITSPtr& its, const Config::TRPConfig &config): TRPUtil(it
             dg_over_approx.markSink(id);
         }
     }
+    solver->push(); // backtracking point to remove blocking clauses of level 0 for iterative deepening
 }
 
 std::optional<Range> ADCLSat::has_looping_infix() {
@@ -61,9 +63,18 @@ void ADCLSat::add_blocking_clause(const Range &range, const Int &id, const Bools
     }
 }
 
+void ADCLSat::add_tmp_blocking_clause(const Range &range, const Bools::Expr loop) {
+    const auto s{get_subs(range.start(), range.length())};
+    auto &set{tmp_blocked_per_step.emplace(range.end(), BoolExprSet()).first->second};
+    set.insert(!loop->renameVars(s));
+}
+
 void ADCLSat::handle_loop(const Range& range) {
     if (Config::Analysis::abstraction_refinement) {
         if (const auto backtrack_point = refine_abstraction(range)) {
+            if (Config::Analysis::log) {
+                std::cout << "refined loop" << std::endl;
+            }
             while (trace.size() > *backtrack_point) {
                 trace.pop_back();
                 solver->pop();
@@ -73,7 +84,7 @@ void ADCLSat::handle_loop(const Range& range) {
         }
     }
     backtracking = true;
-    auto [loop_non_bool, loop_bool, model]{specialize(range, true, theory::isTempCell)};
+    auto [loop_non_bool, loop_bool, model]{specialize(range, Config::Analysis::abstraction_refinement, theory::isTempCell)};
     solver->pop();
     unsigned current_nesting_level = 1;
     for (unsigned i = range.start(); i < range.end(); ++i) {
@@ -84,14 +95,18 @@ void ADCLSat::handle_loop(const Range& range) {
                 if (Config::Analysis::log) {
                     std::cout << "***** Too deeply nested *****" << std::endl;
                 }
-                const auto [abstract_non_bool, abstract_bool, _] = specialize(range, false, theory::isTempCell);
-                // the ID doesn't matter here, as the length of the loop is > 1
-                add_blocking_clause(range, id, abstract_non_bool && abstract_bool);
+                if (Config::Analysis::abstraction_refinement) {
+                    const auto [abstract_non_bool, abstract_bool, _] = specialize(range, false, theory::isTempCell);
+                    add_tmp_blocking_clause(range, abstract_non_bool && abstract_bool);
+                } else {
+                    add_tmp_blocking_clause(range, loop_non_bool && loop_bool);
+                }
                 trace.pop_back();
                 while (trace.size() > range.start()) {
                     trace.pop_back();
                     solver->pop();
                 }
+                backtracking = false;
                 deepen = true;
                 return;
             }
@@ -199,6 +214,11 @@ std::optional<SmtResult> ADCLSat::do_step() {
     }
     const auto subs{get_subs(trace.size(), 1)};
     solver->push();
+    add_blocking_clauses(trace.size());
+    if (!trace.empty() && trace.back().id > last_orig_clause) {
+        solver->add(arith::mkNeq(trace_var, arith::mkConst(trace.back().id))->renameVars(subs));
+    }
+    solver->push();
     const auto ids = last ? dg_over_approx.getSuccessors(*last) : dg_over_approx.getRoots();
     std::vector<Bools::Expr> steps;
     for (const auto& id: ids) {
@@ -206,30 +226,27 @@ std::optional<SmtResult> ADCLSat::do_step() {
     }
     const auto step {bools::mkOr(steps)};
     solver->add(step->renameVars(subs));
-    if (!trace.empty() && trace.back().id > last_orig_clause) {
-        solver->add(arith::mkNeq(trace_var, arith::mkConst(trace.back().id))->renameVars(subs));
-    }
-    add_blocking_clauses(trace.size());
     switch (solver->check()) {
         case SmtResult::Unknown:
             return SmtResult::Unknown;
         case SmtResult::Unsat: {
             if (trace.empty()) {
                 if (deepen) {
-                    solver->pop();
-                    while (!trace.empty()) {
-                        solver->pop();
-                        trace.pop_back();
-                        deepen = false;
-                        ++nesting;
-                        return {};
-                    }
+                    solver->pop(); // current step
+                    solver->pop(); // blocking clauses that were just added
+                    solver->pop(); // blocking clauses at level 0
+                    solver->push(); // new backtracking point for blocking clauses at level 0
+                    deepen = false;
+                    tmp_blocked_per_step.clear();
+                    ++nesting;
+                    return {};
                 }
                 return safe ? SmtResult::Sat : SmtResult::Unknown;
             }
             backtracking = true;
             const auto projection{trp.mbp(trace.back().implicant, trace.back().model, theory::isTempCell)};
             solver->pop(); // current step
+            solver->pop(); // blocking clauses
             solver->pop(); // backtracking
             trace.pop_back();
             const auto b {!projection->renameVars(get_subs(trace.size(), 1))};
@@ -260,7 +277,6 @@ std::optional<SmtResult> ADCLSat::do_step() {
     const auto m{(*model)->composeBackwards(subs)};
     const auto [imp_non_bool, imp_bool] = m->structuralImplicant(trans);
     const auto imp = imp_non_bool && imp_bool;
-    solver->push();
     solver->add(imp->renameVars(subs));
     const auto smt_res{solver->check()};
     assert(smt_res == SmtResult::Sat);
