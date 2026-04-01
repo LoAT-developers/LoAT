@@ -477,32 +477,33 @@ std::optional<Int> TRPUtil::refine_abstraction(const unsigned last) {
             }
         }
     }
-    switch (const auto [res, core] = solver->check_with_assumptions(assumptions); res) {
-        case SmtResult::Sat:
-            model = solver->model();
-            break;
-        case SmtResult::Unknown:
-            break;
-        case SmtResult::Unsat:
-            Int backtrack_point = trace.size();
-            for (const auto& c: core) {
-                const auto& [id, refinement] = assumption_to_refinement.at(c);
-                const auto current = rule_map.at(id);
-                if (Config::Analysis::log) {
-                    std::cout << "refining " << current << " with " << refinement << std::endl;
-                }
-                rule_map.put(id, current && refinement);
-                backtrack_point = std::min(backtrack_point, backtrack_points.at(id));
-                for (auto &[i,b]: blocked_per_step) {
-                    if (b.erase(id) > 0) {
-                        backtrack_point = std::min(backtrack_point, i);
+    std::optional<Int> backtrack_point;
+    do {
+        switch (const auto [res, core] = solver->check_with_assumptions(assumptions); res) {
+            case SmtResult::Sat:
+                model = solver->model();
+                return backtrack_point;
+            case SmtResult::Unknown:
+                return backtrack_point;
+            case SmtResult::Unsat:
+                assert(!core.empty());
+                for (const auto& c: core) {
+                    assumptions.erase(c);
+                    const auto& [id, refinement] = assumption_to_refinement.at(c);
+                    const auto current = rule_map.at(id);
+                    if (Config::Analysis::log) {
+                        std::cout << "refining " << current << " with " << refinement << std::endl;
+                    }
+                    rule_map.put(id, current && refinement);
+                    backtrack_point = std::min(backtrack_point.value_or(trace.size()), backtrack_points.at(id));
+                    for (auto &[i,b]: blocked_per_step) {
+                        if (b.erase(id) > 0) {
+                            backtrack_point = std::min(*backtrack_point, i);
+                        }
                     }
                 }
-            }
-            assert(backtrack_point < trace.size());
-            return backtrack_point;
-    }
-    return std::nullopt;
+        }
+    } while (true);
 }
 
 ITSSafetyCex TRPUtil::get_cex() {
