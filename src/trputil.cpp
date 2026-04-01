@@ -205,8 +205,7 @@ Int TRPUtil::add_learned_clause(const Range &range, const Bools::Expr &accel) {
             const auto vars = c->vars();
             if (vars.contains(its->getLocVar()->var())
                 || vars.contains(its->getLocVar()->var()->postVar())
-                || vars.contains(trace_var->var())
-                || hot_literals.contains(c)) {
+                || vars.contains(trace_var->var())) {
                 lits.emplace(c);
             }
         }
@@ -452,11 +451,10 @@ bool TRPUtil::add_blocking_clauses(const Range &range, const ModelPtr& model) {
     return false;
 }
 
-std::optional<Int> TRPUtil::refine_abstraction(const unsigned last) {
+std::optional<Int> TRPUtil::refine_abstraction(const Range& range) {
     BoolExprSet assumptions;
     std::unordered_map<Bools::Expr, std::pair<Int, Bools::Expr>> assumption_to_refinement;;
-    std::unordered_map<Int, Int> backtrack_points;
-    for (unsigned i = 0; i <= last; ++i) {
+    for (unsigned i = range.start(); i <= range.end(); ++i) {
         const auto& frame = trace.at(i);
         if (frame.id > last_orig_clause) {
             const auto current = frame.implicant;
@@ -471,8 +469,6 @@ std::optional<Int> TRPUtil::refine_abstraction(const unsigned last) {
                         const auto assumption = c->renameVars(subs);
                         assumptions.insert(assumption);
                         assumption_to_refinement.emplace(assumption, std::pair(frame.id, c));
-                        auto& bt = backtrack_points.emplace(frame.id, i).first->second;
-                        bt = std::min(bt, Int(i));
                     }
                 }
             }
@@ -486,19 +482,25 @@ std::optional<Int> TRPUtil::refine_abstraction(const unsigned last) {
             break;
         case SmtResult::Unsat:
             Int backtrack_point = trace.size();
+            linked_hash_set<Int> refined;
             for (const auto& c: core) {
                 const auto& [id, refinement] = assumption_to_refinement.at(c);
-                hot_literals.emplace(refinement);
                 const auto current = rule_map.at(id);
                 if (Config::Analysis::log) {
                     std::cout << "refining " << current << " with " << refinement << std::endl;
                 }
+                refined.insert(id);
                 rule_map.put(id, current && refinement);
-                backtrack_point = std::min(backtrack_point, backtrack_points.at(id));
                 for (auto &[i,b]: blocked_per_step) {
                     if (b.erase(id) > 0) {
                         backtrack_point = std::min(backtrack_point, i);
                     }
+                }
+            }
+            for (unsigned i = 0; i < trace.size(); ++i) {
+                if (refined.contains(trace[i].id)) {
+                    backtrack_point = std::min(Int(i), backtrack_point);
+                    break;
                 }
             }
             assert(backtrack_point < trace.size());

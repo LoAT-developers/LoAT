@@ -46,7 +46,6 @@ protected:
     bool safe {true};
     // step -> ID of corresponding transition formula -> blocked transition
     std::unordered_map<Int, std::map<Int, Bools::Expr>> blocked_per_step {};
-    BoolExprSet hot_literals;
 
     TRPUtil(const ITSPtr &its, const Config::TRPConfig &config);
 
@@ -61,7 +60,7 @@ protected:
     void add_blocking_clauses(unsigned depth);
     virtual void add_blocking_clause(const Range &range, const Int &id, Bools::Expr loop) = 0;
     bool add_blocking_clauses(const Range &range, const ModelPtr& model);
-    std::optional<Int> refine_abstraction(unsigned last);
+    std::optional<Int> refine_abstraction(const Range&);
 
 public:
 
