@@ -509,58 +509,39 @@ std::optional<Int> TRPUtil::refine_abstraction(const Range& range) {
     return std::nullopt;
 }
 
-std::optional<Int> TRPUtil::refine_with_same_model(const Range& range) {
-    std::unordered_map<Int, BoolExprSet> refinement_map;
+
+std::optional<Int> TRPUtil::refine_partially(const Range& range) {
     for (unsigned i = range.start(); i <= range.end(); ++i) {
         const auto& frame = trace.at(i);
         if (frame.id > last_orig_clause) {
-            const auto current = frame.implicant;
+            const auto current = rule_map.at(frame.id);
             const auto conc = concretization.at(frame.id);
             assert(current->isAnd());
             assert(conc->isAnd());
             const auto current_children = current->getChildren();
             if (conc != current) {
-                const auto &subs = get_subs(i, 1);
-                for (const auto &c: conc->getChildren()) {
+                const auto& subs = get_subs(i, 1);
+                for (const auto& c: conc->getChildren()) {
                     if (!current_children.contains(c)) {
-                        if (!(*model)->eval(c->renameVars(subs))) {
-                            if (refined_once.contains(frame.id) && conc != rule_map.at(frame.id)) {
-                                refinement_map.emplace(frame.id, BoolExprSet()).first->second.insert(conc);
-                                break;
+                        solver->add(c->renameVars(subs));
+                        if (solver->check() == SmtResult::Unsat) {
+                            rule_map.erase(frame.id);
+                            rule_map.emplace(frame.id, current && c);
+                            Int backtrack_point = i;
+                            for (auto &[i,b]: blocked_per_step) {
+                                if (b.erase(frame.id) > 0) {
+                                    backtrack_point = std::min(backtrack_point, i);
+                                }
                             }
-                            refinement_map.emplace(frame.id, BoolExprSet()).first->second.insert(c);
+                            return backtrack_point;
                         }
+                        model = solver->model();
                     }
                 }
             }
         }
     }
-    if (refinement_map.empty()) {
-        return std::nullopt;
-    }
-    Int backtrack_point = trace.size();
-    for (auto &[id, refinement]: refinement_map) {
-        refined_once.insert(id);
-        const auto current = rule_map.at(id);
-        if (Config::Analysis::log) {
-            std::cout << "refining " << id << ": " << current << " with " << refinement << std::endl;
-        }
-        refinement.insert(current);
-        rule_map.put(id, bools::mkAnd(refinement));
-        for (auto &[i,b]: blocked_per_step) {
-            if (b.erase(id) > 0) {
-                backtrack_point = std::min(backtrack_point, i);
-            }
-        }
-    }
-    for (unsigned i = 0; i < trace.size(); ++i) {
-        if (refinement_map.contains(trace[i].id)) {
-            backtrack_point = std::min(Int(i), backtrack_point);
-            break;
-        }
-    }
-    assert(backtrack_point < trace.size());
-    return backtrack_point;
+    return std::nullopt;
 }
 
 ITSSafetyCex TRPUtil::get_cex() {

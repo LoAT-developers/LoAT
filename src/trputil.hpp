@@ -62,7 +62,7 @@ protected:
     virtual void add_blocking_clause(const Range &range, const Int &id, Bools::Expr loop) = 0;
     bool add_blocking_clauses(const Range &range, const ModelPtr& model);
     std::optional<Int> refine_abstraction(const Range&);
-    std::optional<Int> refine_with_same_model(const Range&);
+    std::optional<Int> refine_partially(const Range&);
 
 public:
 
