@@ -2,6 +2,8 @@
 #include "exprconverter.hpp"
 #include "yicesmodel.hpp"
 
+using Converter = ExprConverter<term_t, term_t, std::vector<term_t>, std::vector<term_t>>;
+
 namespace yices {
 
 void init() {
@@ -47,8 +49,31 @@ Yices::Yices(const Logic logic): ctx(YicesContext()), config(yices_new_config())
     yices::check_err();
 }
 
+std::pair<SmtResult, BoolExprSet> Yices::check_with_assumptions(const BoolExprSet& set) {
+    std::unordered_map<term_t, Bools::Expr> map;
+    std::vector<term_t> converted;
+    for (const auto& a: set) {
+        const auto c = Converter::convert(a, ctx);
+        map.emplace(c, a);
+        converted.emplace_back(c);
+    }
+    const auto res = processResult(yices_check_context_with_assumptions(solver, nullptr, converted.size(), converted.data()));
+    BoolExprSet core;
+    if (res == SmtResult::Unsat) {
+        term_vector_t vec;
+        yices_init_term_vector(&vec);
+        yices_get_unsat_core(solver, &vec);
+        yices::check_err();
+        for (unsigned i = 0; i < vec.size; i++) {
+            core.emplace(map.at(vec.data[i]));
+        }
+        yices_delete_term_vector(&vec);
+    }
+    return {res, core};
+}
+
 void Yices::add(const Bools::Expr e) {
-    if (yices_assert_formula(solver, ExprConverter<term_t, term_t, std::vector<term_t>, std::vector<term_t>>::convert(e, ctx)) < 0) {
+    if (yices_assert_formula(solver, Converter::convert(e, ctx)) < 0) {
         throw YicesError();
     }
     yices::check_err();

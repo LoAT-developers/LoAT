@@ -19,6 +19,7 @@ public:
     void randomize(unsigned seed) override;
     Lit abstract(const Lit& e);
     Expr abstract(const Expr& e);
+    std::pair<SmtResult, BoolExprSet> check_with_assumptions(const BoolExprSet&) override;
 
 private:
 

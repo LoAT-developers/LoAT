@@ -63,7 +63,7 @@ void ADCLSat::add_blocking_clause(const Range &range, const Int &id, const Bools
 
 void ADCLSat::handle_loop(const Range& range) {
     if (Config::Analysis::abstraction_refinement) {
-        if (const auto backtrack_point = refine_abstraction(range)) {
+        if (const auto backtrack_point = refine_abstraction(range.end())) {
             if (Config::Analysis::log) {
                 std::cout << "refined loop" << std::endl;
             }
@@ -76,7 +76,7 @@ void ADCLSat::handle_loop(const Range& range) {
         }
     }
     backtracking = true;
-    auto [loop_non_bool, loop_bool, model]{specialize(range, Config::Analysis::abstraction_refinement, theory::isTempCell)};
+    auto [loop_non_bool, loop_bool, model]{specialize(range, theory::isTempCell)};
     solver->pop();
     if (add_blocking_clauses(range, model)) {
         if (Config::Analysis::log) {
@@ -149,8 +149,7 @@ std::optional<SmtResult> ADCLSat::do_step() {
                     if (Config::Analysis::log) {
                         std::cout << "proving safety failed, abstraction refinement" << std::endl;
                     }
-                    const auto range = Range::from_length(0, trace.size());
-                    if (const auto backtrack_point = refine_abstraction(range)) {
+                    if (const auto backtrack_point = refine_abstraction(trace.size() - 1)) {
                         solver->pop();
                         while (trace.size() > *backtrack_point) {
                             trace.pop_back();
@@ -233,7 +232,7 @@ std::optional<SmtResult> ADCLSat::do_step() {
     const auto m{(*model)->composeBackwards(subs)};
     const auto [imp_non_bool, imp_bool] = m->structuralImplicant(trans);
     const auto imp = imp_non_bool && imp_bool;
-    solver->add(imp->renameVars(subs));
+    solver->add(encode_transition(imp, id)->renameVars(subs));
     const auto smt_res{solver->check()};
     assert(smt_res == SmtResult::Sat);
     trace.emplace_back(id, imp, m);

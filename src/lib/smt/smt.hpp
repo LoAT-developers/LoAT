@@ -64,6 +64,7 @@ public:
     virtual ModelPtr model() = 0;
     virtual void enableModels() = 0;
     virtual void resetSolver() = 0;
+    virtual std::pair<SmtResult, BoolExprSet> check_with_assumptions(const BoolExprSet&) = 0;
 
     virtual void randomize(unsigned seed) = 0;
 

@@ -128,13 +128,13 @@ const Renaming &TRPUtil::get_subs(const unsigned start, const unsigned steps) {
     return pre_vec.at(steps - 1);
 }
 
-std::pair<Bools::Expr, ModelPtr> TRPUtil::compress(const Range &range, const bool concrete) {
+std::pair<Bools::Expr, ModelPtr> TRPUtil::compress(const Range &range) {
     std::optional<Bools::Expr> loop;
     Renaming var_renaming;
     for (long i = range.end(); i >= 0 && i >= static_cast<long>(range.start()); --i) {
         const auto id = trace[i].id;
         Bools::Expr rule = top();
-        if (concrete && id > last_orig_clause) {
+        if (Config::Analysis::abstraction_refinement && id > last_orig_clause) {
             rule = concretization.at(id);
         } else {
             rule = trace[i].implicant;
@@ -240,9 +240,9 @@ std::pair<Bools::Expr, Bools::Expr> TRPUtil::specialize(const Bools::Expr& e, co
     return {mbp_non_bool, mbp_bool};
 }
 
-std::tuple<Bools::Expr, Bools::Expr, ModelPtr> TRPUtil::specialize(const Range &range, const bool concrete, const std::function<bool(const Cell &)> &eliminate) {
+std::tuple<Bools::Expr, Bools::Expr, ModelPtr> TRPUtil::specialize(const Range &range, const std::function<bool(const Cell &)> &eliminate) {
     assert (!range.empty());
-    auto [transition, model]{compress(range, concrete)};
+    auto [transition, model]{compress(range)};
     if (Config::Analysis::log) {
         std::cout << "compressed:" << std::endl;
         std::cout << transition << std::endl;
@@ -451,8 +451,11 @@ bool TRPUtil::add_blocking_clauses(const Range &range, const ModelPtr& model) {
     return false;
 }
 
-std::optional<Int> TRPUtil::refine_abstraction(const Range& range) {
-    for (unsigned i = range.start(); i <= range.end(); ++i) {
+std::optional<Int> TRPUtil::refine_abstraction(const unsigned last) {
+    BoolExprSet assumptions;
+    std::unordered_map<Bools::Expr, std::pair<Int, Bools::Expr>> assumption_to_refinement;;
+    std::unordered_map<Int, Int> backtrack_points;
+    for (unsigned i = 0; i <= last; ++i) {
         const auto& frame = trace.at(i);
         if (frame.id > last_orig_clause) {
             const auto current = frame.implicant;
@@ -464,53 +467,40 @@ std::optional<Int> TRPUtil::refine_abstraction(const Range& range) {
                 const auto& subs = get_subs(i, 1);
                 for (const auto& c: conc->getChildren()) {
                     if (!current_children.contains(c)) {
-                        solver->add(c->renameVars(subs));
-                        if (solver->check() == SmtResult::Unsat) {
-                            rule_map.erase(frame.id);
-                            rule_map.emplace(frame.id, current && c);
-                            Int backtrack_point = i;
-                            for (auto &[i,b]: blocked_per_step) {
-                                if (b.erase(frame.id) > 0) {
-                                    backtrack_point = std::min(backtrack_point, i);
-                                }
-                            }
-                            return backtrack_point;
-                        }
-                        model = solver->model();
+                        const auto assumption = c->renameVars(subs);
+                        assumptions.insert(assumption);
+                        assumption_to_refinement.emplace(assumption, std::pair(frame.id, c));
+                        auto& bt = backtrack_points.emplace(frame.id, i).first->second;
+                        bt = std::min(bt, Int(i));
                     }
                 }
             }
         }
     }
-    return std::nullopt;
-}
-
-std::optional<Int> TRPUtil::refine_fully(const Range& range) {
-    for (unsigned i = range.start(); i <= range.end(); ++i) {
-        const auto& frame = trace.at(i);
-        if (frame.id > last_orig_clause) {
-            const auto current = rule_map.at(frame.id);
-            const auto conc = concretization.at(frame.id);
-            assert(current->isAnd());
-            assert(conc->isAnd());
-            const auto current_children = current->getChildren();
-            if (conc != current) {
-                const auto& subs = get_subs(i, 1);
-                solver->add(conc->renameVars(subs));
-                if (solver->check() == SmtResult::Unsat) {
-                    rule_map.erase(frame.id);
-                    rule_map.emplace(frame.id, conc);
-                    Int backtrack_point = i;
-                    for (auto &[i,b]: blocked_per_step) {
-                        if (b.erase(frame.id) > 0) {
-                            backtrack_point = std::min(backtrack_point, i);
-                        }
-                    }
-                    return backtrack_point;
+    switch (const auto [res, core] = solver->check_with_assumptions(assumptions); res) {
+        case SmtResult::Sat:
+            model = solver->model();
+            break;
+        case SmtResult::Unknown:
+            break;
+        case SmtResult::Unsat:
+            Int backtrack_point = trace.size();
+            for (const auto& c: core) {
+                const auto& [id, refinement] = assumption_to_refinement.at(c);
+                const auto current = rule_map.at(id);
+                if (Config::Analysis::log) {
+                    std::cout << "refining " << current << " with " << refinement << std::endl;
                 }
-                model = solver->model();
+                rule_map.put(id, current && refinement);
+                backtrack_point = std::min(backtrack_point, backtrack_points.at(id));
+                for (auto &[i,b]: blocked_per_step) {
+                    if (b.erase(id) > 0) {
+                        backtrack_point = std::min(backtrack_point, i);
+                    }
+                }
             }
-        }
+            assert(backtrack_point < trace.size());
+            return backtrack_point;
     }
     return std::nullopt;
 }

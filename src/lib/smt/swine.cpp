@@ -131,6 +131,10 @@ SmtResult Swine::check() {
     while (true);
 }
 
+std::pair<SmtResult, BoolExprSet> Swine::check_with_assumptions(const BoolExprSet&) {
+    throw std::logic_error("check_with_assumptions not yet implemented for SwInE");
+}
+
 ModelPtr Swine::model() {
     return *m;
 }

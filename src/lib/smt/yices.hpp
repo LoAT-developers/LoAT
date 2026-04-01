@@ -35,6 +35,7 @@ public:
     void resetSolver() override;
     ~Yices() override;
     std::ostream& print(std::ostream& os) const override;
+    std::pair<SmtResult, BoolExprSet> check_with_assumptions(const BoolExprSet& e) override;
 
 private:
     YicesContext ctx;
