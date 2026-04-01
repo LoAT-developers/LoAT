@@ -63,7 +63,7 @@ void ADCLSat::add_blocking_clause(const Range &range, const Int &id, const Bools
 
 void ADCLSat::handle_loop(const Range& range) {
     if (Config::Analysis::abstraction_refinement) {
-        if (const auto backtrack_point = refine_abstraction(range)) {
+        if (const auto backtrack_point = refine_with_same_model(range)) {
             if (Config::Analysis::log) {
                 std::cout << "refined loop" << std::endl;
             }
@@ -183,7 +183,6 @@ std::optional<SmtResult> ADCLSat::do_step() {
     if (!trace.empty() && trace.back().id > last_orig_clause) {
         solver->add(arith::mkNeq(trace_var, arith::mkConst(trace.back().id))->renameVars(subs));
     }
-    solver->push();
     const auto ids = last ? dg_over_approx.getSuccessors(*last) : dg_over_approx.getRoots();
     std::vector<Bools::Expr> steps;
     for (const auto& id: ids) {
@@ -201,7 +200,6 @@ std::optional<SmtResult> ADCLSat::do_step() {
             backtracking = true;
             const auto projection{trp.mbp(trace.back().implicant, trace.back().model, theory::isTempCell)};
             solver->pop(); // current step
-            solver->pop(); // blocking clauses
             solver->pop(); // backtracking
             trace.pop_back();
             const auto b {!projection->renameVars(get_subs(trace.size(), 1))};
@@ -223,6 +221,7 @@ std::optional<SmtResult> ADCLSat::do_step() {
     }
     backtracking = false;
     solver->pop();
+    solver->push();
     const auto id{(*model)->get(trace_var->renameVars(subs))};
     if (Config::Analysis::log) {
         std::cout << "***** Step *****" << std::endl;
