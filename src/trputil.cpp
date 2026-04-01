@@ -520,10 +520,14 @@ std::optional<Int> TRPUtil::refine_with_same_model(const Range& range) {
             assert(conc->isAnd());
             const auto current_children = current->getChildren();
             if (conc != current) {
-                const auto& subs = get_subs(i, 1);
-                for (const auto& c: conc->getChildren()) {
+                const auto &subs = get_subs(i, 1);
+                for (const auto &c: conc->getChildren()) {
                     if (!current_children.contains(c)) {
                         if (!(*model)->eval(c->renameVars(subs))) {
+                            if (refined_once.contains(frame.id) && conc != rule_map.at(frame.id)) {
+                                refinement_map.emplace(frame.id, BoolExprSet()).first->second.insert(conc);
+                                break;
+                            }
                             refinement_map.emplace(frame.id, BoolExprSet()).first->second.insert(c);
                         }
                     }
@@ -536,9 +540,10 @@ std::optional<Int> TRPUtil::refine_with_same_model(const Range& range) {
     }
     Int backtrack_point = trace.size();
     for (auto &[id, refinement]: refinement_map) {
+        refined_once.insert(id);
         const auto current = rule_map.at(id);
         if (Config::Analysis::log) {
-            std::cout << "refining " << current << " with " << refinement << std::endl;
+            std::cout << "refining " << id << ": " << current << " with " << refinement << std::endl;
         }
         refinement.insert(current);
         rule_map.put(id, bools::mkAnd(refinement));
