@@ -205,7 +205,8 @@ Int TRPUtil::add_learned_clause(const Range &range, const Bools::Expr &accel) {
             const auto vars = c->vars();
             if (vars.contains(its->getLocVar()->var())
                 || vars.contains(its->getLocVar()->var()->postVar())
-                || vars.contains(trace_var->var())) {
+                || vars.contains(trace_var->var())
+                || hot_literals.contains(c)) {
                 lits.emplace(c);
             }
         }
@@ -487,6 +488,7 @@ std::optional<Int> TRPUtil::refine_abstraction(const unsigned last) {
             Int backtrack_point = trace.size();
             for (const auto& c: core) {
                 const auto& [id, refinement] = assumption_to_refinement.at(c);
+                hot_literals.emplace(refinement);
                 const auto current = rule_map.at(id);
                 if (Config::Analysis::log) {
                     std::cout << "refining " << current << " with " << refinement << std::endl;
