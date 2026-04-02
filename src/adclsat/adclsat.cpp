@@ -39,7 +39,7 @@ std::optional<Range> ADCLSat::has_looping_infix() {
         for (unsigned start = 0; start + i < trace.size(); ++start) {
             if (dependency_graph.hasEdge(trace[start + i].implicant, trace[start].implicant) && (i > 0 || trace[start].id <= last_orig_clause)) {
                 if (i == 0) {
-                    if (const auto loop {trp.mbp(trace[start].implicant, trace[start].model, theory::isTempCell)}; SmtFactory::check(loop->renameVars(get_subs(0,1)) && loop->renameVars(get_subs(1,1))) == SmtResult::Unsat) {
+                    if (const auto loop {trp.mbp(trace[start].implicant, (*model)->composeBackwards(get_subs(start, 1)), theory::isTempCell)}; SmtFactory::check(loop->renameVars(get_subs(0,1)) && loop->renameVars(get_subs(1,1))) == SmtResult::Unsat) {
                         continue;
                     }
                 }
@@ -52,12 +52,12 @@ std::optional<Range> ADCLSat::has_looping_infix() {
 
 void ADCLSat::add_blocking_clause(const Range &range, const Int &id, const Bools::Expr loop) {
     const auto s{get_subs(range.start(), range.length())};
-    auto &map{blocked_per_step.emplace(range.end(), std::map<Int, Bools::Expr>()).first->second};
-    auto it{map.emplace(id, top()).first};
+    auto &map{blocked_per_step.emplace(range.end(), std::map<Int, BoolExprSet>()).first->second};
+    auto it{map.emplace(id, BoolExprSet()).first};
     if (range.length() == 1) {
-        it->second = it->second && (!loop || bools::mkLit(arith::mkGeq(trace_var, arith::mkConst(id))))->renameVars(s);
+        it->second.insert((!loop || bools::mkLit(arith::mkGeq(trace_var, arith::mkConst(id))))->renameVars(s));
     } else {
-        it->second = it->second && !loop->renameVars(s);
+        it->second.insert(!loop->renameVars(s));
     }
 }
 
@@ -199,7 +199,7 @@ std::optional<SmtResult> ADCLSat::do_step() {
                 return safe ? SmtResult::Sat : SmtResult::Unknown;
             }
             backtracking = true;
-            const auto projection{trp.mbp(trace.back().implicant, trace.back().model, theory::isTempCell)};
+            const auto projection{trp.mbp(trace.back().implicant, (*model)->composeBackwards(get_subs(trace.size() - 1, 1)), theory::isTempCell)};
             solver->pop(); // current step
             solver->pop(); // blocking clauses
             solver->pop(); // backtracking
@@ -235,7 +235,7 @@ std::optional<SmtResult> ADCLSat::do_step() {
     solver->add(imp->renameVars(subs));
     const auto smt_res{solver->check()};
     assert(smt_res == SmtResult::Sat);
-    trace.emplace_back(id, imp, m);
+    trace.emplace_back(id, imp);
     if (trace.size() > 1) {
         dependency_graph.addEdge(trace.at(trace.size() - 2).implicant, imp);
     }

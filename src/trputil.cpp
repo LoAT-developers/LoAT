@@ -407,8 +407,10 @@ void TRPUtil::add_blocking_clauses(unsigned depth) {
         solver->add(!b->renameVars(s1) || bools::mkLit(arith::mkGeq(trace_var->renameVars(s1), arith::mkConst(id))));
     }
     if (const auto it{blocked_per_step.find(depth)}; it != blocked_per_step.end()) {
-        for (const auto& b : it->second | std::views::values) {
-            solver->add(b);
+        for (const auto& blocked : it->second | std::views::values) {
+            for (const auto& b: blocked) {
+                solver->add(b);
+            }
         }
     }
 }
@@ -527,6 +529,9 @@ std::optional<Int> TRPUtil::refine_partially(const Range& range) {
                         if (solver->check() == SmtResult::Unsat) {
                             rule_map.erase(frame.id);
                             rule_map.emplace(frame.id, current && c);
+                            if (Config::Analysis::log) {
+                                std::cout << "refining " << current << " with " << c << std::endl;
+                            }
                             Int backtrack_point = i;
                             for (auto &[i,b]: blocked_per_step) {
                                 if (b.erase(frame.id) > 0) {

@@ -32,7 +32,7 @@ std::optional<Range> TRL::has_looping_infix() {
             }
             if (dependency_graph.hasEdge(trace[start + i].implicant, trace[start].implicant) && (i > 0 || trace[start].id <= last_orig_clause)) {
                 if (i == 0) {
-                    if (const auto loop {trp.mbp(trace[start].implicant, trace[start].model, theory::isTempCell)}; SmtFactory::check(loop->renameVars(get_subs(0,1)) && loop->renameVars(get_subs(1,1))) == SmtResult::Unsat) {
+                    if (const auto loop {trp.mbp(trace[start].implicant, (*model)->composeBackwards(get_subs(start, 1)), theory::isTempCell)}; SmtFactory::check(loop->renameVars(get_subs(0,1)) && loop->renameVars(get_subs(1,1))) == SmtResult::Unsat) {
                         continue;
                     }
                 }
@@ -100,8 +100,8 @@ bool TRL::handle_loop(const Range &range) {
 
 void TRL::add_blocking_clause(const Range &range, const Int &id, const Bools::Expr loop) {
     const auto s{get_subs(range.start(), range.length())};
-    auto &map{blocked_per_step.emplace(range.end(), std::map<Int, Bools::Expr>()).first->second};
-    auto it{map.emplace(id, top()).first};
+    auto &map{blocked_per_step.emplace(range.end(), std::map<Int, BoolExprSet>()).first->second};
+    auto it{map.emplace(id, BoolExprSet()).first};
     if (Config::Analysis::termination()) {
         std::vector<Bools::Expr> disjuncts;
         disjuncts.emplace_back(!loop->renameVars(s));
@@ -121,11 +121,11 @@ void TRL::add_blocking_clause(const Range &range, const Int &id, const Bools::Ex
             const auto no_term_loop{bools::mkLit(arith::mkGeq(safety_var->renameVars(first_s), arith::zero()))};
             disjuncts.emplace_back(no_term_loop);
         }
-        it->second = it->second && bools::mkOr(disjuncts);
+        it->second.insert(bools::mkOr(disjuncts));
     } else if (range.length() == 1) {
-        it->second = it->second && (!loop || bools::mkLit(arith::mkGeq(trace_var, arith::mkConst(id))))->renameVars(s);
+        it->second.insert((!loop || bools::mkLit(arith::mkGeq(trace_var, arith::mkConst(id))))->renameVars(s));
     } else {
-        it->second = it->second && !loop->renameVars(s);
+        it->second.insert(!loop->renameVars(s));
     }
 }
 
@@ -144,7 +144,7 @@ void TRL::build_trace() {
             dependency_graph.addEdge(prev->first, imp);
         }
         prev = {imp, id};
-        trace.emplace_back(TraceElem{.id = id, .implicant = imp, .model = comp});
+        trace.emplace_back(id, imp);
     }
     if (Config::Analysis::log) {
         std::cout << "trace:" << std::endl;
@@ -156,8 +156,8 @@ void TRL::build_trace() {
             std::cout << "safety var: " << safety_var << std::endl;
         }
         std::cout << "run:" << std::endl;
-        for (const auto &t : trace) {
-            std::cout <<t.model->toString(vars) << std::endl;
+        for (unsigned i = 0; i < trace.size(); ++i) {
+            std::cout << (*model)->composeBackwards(get_subs(i, 1))->toString(vars) << std::endl;
         }
     }
 }

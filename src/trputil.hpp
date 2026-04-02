@@ -17,7 +17,6 @@ protected:
     struct TraceElem {
         Int id;
         Bools::Expr implicant;
-        ModelPtr model;
     };
 
     using rule_map_t = linked_hash_map<Int, Bools::Expr>;
@@ -45,7 +44,7 @@ protected:
     linked_hash_map<Int, Bools::Expr> accel;
     bool safe {true};
     // step -> ID of corresponding transition formula -> blocked transition
-    std::unordered_map<Int, std::map<Int, Bools::Expr>> blocked_per_step {};
+    std::unordered_map<Int, std::map<Int, BoolExprSet>> blocked_per_step {};
     std::unordered_set<Int> refined_once;
 
     TRPUtil(const ITSPtr &its, const Config::TRPConfig &config);
