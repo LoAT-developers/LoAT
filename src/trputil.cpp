@@ -533,6 +533,12 @@ std::optional<Int> TRPUtil::refine_partially(const Range& range) {
                                     backtrack_point = std::min(backtrack_point, i);
                                 }
                             }
+                            for (unsigned i = 0; i < trace.size(); ++i) {
+                                if (trace[i].id == frame.id) {
+                                    backtrack_point = std::min(Int(i), backtrack_point);
+                                    break;
+                                }
+                            }
                             return backtrack_point;
                         }
                         model = solver->model();
