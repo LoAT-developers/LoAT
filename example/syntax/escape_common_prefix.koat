@@ -1,9 +1,0 @@
-# Created after a bug where x''' was partially replaced to x_'', as x''' and x'
-# start with the same prefix. With the bugfix, this should not crash anymore.
-
-(GOAL COMPLEXITY)
-(STARTTERM (FUNCTIONSYMBOLS start))
-(VAR x''' x')
-(RULES
-  start() -> f() :|: x''' > 0
-)

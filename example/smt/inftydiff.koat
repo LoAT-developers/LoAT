@@ -1,9 +1,0 @@
-# Challenging example, where both a and b have to grow to infinity,
-# but a > b has to hold (to satisfy a-b > 0). Works with the new SMT encoding.
-
-(GOAL COMPLEXITY)
-(STARTTERM (FUNCTIONSYMBOLS l0))
-(VAR a b)
-(RULES
-l0(a,b) -{b,0}> l1(a,b) :|: a-b > 0
-)

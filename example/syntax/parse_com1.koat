@@ -1,7 +1,0 @@
-# A simple example to ensure that Com_1 is correctly ignored
-(GOAL COMPLEXITY)
-(STARTTERM (FUNCTIONSYMBOLS start))
-(VAR x y)
-(RULES
-  start(x, y) -> Com_1(f(x, y))
-)

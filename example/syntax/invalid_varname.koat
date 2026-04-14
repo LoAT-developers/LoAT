@@ -1,8 +1,0 @@
-# Ensure that variables with operators in them are not allowed
-
-(GOAL COMPLEXITY)
-(STARTTERM (FUNCTIONSYMBOLS start))
-(VAR x.0 I+x)
-(RULES
-  start(x.0, I+x) -> f(0,0)
-)

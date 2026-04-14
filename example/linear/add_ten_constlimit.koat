@@ -1,9 +1,0 @@
-# In this example, x can be negative infinite, resulting in linear complexity
-
-(GOAL COMPLEXITY)
-(STARTTERM (FUNCTIONSYMBOLS start))
-(VAR x y)
-(RULES
-  start(x, y) -> f(x, y)
-  f(x, y) -> f(x + 10, y) [ x < 100 ]
-)

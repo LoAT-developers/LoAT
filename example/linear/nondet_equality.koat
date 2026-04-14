@@ -1,9 +1,0 @@
-# Here, a free variable is used as indirect assignment
-
-(GOAL COMPLEXITY)
-(STARTTERM (FUNCTIONSYMBOLS start))
-(VAR x y z)
-(RULES
-  start(x, y) -> f(x, y)
-  f(x, y) -> f(x-z, y) [ z = 1 && x > 0 ]
-)
