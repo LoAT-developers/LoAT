@@ -430,15 +430,18 @@ bool TRPUtil::add_blocking_clauses(const Range &range, const ModelPtr& model) {
         }
         const auto bounds = b->getBounds(n);
         for (const auto &bound: bounds) {
-            model->put(n, model->eval(bound.bound));
-            if (model->eval(b)) {
-                Bools::Expr projected{
-                    mbp::int_mbp(b, model, mbp_kind, [&](const auto &x) {
-                        return x == Cell(n);
-                    })
-                };
-                add_blocking_clause(range, id, projected);
-                return true;
+            const auto c = model->evalToRational(bound.bound);
+            if (mp::denominator(c) == 1) {
+                model->put(n, mp::denominator(c));
+                if (model->eval(b)) {
+                    Bools::Expr projected{
+                        mbp::int_mbp(b, model, mbp_kind, [&](const auto &x) {
+                            return x == Cell(n);
+                        })
+                    };
+                    add_blocking_clause(range, id, projected);
+                    return true;
+                }
             }
         }
     }
