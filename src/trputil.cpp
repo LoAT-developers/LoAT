@@ -530,7 +530,7 @@ std::optional<Int> TRPUtil::refine_partially(const Range& range) {
                             rule_map.erase(frame.id);
                             rule_map.emplace(frame.id, current && c);
                             if (Config::Analysis::log) {
-                                std::cout << "refining " << current << " with " << c << std::endl;
+                                std::cout << "refining " << frame.id << ": " << current << " with " << c << std::endl;
                             }
                             Int backtrack_point = i;
                             for (auto &[i,b]: blocked_per_step) {
