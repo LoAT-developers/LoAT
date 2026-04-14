@@ -34,9 +34,8 @@ on:
         - backward
       release:
         required: true
-        type: choice
-        options:
-        - HEAD
+        type: string
+        default: HEAD
       args:
         required: false
         type: string
