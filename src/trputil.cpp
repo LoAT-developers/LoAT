@@ -417,7 +417,6 @@ void TRPUtil::add_blocking_clauses(unsigned depth) {
 
 bool TRPUtil::add_blocking_clauses(const Range &range, const ModelPtr& model) {
     const auto n {trp.get_n()};
-    model->put(n, 1);
     for (const auto &[id, b] : rule_map) {
         const auto is_orig_clause {id <= last_orig_clause};
         if (Config::Analysis::termination() && is_orig_clause) {
@@ -429,9 +428,18 @@ bool TRPUtil::add_blocking_clauses(const Range &range, const ModelPtr& model) {
         if (const auto vars {b->vars()}; is_orig_clause && std::any_of(vars.begin(), vars.end(), theory::isTempVar)) {
             continue;
         }
-        if (model->eval(b)) {
-            add_blocking_clause(range, id, b);
-            return true;
+        const auto bounds = b->getBounds(n);
+        for (const auto &bound: bounds) {
+            model->put(n, model->eval(bound.bound));
+            if (model->eval(b)) {
+                Bools::Expr projected{
+                    mbp::int_mbp(b, model, mbp_kind, [&](const auto &x) {
+                        return x == Cell(n);
+                    })
+                };
+                add_blocking_clause(range, id, projected);
+                return true;
+            }
         }
     }
     return false;

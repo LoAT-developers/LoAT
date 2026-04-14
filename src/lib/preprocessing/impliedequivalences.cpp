@@ -4,9 +4,10 @@
 Subs impliedEquivalences(const Bools::Expr& e) {
     Subs res;
     std::vector<Bools::Expr> todo;
-    const auto find_elim = [](const Bools::Expr &c) -> std::optional<Bools::Var> {
+    const auto find_elim = [&](const Bools::Expr &c) -> std::optional<Bools::Var> {
+        const auto blocked = res.vars();
         for (const auto vars {c->vars().get<Bools::Var>()}; const auto &x: vars) {
-            if (x->isTempVar()) {
+            if (x->isTempVar() && !blocked.contains(x)) {
                 return x;
             }
         }
