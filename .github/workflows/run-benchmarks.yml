@@ -128,11 +128,10 @@ jobs:
         with:
           pat: ${{ secrets.LOAT_DEVELOPERS_PAT }}
 
-      - if: ${{ startsWith(inputs.release, 'chc-comp-2024') }}
-        uses: ./actions/.github/actions/get-loat-chc-comp-2024
-
-      - if: ${{ startsWith(inputs.release, 'loat-termcomp-2023') }}
-        uses: ./actions/.github/actions/get-loat-termcomp-2023
+      - if: ${{ !startsWith(inputs.release, 'HEAD') }}
+        uses: ./actions/.github/actions/get-loat-release
+        with:
+          tag: ${{ inputs.release }}
 
       - name: Run Benchmark
         run: ./actions/scripts/run_benchmarks.sh "--mode ${{ inputs.mode }} --engine ${{ inputs.engine }} --direction ${{ inputs.direction }}"
