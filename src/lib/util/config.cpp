@@ -29,7 +29,7 @@ namespace Config {
         bool logPreproc = false;
         bool logAccel = false;
         bool model = false;
-        bool abstraction_refinement = true;
+        bool abstraction_refinement = false;
         Direction dir;
 
         std::string modeName(const Mode mode) {
