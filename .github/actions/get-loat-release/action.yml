@@ -1,0 +1,19 @@
+inputs:
+  tag:
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+
+    - uses: robinraju/release-downloader@v1
+      with:
+        tag: ${{ inputs.tag }}
+        fileName: loat-static
+        out-file-path: '/usr/local/bin/'
+
+    - run: |
+        mv /usr/local/bin/loat-static /usr/local/bin/solver
+        echo "VERSION=${{ inputs.tag }}" >> $GITHUB_ENV
+      shell: bash
+
