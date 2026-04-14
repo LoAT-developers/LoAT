@@ -425,24 +425,32 @@ bool TRPUtil::add_blocking_clauses(const Range &range, const ModelPtr& model) {
         if (range.length() == 1 && is_orig_clause) {
             continue;
         }
-        if (const auto vars {b->vars()}; is_orig_clause && std::any_of(vars.begin(), vars.end(), theory::isTempVar)) {
+        const auto vars {b->vars()};
+        if (is_orig_clause && std::any_of(vars.begin(), vars.end(), theory::isTempVar)) {
             continue;
         }
-        const auto bounds = b->getBounds(n);
-        for (const auto &bound: bounds) {
-            const auto c = model->evalToRational(bound.bound);
-            if (mp::denominator(c) == 1) {
-                model->put(n, mp::denominator(c));
-                if (model->eval(b)) {
-                    Bools::Expr projected{
-                        mbp::int_mbp(b, model, mbp_kind, [&](const auto &x) {
-                            return x == Cell(n);
-                        })
-                    };
-                    add_blocking_clause(range, id, projected);
-                    return true;
+        if (vars.contains(n->var())) {
+            auto bounds = b->getBounds(n);
+            // learned clauses always contain the literal n>0, so 1 should always be a bound
+            assert(!bounds.empty());
+            for (const auto &bound: bounds) {
+                const auto c = model->evalToRational(bound.bound);
+                if (mp::denominator(c) == 1) {
+                    model->put(n, mp::denominator(c));
+                    if (model->eval(b)) {
+                        Bools::Expr projected{
+                            mbp::int_mbp(b, model, mbp_kind, [&](const auto &x) {
+                                return x == Cell(n);
+                            })
+                        };
+                        add_blocking_clause(range, id, projected);
+                        return true;
+                    }
                 }
             }
+        } else if (model->eval(b)) {
+            add_blocking_clause(range, id, b);
+            return true;
         }
     }
     return false;
