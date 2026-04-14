@@ -35,6 +35,9 @@ std::vector<FunAppPtr> parseTopLevelBoolExpr(sexpresso::Sexp &exp, SMTLibParsing
         for (unsigned i = 1; i < exp.childCount(); ++i) {
             const auto l {parseTopLevelBoolExpr(exp[i], state)};
             args.insert(args.end(), l.begin(), l.end());
+            if (args.size() > 1) {
+                throw std::invalid_argument("LoAT cannot handle non-linear clauses");
+            }
         }
         return args;
     } else {

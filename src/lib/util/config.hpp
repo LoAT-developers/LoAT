@@ -1,5 +1,6 @@
 #pragma once
 
+#include <optional>
 #include <string>
 #include <vector>
 #include <ostream>
@@ -12,7 +13,7 @@ namespace Config {
 
     namespace Input {
         enum Format {Horn, Ari};
-        extern Format format;
+        extern std::optional<Format> format;
     }
 
     // Asymptotic complexity computation using limit problems

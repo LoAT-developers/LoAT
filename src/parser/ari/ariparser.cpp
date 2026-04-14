@@ -68,7 +68,7 @@ void ARIParser::run(const std::string &filename) {
                 const auto key {ex[idx].str()};
                 auto val {ex[idx + 1]};
                 if (key == ":var") {
-                    // do nothing
+                    continue;
                 } else if (key == ":guard") {
                     guard.emplace_back(parseBoolExpr(val, state));
                 } else if (key == ":cost") {

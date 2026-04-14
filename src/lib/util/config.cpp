@@ -8,7 +8,7 @@ namespace Config {
     }
 
     namespace Input {
-        Format format = Horn;
+        std::optional<Format> format = std::nullopt;
     }
 
     // Asymptotic complexity computation using limit problems

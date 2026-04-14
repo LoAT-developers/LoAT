@@ -92,9 +92,9 @@ public:
     static LoatSolver forSafety()
     {
         const LoatConfig::InitialConfig init(
-            LoatConfig::InitialConfig::Engine::ABMC,
+            LoatConfig::InitialConfig::Engine::TRL,
             LoatConfig::InitialConfig::Mode::Safety,
-            LoatConfig::InitialConfig::SmtSolver::Swine,
+            LoatConfig::InitialConfig::SmtSolver::Yices,
             LoatConfig::InitialConfig::Direction::Forward,
             LoatConfig::InitialConfig::MbpKind::IntMbp,
             false);
@@ -105,7 +105,7 @@ public:
     static LoatSolver forUnsafety()
     {
         const LoatConfig::InitialConfig init(
-            LoatConfig::InitialConfig::Engine::BMC,
+            LoatConfig::InitialConfig::Engine::ABMC,
             LoatConfig::InitialConfig::Mode::Safety,
             LoatConfig::InitialConfig::SmtSolver::Swine,
             LoatConfig::InitialConfig::Direction::Forward,

@@ -188,6 +188,26 @@ void parseFlags(const int argc, char *argv[]) {
         } else if (strcmp("--version", argv[arg]) == 0) {
             print_version();
             exit(0);
+        } else if (strcmp("--name", argv[arg]) == 0) {
+            std::cout << "LoAT  " << Version::GIT_SHA.substr(0, 6);
+            exit(0);
+        } else if (std::string(argv[arg]).find("--timeout", 0) == 0) {
+            // ignore --timeout at TermComp
+        } else if (std::string(argv[arg]).find("--category", 0) == 0) {
+            // TermComp settings
+            Config::Analysis::engine = Config::Analysis::ADCL;
+            Config::Input::format = Config::Input::Ari;
+            Config::Analysis::model = true;
+            has_mode = true;
+            has_engine = true;
+            if (strcmp("--category=Integer_Transition_Systems", argv[arg]) == 0) {
+                Config::Analysis::mode = Config::Analysis::Termination;
+            } else if (strcmp("--category=Complexity_ITS", argv[arg]) == 0) {
+                Config::Analysis::mode = Config::Analysis::Complexity;
+            }
+        } else if (argv[arg][0] == '-') {
+            std::cerr << "unknown argument " << argv[arg] << std::endl;
+            // ignore additional
         } else {
             if (!filename.empty()) {
                 std::cout << "Error: additional argument " << argv[arg] << " (already got filename: " << filename << ")" << std::endl;
@@ -249,6 +269,15 @@ int main(int argc, char *argv[]) {
         std::cerr << "Error: missing filename" << std::endl;
         return 1;
     }
+    if (!std::ifstream(filename).good()) {
+        std::cerr << "Error: cannot open file " << filename << std::endl;
+        return 1;
+    }
+
+    if (!Config::Input::format) {
+        std::cerr << "Error: missing format" << std::endl;
+        return 1;
+    }
 
     if (!Config::validate()) {
         return -1;
@@ -260,7 +289,7 @@ int main(int argc, char *argv[]) {
     std::optional<CHCToITS> chc2its{};
     std::optional<Reverse> reverse{};
     const auto start{std::chrono::steady_clock::now()};
-    switch (Config::Input::format) {
+    switch (*Config::Input::format) {
         case Config::Input::Ari:
             its = ARIParser::loadFromFile(filename);
             break;
