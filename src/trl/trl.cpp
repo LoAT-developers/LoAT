@@ -91,7 +91,7 @@ bool TRL::handle_loop(const Range &range) {
     }
     step = step || encode_transition(ti, id);
     if (range.length() == 1) {
-        projections.emplace_back(id, !projected);
+        add_projection(id, !projected);
     } else {
         add_blocking_clause(range, id, projected);
     }

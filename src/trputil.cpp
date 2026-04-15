@@ -400,11 +400,15 @@ bool TRPUtil::build_cex() {
     return SmtFactory::check(t.init() && *trans && t.err()->renameVars(t.pre_to_post())) == SmtResult::Sat;
 }
 
+void TRPUtil::add_projection(const Int& id, const Bools::Expr& projection) {
+    projections.emplace_back(!projection || bools::mkLit(arith::mkGeq(trace_var, arith::mkConst(id))));
+}
+
 void TRPUtil::add_blocking_clauses(unsigned depth) {
     const auto s1{get_subs(depth, 1)};
     const auto s2{get_subs(depth + 1, 1)};
-    for (const auto &[id, b] : projections) {
-        solver->add(b->renameVars(s1) || bools::mkLit(arith::mkGeq(trace_var->renameVars(s1), arith::mkConst(id))));
+    for (const auto &b : projections) {
+        solver->add(b->renameVars(s1));
     }
     if (const auto it{blocked_per_step.find(depth)}; it != blocked_per_step.end()) {
         for (const auto& blocked : it->second | std::views::values) {

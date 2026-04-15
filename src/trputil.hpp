@@ -40,7 +40,7 @@ protected:
     Int last_orig_clause;
     const ArithVarPtr safety_var {arrays::nextConst<Arith>()};
     DependencyGraph<Bools::Expr> dependency_graph {};
-    std::vector<std::pair<Int, Bools::Expr>> projections {};
+    std::vector<Bools::Expr> projections {};
     linked_hash_map<Int, Bools::Expr> accel;
     bool safe {true};
     // step -> ID of corresponding transition formula -> blocked transition
@@ -57,6 +57,7 @@ protected:
     std::tuple<Bools::Expr, Bools::Expr, ModelPtr> specialize(const Range &range, const std::function<bool(const Cell&)> &eliminate);
     std::optional<Arith::Expr> prove_term(const Bools::Expr& loop, const ModelPtr &model);
     bool build_cex();
+    void add_projection(const Int& id, const Bools::Expr& projection);
     void add_blocking_clauses(unsigned depth);
     virtual void add_blocking_clause(const Range &range, const Int &id, Bools::Expr loop) = 0;
     bool add_blocking_clauses(const Range &range, const ModelPtr& model);
