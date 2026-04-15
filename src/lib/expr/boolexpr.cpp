@@ -225,13 +225,17 @@ Bools::Expr BoolExpr::subs(const Subs& subs) const {
 }
 
 Bools::Expr BoolExpr::renameVars(const Renaming& subs) const {
-    return map([&](const auto& lit) {
-        return bools::mkLit(theory::apply(
-            lit,
-            [&](const auto& lit) -> Lit {
-                return lit->renameVars(subs);
-            }));
-    });
+    if (const auto lit = getTheoryLit()) {
+        const auto renamed = theory::apply(*lit, [&](const auto& lit) {
+            return Lit(lit->renameVars(subs));
+        });
+        return BoolTheoryLit::from_cache(renamed);
+    }
+    BoolExprSet children;
+    for (const auto& c: getChildren()) {
+        children.insert(c->renameVars(subs));
+    }
+    return BoolJunction::from_cache(children, isAnd() ? ConcatAnd : ConcatOr);
 }
 
 Bools::Expr BoolExpr::eval(const ModelPtr& model, const ArithVarPtr &keep) const {

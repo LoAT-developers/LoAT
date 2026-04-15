@@ -404,7 +404,7 @@ void TRPUtil::add_blocking_clauses(unsigned depth) {
     const auto s1{get_subs(depth, 1)};
     const auto s2{get_subs(depth + 1, 1)};
     for (const auto &[id, b] : projections) {
-        solver->add(!b->renameVars(s1) || bools::mkLit(arith::mkGeq(trace_var->renameVars(s1), arith::mkConst(id))));
+        solver->add(b->renameVars(s1) || bools::mkLit(arith::mkGeq(trace_var->renameVars(s1), arith::mkConst(id))));
     }
     if (const auto it{blocked_per_step.find(depth)}; it != blocked_per_step.end()) {
         for (const auto& blocked : it->second | std::views::values) {

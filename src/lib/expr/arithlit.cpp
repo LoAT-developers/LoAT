@@ -266,7 +266,7 @@ ArithLitPtr ArithLit::subs(const Subs& map) const {
 }
 
 ArithLitPtr ArithLit::renameVars(const Renaming &map) const {
-    return mk(l->renameVars(map), kind);
+    return cache.from_cache(l->renameVars(map), kind);
 }
 
 VarSet ArithLit::vars() const {

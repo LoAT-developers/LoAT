@@ -227,7 +227,7 @@ std::optional<ArrayWritePtr<T>> ArrayWrite<T>::isArrayWrite() const {
 
 template <class T>
 ArrayPtr<T> ArrayWrite<T>::renameVars(const Renaming& map) const {
-    return arrays::mkArrayWrite(m_arr->renameVars(map), m_cond->renameVars(map), m_val->renameVars(map));
+    return cache.from_cache(m_arr->renameVars(map), m_cond->renameVars(map), m_val->renameVars(map));
 }
 
 template <class T>

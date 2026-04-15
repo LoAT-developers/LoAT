@@ -91,7 +91,7 @@ bool TRL::handle_loop(const Range &range) {
     }
     step = step || encode_transition(ti, id);
     if (range.length() == 1) {
-        projections.emplace_back(id, projected);
+        projections.emplace_back(id, !projected);
     } else {
         add_blocking_clause(range, id, projected);
     }
@@ -139,7 +139,7 @@ void TRL::build_trace() {
         const auto rule{encode_transition(rule_map.at(id), id)};
         const auto comp{(*model)->composeBackwards(s)};
         const auto [non_bool_imp, bool_imp] = comp->structuralImplicant(rule);
-        const auto imp= non_bool_imp && bool_imp && Arith::mkEq(trace_var, arith::mkConst(id));
+        const auto imp= bools::mkAnd(BoolExprSet{non_bool_imp, bool_imp, Arith::mkEq(trace_var, arith::mkConst(id))});
         if (prev) {
             dependency_graph.addEdge(prev->first, imp);
         }
