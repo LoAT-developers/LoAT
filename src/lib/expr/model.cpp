@@ -252,6 +252,7 @@ bool Model::structuralImplicant(const Bools::Expr& e, BoolExprSet& non_bool_res,
 }
 
 std::pair<Bools::Expr, Bools::Expr> Model::structuralImplicant(const Bools::Expr& e) {
+#ifdef DEGBUG
     if (!eval(e)) {
         std::cerr << "structural implicant failed; model:" << std::endl;
         std::cerr << this->toString(e->cells()) << std::endl;
@@ -264,6 +265,7 @@ std::pair<Bools::Expr, Bools::Expr> Model::structuralImplicant(const Bools::Expr
         }
         throw std::invalid_argument("structural implicant failed");
     }
+#endif
     BoolExprSet non_bool_res, bool_res;
     structuralImplicant(e, non_bool_res, bool_res);
     return {bools::mkAnd(non_bool_res), bools::mkAnd(bool_res)};
