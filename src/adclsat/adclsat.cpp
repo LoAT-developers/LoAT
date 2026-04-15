@@ -119,7 +119,7 @@ void ADCLSat::handle_loop(const Range& range) {
         dg_over_approx.markSink(id);
     }
     if (range.length() == 1) {
-        add_projection(id, !projected);
+        add_projection(id, projected);
     }
     trace.pop_back();
     while (trace.size() > range.start()) {
