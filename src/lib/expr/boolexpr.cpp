@@ -264,38 +264,24 @@ linked_hash_set<Bound> BoolExpr::getBounds(const ArithVarPtr& n) const {
     return bounds;
 }
 
-void BoolExpr::getBounds(const ArithVarPtr& n, linked_hash_set<Bound> &res) const {
+bool BoolExpr::getBounds(const ArithVarPtr& n, linked_hash_set<Bound> &res) const {
     if (const auto lit {getTheoryLit()}) {
         if (std::holds_alternative<Arith::Lit>(*lit)) {
-            std::get<Arith::Lit>(*lit)->getBounds(n, res);
+            return std::get<Arith::Lit>(*lit)->getBounds(n, res);
         }
     } else if (isAnd()) {
+        auto success = false;
         for (const auto &c: getChildren()) {
-            c->getBounds(n, res);
-        }
-    } else if (isOr()) {
-        bool first = true;
-        linked_hash_set<Bound> intersection;
-        for (const auto &c: getChildren()) {
-            if (first) {
-                c->getBounds(n, intersection);
-                first = false;
-            } else {
-                const auto other {c->getBounds(n)};
-                for (auto it = intersection.begin(); it != intersection.end(); ++it) {
-                    if (other.contains(*it)) {
-                        ++it;
-                    } else {
-                        it = intersection.erase(it);
-                    }
+            if (c->getBounds(n, res)) {
+                if (std::prev(res.end())->kind == BoundKind::Equality) {
+                    return true;
                 }
-            }
-            if (intersection.empty()) {
-                return;
+                success = true;
             }
         }
-        res.insert(intersection.begin(), intersection.end());
+        return success;
     }
+    return false;
 }
 
 linked_hash_set<Divisibility> BoolExpr::getDivisibility(const ArithVarPtr& n) const {

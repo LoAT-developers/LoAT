@@ -91,28 +91,33 @@ bool ArithLit::isLinear(const std::optional<linked_hash_set<ArithVarPtr>> &vars)
     return l->isLinear(vars);
 }
 
-void ArithLit::getBounds(const ArithVarPtr& n, linked_hash_set<Bound> &res) const {
-    if (l->isPoly(n) == 1 && kind != Kind::Neq) {
+bool ArithLit::getBounds(const ArithVarPtr& n, linked_hash_set<Bound> &res) const {
+    if (kind != Kind::Neq) {
         const auto t = kind == Kind::Eq ? l : l - arith::one();
-        const auto coeff{*t->coeff(n)};
         if (const auto optSolved{t->solve(n)}) {
             switch (kind) {
             case Kind::Eq:
                 res.emplace(*optSolved, BoundKind::Equality);
-                break;
+                return true;
             case Kind::Gt: {
-                if (const auto r{***coeff->isRational()}; r > 0) {
-                    res.emplace(*optSolved, BoundKind::Lower);
-                } else {
-                    res.emplace(*optSolved, BoundKind::Upper);
+                const auto coeff{*t->coeff(n)};
+                if (const auto r{***coeff->isRational()}) {
+                    if (r > 0) {
+                        res.emplace(*optSolved, BoundKind::Lower);
+                        return true;
+                    }
+                    if (r < 0) {
+                        res.emplace(*optSolved, BoundKind::Upper);
+                        return true;
+                    }
                 }
-                break;
             }
             default:
                 throw std::invalid_argument("unexpected relation");
             }
         }
     }
+    return false;
 }
 
 std::optional<std::pair<ArithExprPtr, Int>> ArithLit::isDivisibility() const {

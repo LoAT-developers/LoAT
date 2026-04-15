@@ -85,7 +85,7 @@ public:
     virtual void collectLits(LitSet &res) const = 0;
     virtual size_t size() const = 0;
 
-    void getBounds(const ArithVarPtr& n, linked_hash_set<Bound> &res) const;
+    bool getBounds(const ArithVarPtr& n, linked_hash_set<Bound> &res) const;
     linked_hash_set<Bound> getBounds(const ArithVarPtr& n) const;
     void getDivisibility(const ArithVarPtr& n, linked_hash_set<Divisibility> &res) const;
     linked_hash_set<Divisibility> getDivisibility(const ArithVarPtr& n) const;
