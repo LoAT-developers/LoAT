@@ -21,37 +21,37 @@ Bools::Expr BoolExpr::build(const Children& lits, const ConcatOperator op) {
                 children.insert(x);
             }
         }
-        if (op == ConcatAnd) {
-            BoolExprSet units;
-            linked_hash_map<Lit, Bools::Expr> prop;
-            bool changed;
-            do {
-                changed = false;
-                for (auto it = children.begin(); it != children.end();) {
-                    const auto& x = *it;
-                    if (const auto l = x->getTheoryLit()) {
-                        if (units.insert(x).second) {
-                            changed = true;
-                            prop.put(*l, top());
-                            prop.put(theory::negate(*l), bot());
-                        }
-                        it = children.erase(it);
-                    } else {
-                        ++it;
-                    }
-                }
-                if (changed) {
-                    BoolExprSet new_children;
-                    for (const auto& x: children) {
-                        new_children.insert(x->map([&](const auto& l) {
-                            return prop.get(l).value_or(bools::mkLit(l));
-                        }));
-                    }
-                    children = new_children;
-                }
-            } while (changed);
-            children.insert(units.begin(), units.end());
-        }
+        // if (op == ConcatAnd) {
+        //     BoolExprSet units;
+        //     linked_hash_map<Lit, Bools::Expr> prop;
+        //     bool changed;
+        //     do {
+        //         changed = false;
+        //         for (auto it = children.begin(); it != children.end();) {
+        //             const auto& x = *it;
+        //             if (const auto l = x->getTheoryLit()) {
+        //                 if (units.insert(x).second) {
+        //                     changed = true;
+        //                     prop.put(*l, top());
+        //                     prop.put(theory::negate(*l), bot());
+        //                 }
+        //                 it = children.erase(it);
+        //             } else {
+        //                 ++it;
+        //             }
+        //         }
+        //         if (changed) {
+        //             BoolExprSet new_children;
+        //             for (const auto& x: children) {
+        //                 new_children.insert(x->map([&](const auto& l) {
+        //                     return prop.get(l).value_or(bools::mkLit(l));
+        //                 }));
+        //             }
+        //             children = new_children;
+        //         }
+        //     } while (changed);
+        //     children.insert(units.begin(), units.end());
+        // }
         if (op == ConcatAnd) {
             if (children.contains(bot())) {
                 return bot();
