@@ -520,13 +520,12 @@ std::optional<ArithExprPtr> ArithExpr::coeff(const ArithVarPtr& var, const Int &
             return opt{arith::zero()};
         },
         [&](const ArithAddPtr& a) {
-            ArithExprVec args;
             for (const auto &arg: a->getArgs()) {
-                if (const auto c {arg->coeff(var, degree)}) {
-                    args.emplace_back(*c);
+                if (const auto c {arg->coeff(var, degree)}; c && !(*c)->is(0)) {
+                    return c;
                 }
             }
-            return opt{arith::mkPlus(std::move(args))};
+            return opt{};
         },
         [&](const ArithMultPtr& m) {
             if (degree == 0) {
