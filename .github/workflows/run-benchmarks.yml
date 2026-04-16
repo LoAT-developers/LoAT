@@ -133,7 +133,7 @@ jobs:
           tag: ${{ inputs.release }}
 
       - name: Run Benchmark
-        run: ./actions/scripts/run_benchmarks.sh "--mode ${{ inputs.mode }} --engine ${{ inputs.engine }} --direction ${{ inputs.direction }}"
+        run: ./actions/scripts/run_benchmarks.sh "--mode ${{ inputs.mode }} --engine ${{ inputs.engine }} --direction ${{ inputs.direction }} ${{ inputs.args }}"
         env:
           CI_TOTAL: ${{ matrix.ci_total }}
           CI_INDEX: ${{ matrix.ci_index }}
