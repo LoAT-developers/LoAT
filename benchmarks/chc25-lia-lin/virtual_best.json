@@ -2800,7 +2800,7 @@
     "name": "20.c_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "MESI_1_e2_162_e7_1545_000.smt2"
   },
   {
@@ -4688,7 +4688,7 @@
     "name": "DRAGON_all_e3_4821_e4_1791_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "durationThm_2_e3_329_e7_410_000.smt2"
   },
   {
@@ -5052,7 +5052,7 @@
     "name": "O3_nec20_false-unreach-call_true-termination_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "car_all_e8_856_e7_578_000.smt2"
   },
   {
