@@ -35,6 +35,7 @@ void printHelp(const char *arg0) {
     std::cout << "  --log                                                           Enable logging" << std::endl;
     std::cout << "  --proof                                                         Print model/counterexample/recurrent set/..." << std::endl;
     std::cout << "  --abmc::blocking_clauses <true|false>                           ABMC: En- or disable blocking clauses" << std::endl;
+    std::cout << "  --adcl_sat::abstraction_refinement <true|false>                 ADCL_SAT: En- or disable abstraction refinement" << std::endl;
     std::cout << "  --accel::non_linear <true|false>                                Also use acceleration if the result is non-linear" << std::endl;
     std::cout << "  --smt <swine|yices|heuristic>                                   Choose the SMT solver" << std::endl;
     std::cout << "  --direction <forward|backward|interleaved>                      run the analysis forward, backward, or both directions interleaved (if supported)" << std::endl;
@@ -120,6 +121,9 @@ void parseFlags(const int argc, char *argv[]) {
                 std::cout << "Error: unknown engine " << str << std::endl;
                 exit(1);
             }
+            if (Config::Analysis::abstraction_refinement && Config::Analysis::engine != Config::Analysis::ADCLSAT) {
+                throw std::invalid_argument("just ADCL_SAT supports abstraction refinement");
+            }
         } else if (strcmp("--smt", argv[arg]) == 0) {
             if (std::string str = getNext(); boost::iequals("swine", str)) {
                 Config::Analysis::smtSolver = Config::Analysis::Swine;
@@ -144,6 +148,11 @@ void parseFlags(const int argc, char *argv[]) {
             }
         } else if (strcmp("--abmc::blocking_clauses", argv[arg]) == 0) {
             setBool(getNext(), Config::ABMC::blocking_clauses);
+        } else if (strcmp("--adcl_sat::abstraction_refinement", argv[arg]) == 0) {
+            setBool(getNext(), Config::Analysis::abstraction_refinement);
+            if (has_engine && Config::Analysis::engine != Config::Analysis::ADCLSAT) {
+                throw std::invalid_argument("just ADCL_SAT supports abstraction refinement");
+            }
         } else if (strcmp("--accel::non_linear", argv[arg]) == 0) {
             setBool(getNext(), Config::Accel::non_linear);
         } else if (strcmp("--accel::arrays", argv[arg]) == 0) {
