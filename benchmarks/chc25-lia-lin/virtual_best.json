@@ -72,11 +72,11 @@
     "name": "durationThm_3_e7_201_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "DRAGON_6_e7_5046_e7_3623_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "DRAGON_4_e2_2799_e1_1303_000.smt2"
   },
   {
@@ -100,7 +100,7 @@
     "name": "DRAGON_10_e1_998_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "FIREFLY_4_e3_3511_e2_1923_000.smt2"
   },
   {
@@ -136,7 +136,7 @@
     "name": "MESI_i4_e1_1023_e8_2498_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "FIREFLY_u1_e2_3403_e2_957_000.smt2"
   },
   {
@@ -152,7 +152,7 @@
     "name": "durationThm_2_e1_301_e7_64_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "FIREFLY_luke_1a_e2_284_000.smt2"
   },
   {
@@ -192,7 +192,7 @@
     "name": "SYNAPSE_2_e3_216_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "ticket3i_all_e8_505_e7_2450_000.smt2"
   },
   {
@@ -284,7 +284,7 @@
     "name": "O3_terminator_02_false-unreach-call_true-termination_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "car_5_e7_244_000.smt2"
   },
   {
@@ -316,7 +316,7 @@
     "name": "while_after_while_if_merged_safe.c-1_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "DRAGON_4_e2_2799_e2_2251_000.smt2"
   },
   {
@@ -380,7 +380,7 @@
     "name": "s_multipl_25_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "stateful01_safe_v1_000.smt2"
   },
   {
@@ -468,7 +468,7 @@
     "name": "s_split_30_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "DRAGON_12_e2_1618_000.smt2"
   },
   {
@@ -488,7 +488,7 @@
     "name": "metros_1_e7_1255_e8_598_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "FIREFLY_4_e3_3511_e3_422_000.smt2"
   },
   {
@@ -520,7 +520,7 @@
     "name": "car_all_e3_1068_e3_163_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "FIREFLY_luke_1a_e2_284_e1_2924_000.smt2"
   },
   {
@@ -536,7 +536,7 @@
     "name": "014b-horn_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "car_2_e7_1027_e7_359_000.smt2"
   },
   {
@@ -604,11 +604,11 @@
     "name": "cars.c_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "svd1.c_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "loop__digits10_inl_000.smt2"
   },
   {
@@ -616,7 +616,7 @@
     "name": "s_split_19_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "ticket3i_7_e1_2192_e7_3516_000.smt2"
   },
   {
@@ -628,7 +628,7 @@
     "name": "dillig12.c_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "FIREFLY_luke_3_000.smt2"
   },
   {
@@ -676,7 +676,7 @@
     "name": "FIREFLY_a3_e1_3233_e7_906_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "rtp_10_e7_106_e7_2564_000.smt2"
   },
   {
@@ -700,7 +700,7 @@
     "name": "ex3_e8_120_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "s_mutants_22_000.smt2"
   },
   {
@@ -768,7 +768,7 @@
     "name": "durationThm_1_e2_3_e7_336_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "DRAGON_5_000.smt2"
   },
   {
@@ -800,11 +800,11 @@
     "name": "zip01_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "ticket3i_7_e2_2724_e7_524_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "ILLINOIS_5_e7_692_e7_2865_000.smt2"
   },
   {
@@ -860,7 +860,7 @@
     "name": "FIREFLY_a3_e2_2086_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "DRAGON_9_e7_1843_000.smt2"
   },
   {
@@ -872,7 +872,7 @@
     "name": "FIREFLY_3_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "DRAGON_5_e1_1835_000.smt2"
   },
   {
@@ -960,7 +960,7 @@
     "name": "up-nd.c_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "loop__fib_000.smt2"
   },
   {
@@ -1032,7 +1032,7 @@
     "name": "MOESI_2_e7_2910_e7_1804_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "FIREFLY_luke_3_e1_2217_e3_1200_000.smt2"
   },
   {
@@ -1080,7 +1080,7 @@
     "name": "SYNAPSE_i1_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "SYNAPSE_5_e2_1525_000.smt2"
   },
   {
@@ -1112,7 +1112,7 @@
     "name": "FIREFLY_all_e3_1600_e2_676_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "car_5_000.smt2"
   },
   {
@@ -1120,11 +1120,11 @@
     "name": "seq-sim.c_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "ILLINOIS_a1_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "DRAGON_9_e7_1843_e1_5434_000.smt2"
   },
   {
@@ -1136,7 +1136,7 @@
     "name": "ticket3i_1_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "ticket3i_7_e3_59_e7_2122_000.smt2"
   },
   {
@@ -1144,7 +1144,7 @@
     "name": "bmc-3-test-bmc-3-unsafe_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "FIREFLY_5_e2_2884_e7_3594_000.smt2"
   },
   {
@@ -1192,7 +1192,7 @@
     "name": "ILLINOIS_2_e1_834_e7_3738_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "DRAGON_1_e2_1997_e7_3613_e2_3409_000.smt2"
   },
   {
@@ -1236,7 +1236,7 @@
     "name": "MOESI_2_e8_101_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "FIREFLY_luke_5_000.smt2"
   },
   {
@@ -1296,7 +1296,7 @@
     "name": "O0_terminator_03_true-unreach-call_true-termination_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "DRAGON_5_e2_3018_e2_936_000.smt2"
   },
   {
@@ -1304,7 +1304,7 @@
     "name": "DRAGON_13_e7_2336_e3_3117_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "FIREFLY_10_e7_919_e2_3192_000.smt2"
   },
   {
@@ -1352,11 +1352,11 @@
     "name": "metros_4_e2_532_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "SYNAPSE_123_e8_953_e7_1465_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "FIREFLY_6_000.smt2"
   },
   {
@@ -1372,7 +1372,7 @@
     "name": "O3_array_false-unreach-call_true-termination_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "SYNAPSE_5_e7_1138_e8_809_000.smt2"
   },
   {
@@ -1392,7 +1392,7 @@
     "name": "nested8.c_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "durationThm_1_e3_389_e5_5_000.smt2"
   },
   {
@@ -1404,11 +1404,11 @@
     "name": "35.c_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "ticket3i_1_e7_1669_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "ticket3i_7_e7_3176_000.smt2"
   },
   {
@@ -1432,7 +1432,7 @@
     "name": "cd_e7_621_e7_669_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "DRAGON_1_e3_11891_e7_4569_e4_4881_000.smt2"
   },
   {
@@ -1468,7 +1468,7 @@
     "name": "FIREFLY_3_e2_2236_e1_2305_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "DRAGON_9_e7_1843_e2_1145_000.smt2"
   },
   {
@@ -1512,7 +1512,7 @@
     "name": "loop__loop3_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "MESI_4_e7_1140_e7_433_000.smt2"
   },
   {
@@ -1532,7 +1532,7 @@
     "name": "metros_1_e1_846_e8_1253_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "MESI_i3_e1_447_e1_1292_000.smt2"
   },
   {
@@ -1556,7 +1556,7 @@
     "name": "MOESI_2_e1_1753_e7_1626_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "FIREFLY_11_000.smt2"
   },
   {
@@ -1596,7 +1596,7 @@
     "name": "nested9.c_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "DRAGON_9_e7_1843_e3_5316_000.smt2"
   },
   {
@@ -1660,11 +1660,11 @@
     "name": "nest-if3.c_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "009-horn_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "SYNAPSE_6_000.smt2"
   },
   {
@@ -1696,7 +1696,7 @@
     "name": "up2.c_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "FIREFLY_11_e1_3457_000.smt2"
   },
   {
@@ -1720,7 +1720,7 @@
     "name": "speed_e7_207_e8_507_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "DRAGON_13_e7_2336_e8_1940_000.smt2"
   },
   {
@@ -1732,7 +1732,7 @@
     "name": "dillig19.c_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "FIREFLY_6_e2_3302_000.smt2"
   },
   {
@@ -1796,7 +1796,7 @@
     "name": "FIREFLY_luke_rt_e2_3460_e1_1455_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "ticket3i_7_e8_2126_e7_78_000.smt2"
   },
   {
@@ -1844,7 +1844,7 @@
     "name": "17.c_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "MESI_i3_e1_447_e3_1180_000.smt2"
   },
   {
@@ -1904,7 +1904,7 @@
     "name": "ticket3i_3_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "DRAGON_9_e7_1843_e7_2225_000.smt2"
   },
   {
@@ -1936,7 +1936,7 @@
     "name": "const_mod_1_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "ILLINOIS_r4a_000.smt2"
   },
   {
@@ -1988,7 +1988,7 @@
     "name": "car_5_e2_405_e7_1028_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "FIREFLY_11_e3_2076_e1_1270_000.smt2"
   },
   {
@@ -2024,7 +2024,7 @@
     "name": "s_multipl_16_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "MESI_all_e4_1147_e7_497_000.smt2"
   },
   {
@@ -2048,7 +2048,7 @@
     "name": "hsortprime.c_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "009b-horn_000.smt2"
   },
   {
@@ -2084,11 +2084,11 @@
     "name": "O3_count_up_down_true-unreach-call_true-termination_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "FIREFLY_6_e3_686_e6_2964_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "SYNAPSE_6_e2_1439_e1_954_000.smt2"
   },
   {
@@ -2100,7 +2100,7 @@
     "name": "bouncy_symmetry_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "peterson_1_e7_4234_000.smt2"
   },
   {
@@ -2116,7 +2116,7 @@
     "name": "s_multipl_17_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "FIREFLY_3_e2_2236_e7_3681_000.smt2"
   },
   {
@@ -2152,7 +2152,7 @@
     "name": "s_split_25_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "ticket3i_all_e1_2706_e7_1776_000.smt2"
   },
   {
@@ -2212,7 +2212,7 @@
     "name": "ex8_e8_220_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "O0_for_infinite_loop_1_true-unreach-call_false-termination_000.smt2"
   },
   {
@@ -2236,7 +2236,7 @@
     "name": "MOESI_2_e2_1599_e1_2383_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "rtp_5_e7_3972_000.smt2"
   },
   {
@@ -2276,7 +2276,7 @@
     "name": "seq3.c_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "SYNAPSE_3_e7_1444_e7_638_000.smt2"
   },
   {
@@ -2328,11 +2328,11 @@
     "name": "metros_1_e2_1102_e2_943_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "SYNAPSE_6_e3_1666_e5_1558_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "DRAGON_11_e2_5396_e3_282_000.smt2"
   },
   {
@@ -2400,7 +2400,7 @@
     "name": "loop__simple-loop_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "ticket3i_all_e2_1117_e7_553_000.smt2"
   },
   {
@@ -2412,7 +2412,7 @@
     "name": "s_split_06_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "SYNAPSE_6_e7_938_e2_1012_000.smt2"
   },
   {
@@ -2420,15 +2420,15 @@
     "name": "SYNAPSE_2_e1_1239_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "O0_for_infinite_loop_2_true-unreach-call_false-termination_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "DRAGON_4_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "FIREFLY_rt_000.smt2"
   },
   {
@@ -2440,7 +2440,7 @@
     "name": "FIREFLY_4_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "MESI_i3_e1_447_e6_2281_000.smt2"
   },
   {
@@ -2500,7 +2500,7 @@
     "name": "up5.c_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "DRAGON_11_e3_382_e1_505_000.smt2"
   },
   {
@@ -2552,7 +2552,7 @@
     "name": "fib_bench_safe_v2_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "010-horn_000.smt2"
   },
   {
@@ -2608,7 +2608,7 @@
     "name": "_6counters_e8_371_e2_80_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "O0_while_infinite_loop_1_true-unreach-call_false-termination_000.smt2"
   },
   {
@@ -2624,7 +2624,7 @@
     "name": "FIREFLY_8_e2_1692_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "010b-horn_000.smt2"
   },
   {
@@ -2640,7 +2640,7 @@
     "name": "nest-if7.c_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "SYNAPSE_6_e8_1147_e2_1326_000.smt2"
   },
   {
@@ -2660,7 +2660,7 @@
     "name": "FIREFLY_a3_e3_314_e4_897_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "FIREFLY_4_e3_1713_000.smt2"
   },
   {
@@ -2692,7 +2692,7 @@
     "name": "DRAGON_14_e2_3606_e7_4891_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "durationThm_2_000.smt2"
   },
   {
@@ -2712,11 +2712,11 @@
     "name": "40.c_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "DRAGON_11_e3_382_e4_4421_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "O0_while_infinite_loop_2_true-unreach-call_false-termination_000.smt2"
   },
   {
@@ -2776,7 +2776,7 @@
     "name": "s_split_07_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "DRAGON_5_e7_2017_e8_4841_000.smt2"
   },
   {
@@ -2792,7 +2792,7 @@
     "name": "O3_for_infinite_loop_2_true-unreach-call_false-termination_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "FIREFLY_rt_e3_1770_e2_637_000.smt2"
   },
   {
@@ -2808,7 +2808,7 @@
     "name": "O3_sum_non_false-unreach-call_true-termination_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "SYNAPSE_3_e7_425_000.smt2"
   },
   {
@@ -2844,7 +2844,7 @@
     "name": "s_split_47_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "DRAGON_4_e1_4312_000.smt2"
   },
   {
@@ -2868,7 +2868,7 @@
     "name": "swimmingpool_2_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "ticket3i_all_e3_557_e7_3464_000.smt2"
   },
   {
@@ -2892,7 +2892,7 @@
     "name": "car_all_e3_1068_e1_178_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "ticket3i_all_e7_1837_000.smt2"
   },
   {
@@ -2904,7 +2904,7 @@
     "name": "loop__while-if_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "DRAGON_12_000.smt2"
   },
   {
@@ -3064,7 +3064,7 @@
     "name": "018-horn_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "FIREFLY_u1_000.smt2"
   },
   {
@@ -3092,11 +3092,11 @@
     "name": "barthe_safe.c-1_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "FIREFLY_luke_1a_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "durationThm_2_e1_118_000.smt2"
   },
   {
@@ -3124,7 +3124,7 @@
     "name": "exception_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "DRAGON_4_e2_2799_000.smt2"
   },
   {
@@ -3236,7 +3236,7 @@
     "name": "simple-loop_safe.c-1_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "DRAGON_12_e2_1618_e1_6030_000.smt2"
   },
   {
@@ -3308,7 +3308,7 @@
     "name": "FIREFLY_8_e2_1711_e7_1962_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "car_5_e7_244_e1_823_000.smt2"
   },
   {
@@ -3340,7 +3340,7 @@
     "name": "FIREFLY_all_e1_1207_e2_3220_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "rtp_all_e7_2500_000.smt2"
   },
   {
@@ -3360,7 +3360,7 @@
     "name": "ticket3i_4_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "SYNAPSE_3_e8_1329_e7_1062_000.smt2"
   },
   {
@@ -3376,7 +3376,7 @@
     "name": "digits10_inl_safe.c-1_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "DRAGON_4_e2_2799_e3_1915_000.smt2"
   },
   {
@@ -3392,7 +3392,7 @@
     "name": "swimmingpool_5_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "FIREFLY_luke_1a_e2_284_e2_2755_000.smt2"
   },
   {
@@ -3432,7 +3432,7 @@
     "name": "Fibonacci01_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "FIREFLY_luke_1a_e2_284_e3_3091_000.smt2"
   },
   {
@@ -3484,7 +3484,7 @@
     "name": "xy0.c_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "rtp_vt_000.smt2"
   },
   {
@@ -3520,11 +3520,11 @@
     "name": "O3_terminator_03_false-unreach-call_true-termination_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "car_6_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "loop__barthe2-big3_000.smt2"
   },
   {
@@ -3536,7 +3536,7 @@
     "name": "loop_unswitching_merged_safe.c-1_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "DRAGON_12_e2_1618_e2_138_000.smt2"
   },
   {
@@ -3600,7 +3600,7 @@
     "name": "DRAGON_10_e2_402_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "FIREFLY_4_e3_3511_e5_3248_000.smt2"
   },
   {
@@ -3616,7 +3616,7 @@
     "name": "SYNAPSE_all_e3_1864_e5_1637_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "MESI_i4_e6_2175_000.smt2"
   },
   {
@@ -3636,7 +3636,7 @@
     "name": "traffic_e7_46_e7_171_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "ticket3i_4_e7_1775_e7_3320_000.smt2"
   },
   {
@@ -3712,7 +3712,7 @@
     "name": "Gas_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "FIREFLY_9_e7_170_e3_3647_000.smt2"
   },
   {
@@ -3748,7 +3748,7 @@
     "name": "DRAGON_2_e7_25_e7_4469_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "DRAGON_4_e3_1540_e1_5048_000.smt2"
   },
   {
@@ -3824,7 +3824,7 @@
     "name": "ticket3i_5_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "MESI_i4_e7_1017_e6_1132_000.smt2"
   },
   {
@@ -3856,7 +3856,7 @@
     "name": "fast_1_e8_747_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "DRAGON_12_e2_1618_e3_2012_000.smt2"
   },
   {
@@ -3888,7 +3888,7 @@
     "name": "06.c_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "DRAGON_7_e2_2872_e7_1264_000.smt2"
   },
   {
@@ -3900,7 +3900,7 @@
     "name": "fxx_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "car_6_e1_152_000.smt2"
   },
   {
@@ -3984,7 +3984,7 @@
     "name": "FIREFLY_4_e3_3511_e7_3568_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "metros_2_000.smt2"
   },
   {
@@ -3992,15 +3992,15 @@
     "name": "DRAGON_14_e7_3162_e8_5719_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "DRAGON_4_e3_4133_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "car_all_e7_188_e7_743_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "ex1.c_000.smt2"
   },
   {
@@ -4028,7 +4028,7 @@
     "name": "O0_sum01_false-unreach-call_true-termination_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "FIREFLY_luke_1a_e7_3042_e3_1213_000.smt2"
   },
   {
@@ -4060,7 +4060,7 @@
     "name": "bug15_safe.c-1_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "ticket3i_5_e7_3307_000.smt2"
   },
   {
@@ -4172,7 +4172,7 @@
     "name": "car_6_e1_152_e1_391_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "DRAGON_8_000.smt2"
   },
   {
@@ -4224,7 +4224,7 @@
     "name": "car_all_e8_856_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "metros_2_e1_1116_000.smt2"
   },
   {
@@ -4292,7 +4292,7 @@
     "name": "nested1.c_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "DRAGON_8_e2_3896_e3_3125_000.smt2"
   },
   {
@@ -4312,7 +4312,7 @@
     "name": "MESI_i1_e3_2145_e7_1847_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "DRAGON_12_e7_4611_e8_5145_000.smt2"
   },
   {
@@ -4340,11 +4340,11 @@
     "name": "car_1_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "durationThm_2_e3_329_e6_128_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "MOESI_1_e2_982_e7_492_000.smt2"
   },
   {
@@ -4444,7 +4444,7 @@
     "name": "O3_id_o3_false-unreach-call_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "SYNAPSE_all_e7_907_000.smt2"
   },
   {
@@ -4468,7 +4468,7 @@
     "name": "DRAGON_4_e7_2329_e3_4574_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "DRAGON_13_000.smt2"
   },
   {
@@ -4500,7 +4500,7 @@
     "name": "car_4_e7_592_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "ticket3i_6_e7_1096_e7_2688_000.smt2"
   },
   {
@@ -4548,7 +4548,7 @@
     "name": "sum_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "FIREFLY_5_e1_2552_e7_1169_000.smt2"
   },
   {
@@ -4576,11 +4576,11 @@
     "name": "003d-horn_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "MOESI_1_e3_1884_e7_1875_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "SYNAPSE_all_e7_907_e7_1363_000.smt2"
   },
   {
@@ -4596,7 +4596,7 @@
     "name": "ILLINOIS_2_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "FIREFLY_luke_2_000.smt2"
   },
   {
@@ -4616,7 +4616,7 @@
     "name": "O0_sum04_false-unreach-call_true-termination_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "DRAGON_1_e1_14612_e1_268_e7_501_000.smt2"
   },
   {
@@ -4640,7 +4640,7 @@
     "name": "nested2.c_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "DRAGON_8_e3_786_000.smt2"
   },
   {
@@ -4680,7 +4680,7 @@
     "name": "ex3_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "car_1_e7_184_e3_299_000.smt2"
   },
   {
@@ -4772,7 +4772,7 @@
     "name": "s_multipl_09_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "FIREFLY_luke_2_e2_1375_e1_418_000.smt2"
   },
   {
@@ -4872,7 +4872,7 @@
     "name": "SYNAPSE_all_e8_251_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "DRAGON_1_e1_14612_e2_2653_e7_4370_000.smt2"
   },
   {
@@ -4904,7 +4904,7 @@
     "name": "ILLINOIS_4_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "DRAGON_13_e3_1418_e3_2761_000.smt2"
   },
   {
@@ -4920,7 +4920,7 @@
     "name": "rsolv_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "DRAGON_8_e3_786_e7_4541_000.smt2"
   },
   {
@@ -4952,7 +4952,7 @@
     "name": "nested3.c_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "SYNAPSE_5_000.smt2"
   },
   {
@@ -4976,7 +4976,7 @@
     "name": "ILLINOIS_2_e1_3758_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "SYNAPSE_123_e7_837_e7_1262_000.smt2"
   },
   {
@@ -4984,7 +4984,7 @@
     "name": "FIREFLY_5_e2_2229_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "FIREFLY_luke_2_e7_1826_e8_126_000.smt2"
   },
   {
@@ -5040,7 +5040,7 @@
     "name": "two_counters_e3_325_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "DRAGON_8_e7_3752_000.smt2"
   },
   {
@@ -5104,7 +5104,7 @@
     "name": "MOESI_2_e1_1121_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "ILLINOIS_4_e7_2651_e7_2847_000.smt2"
   },
   {
@@ -5180,7 +5180,7 @@
     "name": "O3_trex04_true-unreach-call_false-termination_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "DRAGON_4_e7_2329_e8_3915_000.smt2"
   },
   {
@@ -5200,7 +5200,7 @@
     "name": "metros_2_e1_1116_e3_287_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "car_2_e7_1027_e1_1047_000.smt2"
   },
   {
@@ -5212,7 +5212,7 @@
     "name": "014-horn_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "DRAGON_1_e1_14612_e7_1026_000.smt2"
   },
   {
@@ -5220,7 +5220,7 @@
     "name": "durationThm_2_e7_145_e7_154_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "SYNAPSE_123_e7_856_000.smt2"
   },
   {
@@ -5236,7 +5236,7 @@
     "name": "FIREFLY_a3_e1_3233_e3_2970_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "ticket3i_7_e1_2192_e1_1852_000.smt2"
   },
   {
