@@ -1444,7 +1444,7 @@
     "name": "008b-horn_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "DRAGON_11_e1_2450_e2_1483_000.smt2"
   },
   {
@@ -1920,7 +1920,7 @@
     "name": "ex8_e7_74_e7_740_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "DRAGON_11_e2_1678_e1_3565_000.smt2"
   },
   {
@@ -2580,7 +2580,7 @@
     "name": "SYNAPSE_3_e7_1444_e8_1581_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "DRAGON_all2_000.smt2"
   },
   {
@@ -5148,7 +5148,7 @@
     "name": "O0_fibo_2calls_20_false-unreach-call_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "DRAGON_11_000.smt2"
   },
   {
