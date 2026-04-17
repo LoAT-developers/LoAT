@@ -18,11 +18,12 @@ on:
       benchmarks:
         required: true
         type: choice
-        default: chc23-lia-lin
+        default: chc25-lia-lin
         options:
         - chc22-lia-lin
         - chc23-lia-lin
         - chc24-lia-lin
+        - chc25-lia-lin
         - chc25-lia-lin-arrays
 
 permissions:
@@ -52,6 +53,11 @@ jobs:
 
       - if: ${{ inputs.benchmarks == 'chc25-lia-lin-arrays' }}
         uses: ./actions/.github/actions/chc25-lia-lin-arrays
+
+      - if: ${{ inputs.benchmarks == 'chc25-lia-lin' }}
+        uses: ./actions/.github/actions/chc25-lia-lin
+        with:
+          pat: ${{ secrets.LOAT_DEVELOPERS_PAT }}
 
       - if: ${{ inputs.benchmarks == 'chc24-lia-lin' }}
         uses: ./actions/.github/actions/chc24-lia-lin

@@ -42,7 +42,7 @@ on:
       benchmarks:
         required: true
         type: choice
-        default: chc23-lia-lin
+        default: chc25-lia-lin
         options:
         - chc22-lia-lin
         - chc23-lia-lin

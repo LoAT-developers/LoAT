@@ -772,7 +772,7 @@
     "name": "DRAGON_5_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "durationThm_3_000.smt2"
   },
   {
@@ -1256,7 +1256,7 @@
     "name": "cd_e7_621_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "nested7.c_000.smt2"
   },
   {
@@ -1700,7 +1700,7 @@
     "name": "FIREFLY_11_e1_3457_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "durationThm_1_e3_389_e6_167_000.smt2"
   },
   {
@@ -1884,7 +1884,7 @@
     "name": "ILLINOIS_2_e2_2367_e2_1561_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "durationThm_1_e3_389_e7_358_000.smt2"
   },
   {
@@ -2320,7 +2320,7 @@
     "name": "MOESI_all_e3_2032_e3_2788_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "car_all_e2_142_e7_209_000.smt2"
   },
   {
@@ -2340,7 +2340,7 @@
     "name": "DRAGON_5_e7_2017_e1_5832_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "lifo.c_000.smt2"
   },
   {
@@ -2684,7 +2684,7 @@
     "name": "fib_bench_safe_v3_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "durationThm_3_e3_442_e6_113_000.smt2"
   },
   {
@@ -2964,7 +2964,7 @@
     "name": "car_3_e8_33_e2_1010_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "nest-if8.c_000.smt2"
   },
   {
@@ -3032,7 +3032,7 @@
     "name": "square_twice_safe.c-1_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "durationThm_3_e3_442_e7_394_000.smt2"
   },
   {
@@ -4168,7 +4168,7 @@
     "name": "DRAGON_10_e3_144_e6_4484_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "car_6_e1_152_e1_391_000.smt2"
   },
   {
@@ -4216,7 +4216,7 @@
     "name": "sum4_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "rajamani_1.c_000.smt2"
   },
   {
@@ -4264,7 +4264,7 @@
     "name": "loop__barthe_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "durationThm_1_000.smt2"
   },
   {
@@ -4928,7 +4928,7 @@
     "name": "metros_5_e4_1208_e1_337_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "svd-some-loop.c_000.smt2"
   },
   {
