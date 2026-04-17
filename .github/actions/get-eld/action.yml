@@ -11,7 +11,7 @@ runs:
         extract: true
 
     - run: |
-        mv ./eld/eldarica/* /usr/local/bin
+        mv ./eld/eldarica-2.2.1/* /usr/local/bin
         mv /usr/local/bin/eld /usr/local/bin/solver
         VERSION='2.2.1'
         echo "VERSION=${VERSION}" >> $GITHUB_ENV
