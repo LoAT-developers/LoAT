@@ -210,6 +210,9 @@ Bools::Expr mbp::int_qe(const Bools::Expr &trans, const std::function<bool(const
     if (!std::ranges::any_of(trans->cells(), eliminate)) {
         return trans;
     }
+    if (Smt::chooseLogic(trans) != Logic::QF_LA) {
+        throw std::invalid_argument("mbp only supports linear arithmetic");
+    }
     const auto solver {SmtFactory::modelBuildingSolver(Logic::QF_LA)};
     solver->add(trans);
     std::vector<Bools::Expr> disjuncts;

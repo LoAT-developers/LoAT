@@ -59,3 +59,21 @@ std::ostream& operator<<(std::ostream &s, const SmtResult &res) {
     }
     return s;
 }
+
+std::ostream& operator<<(std::ostream &s, const Logic l) {
+    switch (l) {
+        case Logic::QF_AEA: s << "QF_AEA";
+            break;
+        case Logic::QF_ALA: s << "QF_ALA";
+            break;
+        case Logic::QF_ANA: s << "QF_ANA";
+            break;
+        case Logic::QF_EA: s << "QF_EA";
+            break;
+        case Logic::QF_LA: s << "QF_LA";
+            break;
+        case Logic::QF_NA: s << "QF_NA";
+            break;
+    }
+    return s;
+}

@@ -40,6 +40,8 @@ struct LogicProperties {
     bool no_arrays = true;
 };
 
+std::ostream& operator<<(std::ostream &s, const Logic);
+
 LogicProperties get_properties(Logic);
 
 Logic from_properties(const LogicProperties&);
