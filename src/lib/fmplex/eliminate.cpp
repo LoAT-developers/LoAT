@@ -66,11 +66,21 @@ Formula eliminate_variables(const Formula& f, const linked_hash_set<ArithVarPtr>
             }
         }, *lit);
     }
-    assert(f->isConjunction());
+    assert(f->isStructualImplicant());
 
     // transform formula to matrix
-    auto lits = f->lits();
-    const auto constraints = lits.get<Arith::Lit>();
+    auto lits = f->getChildren();
+    linked_hash_set<Arith::Lit> constraints;
+    for (auto it = lits.begin(); it != lits.end();) {
+        if (const auto lit = (*it)->getTheoryLit()) {
+            if (std::holds_alternative<Arith::Lit>(*lit)) {
+                constraints.insert(std::get<Arith::Lit>(*lit));
+                it = lits.erase(it);
+                continue;
+            }
+        }
+        ++it;
+    }
     // TODO: equality substitution, filtering
     const auto vs = f->vars().get<Arrays<Arith>::Var>();
     std::vector<ArithVarPtr> var_idx {vars.begin(), vars.end()};
@@ -173,7 +183,6 @@ Formula eliminate_variables(const Formula& f, const linked_hash_set<ArithVarPtr>
 
     // transform Matrix back to formula
     if (res.n_rows() == 0) return top();
-    linked_hash_set<Arith::Lit> conjuncts;
     for (std::size_t i = 0; i < res.n_rows(); ++i) {
         auto it = res.row_begin(i);
         auto row_end = res.row_end(i);
@@ -190,10 +199,9 @@ Formula eliminate_variables(const Formula& f, const linked_hash_set<ArithVarPtr>
         // This method is only applied to pos.lin. combinations, so the delta coeff will be >=0
         // if (it != row_end && it->col_index == delta_col) conjuncts.emplace(arith::mkLt(lhs, arith::zero()));
         // else conjuncts.emplace(arith::mkLeq(lhs, arith::zero()));
-        conjuncts.emplace(arith::mkLeq(lhs, arith::zero()));
+        lits.emplace(bools::mkLit(arith::mkLeq(lhs, arith::zero())));
     }
 
-    lits.get<Arith::Lit>() = conjuncts;
     return bools::mkAnd(lits);
 }
 
