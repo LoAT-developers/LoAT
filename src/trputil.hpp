@@ -40,7 +40,7 @@ protected:
     Int last_orig_clause;
     const ArithVarPtr safety_var {arrays::nextConst<Arith>()};
     DependencyGraph<Bools::Expr> dependency_graph {};
-    std::vector<Bools::Expr> projections {};
+    std::unordered_map<Int, Bools::Expr> projections {};
     linked_hash_map<Int, Bools::Expr> accel;
     bool safe {true};
     // step -> ID of corresponding transition formula -> blocked transition

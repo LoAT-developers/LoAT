@@ -103,7 +103,7 @@ void ADCLSat::handle_loop(const Range& range) {
         ti = Preprocess::preprocessFormula(ti);
         id = add_learned_clause(range, ti);
         model->put(n, 1);
-        projected = mbp::int_mbp(ti, model, mbp_kind, [&](const auto &x) {
+        projected = mbp::int_mbp(rule_map.at(id), model, mbp_kind, [&](const auto &x) {
             return x == Cell(n);
         });
     }
