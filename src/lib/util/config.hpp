@@ -39,6 +39,7 @@ namespace Config {
         extern bool logPreproc;
         extern bool model;
         extern bool abstraction_refinement;
+        extern bool fail_early;
 
         std::string modeName(const Mode mode);
 

@@ -397,8 +397,15 @@ std::optional<SmtResult> ABMC::do_step() {
             build_trace();
             return SmtResult::Unsat;
         case SmtResult::Unknown:
-            if (Config::Analysis::log && !approx) {
-                std::cout << "got unknown from SMT solver -- approximating" << std::endl;
+            if (Config::Analysis::log) {
+                if (Config::Analysis::fail_early) {
+                    std::cout << "got unknown from SMT solver -- giving up" << std::endl;
+                } else if (!approx) {
+                    std::cout << "got unknown from SMT solver -- approximating" << std::endl;
+                }
+            }
+            if (Config::Analysis::fail_early) {
+                return SmtResult::Unknown;
             }
             approx = true;
             break;
@@ -444,7 +451,7 @@ std::optional<SmtResult> ABMC::do_step() {
             if (Config::Analysis::log) {
                 solver->print(std::cout);
                 std::cout << "got unknown from SMT solver -- ";
-                if (depth == 1) {
+                if (depth == 1 || Config::Analysis::fail_early) {
                     std::cout << "giving up" << std::endl;
                     return SmtResult::Unknown;
                 }

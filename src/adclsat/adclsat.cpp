@@ -164,6 +164,9 @@ std::optional<SmtResult> ADCLSat::do_step() {
                 if (build_cex()) {
                     return SmtResult::Unsat;
                 }
+                if (Config::Analysis::fail_early) {
+                    return SmtResult::Unknown;
+                }
                 break;
             case SmtResult::Unsat:
                 break;

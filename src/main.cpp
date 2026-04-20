@@ -157,6 +157,8 @@ void parseFlags(const int argc, char *argv[]) {
             setBool(getNext(), Config::Accel::non_linear);
         } else if (strcmp("--accel::arrays", argv[arg]) == 0) {
             setBool(getNext(), Config::Accel::arrays);
+        } else if (strcmp("--fail_early", argv[arg]) == 0) {
+            setBool(getNext(), Config::Analysis::fail_early);
         } else if (strcmp("--direction", argv[arg]) == 0) {
             has_direction = true;
             if (const auto str{getNext()}; boost::iequals("forward", str)) {

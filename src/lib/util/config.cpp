@@ -30,6 +30,7 @@ namespace Config {
         bool logAccel = false;
         bool model = false;
         bool abstraction_refinement = false;
+        bool fail_early = false;
         Direction dir;
 
         std::string modeName(const Mode mode) {
