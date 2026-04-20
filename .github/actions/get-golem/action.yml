@@ -5,7 +5,7 @@ runs:
     - uses: robinraju/release-downloader@v1
       with:
         repository: 'usi-verification-and-security/golem'
-        tag: v0.6.2
+        tag: v0.9.0
         fileName: golem-x64-linux.tar.bz2
         out-file-path: 'golem'
         extract: false
@@ -14,7 +14,7 @@ runs:
         cd ./golem
         tar xf golem-x64-linux.tar.bz2
         mv ./golem /usr/local/bin/solver
-        VERSION='0.6.2'
+        VERSION='0.9.0'
         echo "VERSION=${VERSION}" >> $GITHUB_ENV
       shell: bash
 
