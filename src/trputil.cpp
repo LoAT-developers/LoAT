@@ -535,7 +535,7 @@ std::optional<Int> TRPUtil::refine_by_model(const Range& range, const ModelPtr& 
                             projections.erase(frame.id);
                             add_projection(frame.id, refined->subs(Subs::build(trp.get_n(), arith::one())));
                             if (Config::Analysis::log) {
-                                std::cout << "refining " << frame.id << ": " << current << " with " << c << std::endl;
+                                std::cout << "refining by model: " << frame.id << ": " << current << " with " << c << std::endl;
                             }
                             for (auto &b: blocked_per_step | std::views::values) {
                                 b.erase(frame.id);

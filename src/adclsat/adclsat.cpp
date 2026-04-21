@@ -166,9 +166,11 @@ std::optional<SmtResult> ADCLSat::do_step() {
         solver->push();
         solver->add(t.err()->renameVars(get_subs(trace.size(), 1)));
         switch (solver->check()) {
-            case SmtResult::Sat:
             case SmtResult::Unknown:
+                return SmtResult::Unknown;
+            case SmtResult::Sat:
                 if (Config::Analysis::abstraction_refinement && !trace.empty()) {
+                    model = solver->model();
                     if (Config::Analysis::log) {
                         std::cout << "proving safety failed, abstraction refinement" << std::endl;
                     }
