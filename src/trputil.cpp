@@ -542,13 +542,13 @@ std::optional<Int> TRPUtil::refine_partially(const Range& range) {
                             if (Config::Analysis::log) {
                                 std::cout << "refining " << frame.id << ": " << current << " with " << c << std::endl;
                             }
-                            return 0;
                             // Int backtrack_point = i;
-                            // for (auto &[i,b]: blocked_per_step) {
-                            //     if (b.erase(frame.id) > 0) {
-                            //         backtrack_point = std::min(backtrack_point, i);
-                            //     }
-                            // }
+                            for (auto &[i,b]: blocked_per_step) {
+                                b.erase(frame.id);
+                                // if (b.erase(frame.id) > 0) {
+                                //     backtrack_point = std::min(backtrack_point, i);
+                                // }
+                            }
                             // for (unsigned i = 0; i < trace.size(); ++i) {
                             //     if (trace[i].id == frame.id) {
                             //         backtrack_point = std::min(Int(i), backtrack_point);
@@ -556,6 +556,7 @@ std::optional<Int> TRPUtil::refine_partially(const Range& range) {
                             //     }
                             // }
                             // return backtrack_point;
+                            return 0;
                         }
                         model = solver->model();
                     }
