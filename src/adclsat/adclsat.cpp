@@ -63,7 +63,7 @@ void ADCLSat::add_blocking_clause(const Range &range, const Int &id, const Bools
 
 void ADCLSat::handle_loop(const Range& range) {
     if (Config::Analysis::abstraction_refinement) {
-        if (const auto backtrack_point = refine_partially(range)) {
+        if (const auto backtrack_point = refine_abstraction(range)) {
             if (Config::Analysis::log) {
                 std::cout << "refined loop" << std::endl;
             }
@@ -149,7 +149,7 @@ std::optional<SmtResult> ADCLSat::do_step() {
                     if (Config::Analysis::log) {
                         std::cout << "proving safety failed, abstraction refinement" << std::endl;
                     }
-                    if (const auto backtrack_point = refine_partially(Range::from_length(0, trace.size()))) {
+                    if (const auto backtrack_point = refine_abstraction(Range::from_length(0, trace.size()))) {
                         solver->pop();
                         while (trace.size() > *backtrack_point) {
                             trace.pop_back();
