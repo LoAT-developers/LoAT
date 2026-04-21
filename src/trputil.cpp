@@ -534,10 +534,11 @@ std::optional<Int> TRPUtil::refine_partially(const Range& range) {
                     if (!current_children.contains(c)) {
                         solver->add(c->renameVars(subs));
                         if (solver->check() == SmtResult::Unsat) {
+                            const auto refined = current && c;
                             rule_map.erase(frame.id);
-                            rule_map.emplace(frame.id, current && c);
+                            rule_map.emplace(frame.id, refined);
                             projections.erase(frame.id);
-                            add_projection(frame.id, current && c);
+                            add_projection(frame.id, refined->subs(Subs::build(trp.get_n(), arith::one())));
                             if (Config::Analysis::log) {
                                 std::cout << "refining " << frame.id << ": " << current << " with " << c << std::endl;
                             }
