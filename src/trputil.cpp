@@ -490,7 +490,6 @@ std::optional<Int> TRPUtil::refine_abstraction(const Range& range) {
         case SmtResult::Unknown:
             break;
         case SmtResult::Unsat:
-            Int backtrack_point = trace.size();
             linked_hash_set<Int> refined;
             for (const auto& c: core) {
                 const auto& [id, refinement] = assumption_to_refinement.at(c);
@@ -499,21 +498,15 @@ std::optional<Int> TRPUtil::refine_abstraction(const Range& range) {
                     std::cout << "refining " << current << " with " << refinement << std::endl;
                 }
                 refined.insert(id);
-                rule_map.put(id, current && refinement);
-                for (auto &[i,b]: blocked_per_step) {
-                    if (b.erase(id) > 0) {
-                        backtrack_point = std::min(backtrack_point, i);
-                    }
+                const auto t = current && refinement;
+                rule_map.put(id, t);
+                projections.erase(id);
+                add_projection(id, t->subs(Subs::build(trp.get_n(), arith::one())));
+                for (auto &b: blocked_per_step | std::views::values) {
+                    b.erase(id);
                 }
             }
-            for (unsigned i = 0; i < trace.size(); ++i) {
-                if (refined.contains(trace[i].id)) {
-                    backtrack_point = std::min(Int(i), backtrack_point);
-                    break;
-                }
-            }
-            assert(backtrack_point < trace.size());
-            return backtrack_point;
+            return 0;
     }
     return std::nullopt;
 }
@@ -542,20 +535,9 @@ std::optional<Int> TRPUtil::refine_partially(const Range& range) {
                             if (Config::Analysis::log) {
                                 std::cout << "refining " << frame.id << ": " << current << " with " << c << std::endl;
                             }
-                            // Int backtrack_point = i;
-                            for (auto &[i,b]: blocked_per_step) {
+                            for (auto &b: blocked_per_step | std::views::values) {
                                 b.erase(frame.id);
-                                // if (b.erase(frame.id) > 0) {
-                                //     backtrack_point = std::min(backtrack_point, i);
-                                // }
                             }
-                            // for (unsigned i = 0; i < trace.size(); ++i) {
-                            //     if (trace[i].id == frame.id) {
-                            //         backtrack_point = std::min(Int(i), backtrack_point);
-                            //         break;
-                            //     }
-                            // }
-                            // return backtrack_point;
                             return 0;
                         }
                         model = solver->model();
