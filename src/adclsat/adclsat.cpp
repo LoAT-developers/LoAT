@@ -62,6 +62,7 @@ void ADCLSat::add_blocking_clause(const Range &range, const Int &id, const Bools
 }
 
 void ADCLSat::handle_loop(const Range& range) {
+    const auto old_model = *model;
     if (Config::Analysis::abstraction_refinement) {
         if (const auto backtrack_point = refine_abstraction(range)) {
             if (Config::Analysis::log) {
@@ -79,6 +80,24 @@ void ADCLSat::handle_loop(const Range& range) {
     auto [loop_non_bool, loop_bool, model]{specialize(range, theory::isTempCell)};
     solver->pop();
     if (add_blocking_clauses(range, model)) {
+        if (Config::Analysis::abstraction_refinement) {
+            if (!add_blocking_clauses(range, old_model->composeBackwards(get_subs(range.start(), range.length())))) {
+                const auto backtrack_point = refine_by_model(range, old_model);
+                if (!backtrack_point) {
+                    throw std::logic_error("failed to refine with original model");
+                }
+                if (Config::Analysis::log) {
+                    std::cout << "refined loop" << std::endl;
+                }
+                trace.pop_back();
+                while (trace.size() > *backtrack_point) {
+                    trace.pop_back();
+                    solver->pop();
+                }
+                backtracking = false;
+                return;
+            }
+        }
         if (Config::Analysis::log) {
             std::cout << "***** Covered *****" << std::endl;
         }

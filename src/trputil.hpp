@@ -62,6 +62,7 @@ protected:
     bool add_blocking_clauses(const Range &range, const ModelPtr& model);
     std::optional<Int> refine_abstraction(const Range&);
     std::optional<Int> refine_partially(const Range&);
+    std::optional<Int> refine_by_model(const Range& range, const ModelPtr& m);
 
 public:
 
