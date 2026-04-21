@@ -82,8 +82,10 @@ void ADCLSat::handle_loop(const Range& range) {
         if (Config::Analysis::log) {
             std::cout << "***** Covered *****" << std::endl;
         }
+        trace.pop_back();
         while (trace.size() > range.end()) {
             trace.pop_back();
+            solver->pop();
         }
         return;
     }
