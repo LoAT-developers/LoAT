@@ -54,7 +54,7 @@ protected:
     Bools::Expr encode_transition(const Bools::Expr &t, const Int &id) const;
     Int add_learned_clause(const Range &range, const Bools::Expr &accel);
     std::pair<Bools::Expr, Bools::Expr> specialize(const Bools::Expr& e, const ModelPtr &model, const std::function<bool(const Cell&)> &eliminate) const;
-    std::tuple<Bools::Expr, Bools::Expr, ModelPtr> specialize(const Range &range, const std::function<bool(const Cell&)> &eliminate);
+    std::pair<Bools::Expr, Bools::Expr> specialize(const Range &range, const std::function<bool(const Cell&)> &eliminate);
     std::optional<Arith::Expr> prove_term(const Bools::Expr& loop, const ModelPtr &model);
     bool build_cex();
     void add_projection(const Int& id, const Bools::Expr& projection);

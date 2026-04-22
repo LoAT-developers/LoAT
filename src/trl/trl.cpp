@@ -61,11 +61,12 @@ bool TRL::handle_loop(const Range &range) {
             return true;
         }
     }
-    auto [loop_non_bool, loop_bool, model]{specialize(range, theory::isTempCell)};
+    auto [loop_non_bool, loop_bool]{specialize(range, theory::isTempCell)};
+    const auto m = (*model)->composeBackwards(get_subs(range.start(), range.length()));
     auto loop = loop_non_bool && loop_bool;
     Bools::Expr termination_argument {top()};
     if (Config::Analysis::termination()) {
-        if (const auto rf {prove_term(loop, model)}) {
+        if (const auto rf {prove_term(loop, m)}) {
             termination_argument =
                 bools::mkAnd(
                     std::vector{
@@ -80,7 +81,7 @@ bool TRL::handle_loop(const Range &range) {
             return false;
         }
     }
-    if (TRPUtil::add_blocking_clauses(range, model)) {
+    if (TRPUtil::add_blocking_clauses(range, m)) {
         if (Config::Analysis::abstraction_refinement) {
             if (!add_blocking_clauses(range, old_model->composeBackwards(get_subs(range.start(), range.length())))) {
                 if (last_model) {
@@ -89,7 +90,7 @@ bool TRL::handle_loop(const Range &range) {
                     loop_bool->collectCells(cells);
                     if (std::ranges::all_of(cells, [&](const auto& c) {
                         return theory::apply(c, [&](const auto& c) {
-                            return (*last_model)->get(c) == model->get(c);
+                            return (*last_model)->get(c) == m->get(c);
                         });
                     })) {
                         last_model.reset();
@@ -112,7 +113,7 @@ bool TRL::handle_loop(const Range &range) {
         }
         return true;
     }
-    auto ti{trp.compute(loop_non_bool, loop_bool, model)};
+    auto ti{trp.compute(loop_non_bool, loop_bool, m)};
     if (Config::Analysis::termination()) {
         ti = ti && termination_argument;
     }
@@ -121,7 +122,7 @@ bool TRL::handle_loop(const Range &range) {
     Bools::Expr projected{top()};
     const auto n {trp.get_n()};
     if (mbp_kind == Config::TRPConfig::RealQe) {
-        projected = qe::real_qe(ti, model, [&](const auto &x) {
+        projected = qe::real_qe(ti, m, [&](const auto &x) {
             return x == Cell(n);
         });
         projected = Preprocess::preprocessFormula(projected);
@@ -130,10 +131,7 @@ bool TRL::handle_loop(const Range &range) {
     } else {
         ti = Preprocess::preprocessFormula(ti);
         id = add_learned_clause(range, ti);
-        model->put(n, 1);
-        projected = mbp::int_mbp(rule_map.at(id), model, mbp_kind, [&](const Cell &x) {
-            return x == Cell(n);
-        });
+        projected = rule_map.at(id)->subs(Subs::build(trp.get_n(), arith::one()));
     }
     step = step || encode_transition(rule_map.at(id), id);
     add_projection(id, projected);

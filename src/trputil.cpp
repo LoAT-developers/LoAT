@@ -240,7 +240,7 @@ std::pair<Bools::Expr, Bools::Expr> TRPUtil::specialize(const Bools::Expr& e, co
     return {mbp_non_bool, mbp_bool};
 }
 
-std::tuple<Bools::Expr, Bools::Expr, ModelPtr> TRPUtil::specialize(const Range &range, const std::function<bool(const Cell &)> &eliminate) {
+std::pair<Bools::Expr, Bools::Expr> TRPUtil::specialize(const Range &range, const std::function<bool(const Cell &)> &eliminate) {
     assert (!range.empty());
     auto [transition, model]{compress(range)};
     if (Config::Analysis::log) {
@@ -249,7 +249,7 @@ std::tuple<Bools::Expr, Bools::Expr, ModelPtr> TRPUtil::specialize(const Range &
         std::cout << "model: " << model->toString(transition->vars()) << std::endl;
     }
     const auto [res_non_bool, res_bool] = specialize(transition, model, eliminate);
-    return {res_non_bool, res_bool, model};
+    return {res_non_bool, res_bool};
 }
 
 std::optional<Arith::Expr> TRPUtil::prove_term(const Bools::Expr& loop, const ModelPtr &model) {
@@ -430,7 +430,7 @@ bool TRPUtil::add_blocking_clauses(const Range &range, const ModelPtr& model) {
             continue;
         }
         const auto vars {b->vars()};
-        if (is_orig_clause && std::any_of(vars.begin(), vars.end(), theory::isTempVar)) {
+        if (is_orig_clause && std::ranges::any_of(vars, theory::isTempVar)) {
             continue;
         }
         if (vars.contains(n->var())) {

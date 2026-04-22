@@ -77,18 +77,20 @@ void ADCLSat::handle_loop(const Range& range) {
         }
     }
     backtracking = true;
-    auto [loop_non_bool, loop_bool, model]{specialize(range, theory::isTempCell)};
+    auto [loop_non_bool, loop_bool]{specialize(range, theory::isTempCell)};
     solver->pop();
-    if (add_blocking_clauses(range, model)) {
+    const auto subs = get_subs(range.start(), range.length());
+    const auto m = (*model)->composeBackwards(subs);
+    if (add_blocking_clauses(range, m)) {
         if (Config::Analysis::abstraction_refinement) {
-            if (!add_blocking_clauses(range, old_model->composeBackwards(get_subs(range.start(), range.length())))) {
+            if (!add_blocking_clauses(range, old_model->composeBackwards(subs))) {
                 if (last_model) {
                     CellSet cells;
                     loop_non_bool->collectCells(cells);
                     loop_bool->collectCells(cells);
                     if (std::ranges::all_of(cells, [&](const auto& c) {
                         return theory::apply(c, [&](const auto& c) {
-                            return (*last_model)->get(c) == model->get(c);
+                            return (*last_model)->get(c) == m->get(c);
                         });
                     })) {
                         last_model.reset();
@@ -109,7 +111,7 @@ void ADCLSat::handle_loop(const Range& range) {
                     }
                 }
             }
-            last_model = model;
+            last_model = m;
         }
         if (Config::Analysis::log) {
             std::cout << "***** Covered *****" << std::endl;
@@ -124,12 +126,12 @@ void ADCLSat::handle_loop(const Range& range) {
     if (Config::Analysis::log) {
         std::cout << "***** Accelerate *****" << std::endl;
     }
-    auto ti{trp.compute(loop_non_bool, loop_bool, model)};
+    auto ti{trp.compute(loop_non_bool, loop_bool, m)};
     Int id;
     Bools::Expr projected{top()};
     const auto n {trp.get_n()};
     if (mbp_kind == Config::TRPConfig::RealQe) {
-        projected = qe::real_qe(ti, model, [&](const auto &x) {
+        projected = qe::real_qe(ti, m, [&](const auto &x) {
             return x == Cell(n);
         });
         projected = Preprocess::preprocessFormula(projected);
@@ -138,7 +140,6 @@ void ADCLSat::handle_loop(const Range& range) {
     } else {
         ti = Preprocess::preprocessFormula(ti);
         id = add_learned_clause(range, ti);
-        model->put(n, 1);
         projected = rule_map.at(id)->subs(Subs::build(trp.get_n(), arith::one()));
     }
     const auto fst_elem {trace.at(range.start())};
