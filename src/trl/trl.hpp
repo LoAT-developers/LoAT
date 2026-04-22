@@ -19,6 +19,7 @@ class TRL final : public TRPUtil {
     bool handle_loop(const Range &range);
     void build_trace();
     void pop();
+    void build_step();
 
 public:
     ~TRL() override = default;

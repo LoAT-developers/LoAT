@@ -14,6 +14,10 @@
 #include "loopacceleration.hpp"
 
 TRL::TRL(const ITSPtr& its, const Config::TRPConfig &config) : TRPUtil(its, config) {
+    build_step();
+}
+
+void TRL::build_step() {
     std::vector<Bools::Expr> steps;
     for (const auto &[id,t]: rule_map) {
         steps.emplace_back(encode_transition(t, id));
@@ -44,6 +48,19 @@ std::optional<Range> TRL::has_looping_infix() {
 }
 
 bool TRL::handle_loop(const Range &range) {
+    const auto old_model = *model;
+    if (Config::Analysis::abstraction_refinement) {
+        if (const auto backtrack_point = refine_abstraction(range)) {
+            if (Config::Analysis::log) {
+                std::cout << "refined loop" << std::endl;
+            }
+            while (depth > *backtrack_point) {
+                pop();
+            }
+            build_step();
+            return true;
+        }
+    }
     auto [loop_non_bool, loop_bool, model]{specialize(range, theory::isTempCell)};
     auto loop = loop_non_bool && loop_bool;
     Bools::Expr termination_argument {top()};
@@ -64,6 +81,35 @@ bool TRL::handle_loop(const Range &range) {
         }
     }
     if (TRPUtil::add_blocking_clauses(range, model)) {
+        if (Config::Analysis::abstraction_refinement) {
+            if (!add_blocking_clauses(range, old_model->composeBackwards(get_subs(range.start(), range.length())))) {
+                if (last_model) {
+                    CellSet cells;
+                    loop_non_bool->collectCells(cells);
+                    loop_bool->collectCells(cells);
+                    if (std::ranges::all_of(cells, [&](const auto& c) {
+                        return theory::apply(c, [&](const auto& c) {
+                            return (*last_model)->get(c) == model->get(c);
+                        });
+                    })) {
+                        last_model.reset();
+                        const auto backtrack_point = refine_by_model(range, old_model);
+                        if (!backtrack_point) {
+                            throw std::logic_error("failed to refine with original model");
+                        }
+                        if (Config::Analysis::log) {
+                            std::cout << "refined loop" << std::endl;
+                        }
+                        while (depth > *backtrack_point) {
+                            pop();
+                        }
+                        build_step();
+                        return true;
+                    }
+                }
+            }
+            last_model = model;
+        }
         return true;
     }
     auto ti{trp.compute(loop_non_bool, loop_bool, model)};
@@ -85,11 +131,11 @@ bool TRL::handle_loop(const Range &range) {
         ti = Preprocess::preprocessFormula(ti);
         id = add_learned_clause(range, ti);
         model->put(n, 1);
-        projected = mbp::int_mbp(ti, model, mbp_kind, [&](const Cell &x) {
+        projected = mbp::int_mbp(rule_map.at(id), model, mbp_kind, [&](const Cell &x) {
             return x == Cell(n);
         });
     }
-    step = step || encode_transition(ti, id);
+    step = step || encode_transition(rule_map.at(id), id);
     if (range.length() == 1) {
         add_projection(id, projected);
     } else {
@@ -173,8 +219,23 @@ std::optional<SmtResult> TRL::do_step() {
     solver->push();
     solver->add(t.err()->renameVars(s));
     switch (solver->check()) {
-        case SmtResult::Sat:
         case SmtResult::Unknown:
+            return SmtResult::Unknown;
+        case SmtResult::Sat:
+            if (Config::Analysis::abstraction_refinement && depth > 0) {
+                model = solver->model();
+                if (Config::Analysis::log) {
+                    std::cout << "proving safety failed, abstraction refinement" << std::endl;
+                }
+                if (const auto backtrack_point = refine_abstraction(Range::from_length(0, trace.size()))) {
+                    solver->pop();
+                    while (depth > *backtrack_point) {
+                        pop();
+                    }
+                    build_step();
+                    return std::nullopt;
+                }
+            }
             if (Config::Analysis::log) {
                 std::cout << "proving safety failed, trying to construct counterexample" << std::endl;
             }
