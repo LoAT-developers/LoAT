@@ -154,9 +154,9 @@ void ADCLSat::handle_loop(const Range& range) {
     if (dg_over_approx.getSinks().contains(last_elem.id)) {
         dg_over_approx.markSink(id);
     }
-    if (range.length() == 1) {
+    // if (range.length() == 1) {
         add_projection(id, projected);
-    }
+    // }
     trace.pop_back();
     while (trace.size() > range.start()) {
         trace.pop_back();
