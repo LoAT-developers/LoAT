@@ -440,7 +440,7 @@ bool TRPUtil::add_blocking_clauses(const Range &range, const ModelPtr& model) {
             for (const auto &bound: bounds) {
                 const auto c = model->evalToRational(bound.bound);
                 if (mp::denominator(c) == 1) {
-                    model->put(n, mp::denominator(c));
+                    model->put(n, mp::numerator(c));
                     if (model->eval(b)) {
                         Bools::Expr projected{
                             mbp::int_mbp(b, model, mbp_kind, [&](const auto &x) {

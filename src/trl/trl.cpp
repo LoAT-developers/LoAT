@@ -136,9 +136,8 @@ bool TRL::handle_loop(const Range &range) {
         });
     }
     step = step || encode_transition(rule_map.at(id), id);
-    if (range.length() == 1) {
-        add_projection(id, projected);
-    } else {
+    add_projection(id, projected);
+    if (range.length() > 1) {
         add_blocking_clause(range, id, projected);
     }
     return true;
