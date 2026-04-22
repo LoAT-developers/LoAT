@@ -460,20 +460,26 @@ bool TRPUtil::add_blocking_clauses(const Range &range, const ModelPtr& model) {
     return false;
 }
 
-std::optional<Int> TRPUtil::refine_abstraction(const Range& range) {
+std::optional<Int> TRPUtil::refine_abstraction(const Range& range, const bool fix_trace) {
     BoolExprSet assumptions;
     std::unordered_map<Bools::Expr, std::pair<Int, Bools::Expr>> assumption_to_refinement;
     bool is_model = true;
+    if (fix_trace) {
+        solver->push();
+    }
     for (unsigned i = range.start(); i <= range.end(); ++i) {
         const auto& frame = trace.at(i);
+        const auto& subs = get_subs(i, 1);
+        const auto current = frame.implicant;
+        if (fix_trace) {
+            solver->add(current->renameVars(subs));
+        }
         if (frame.id > last_orig_clause) {
-            const auto current = frame.implicant;
             const auto conc = concretization.at(frame.id);
             assert(current->isAnd());
             assert(conc->isAnd());
             const auto current_children = current->getChildren();
             if (conc != current) {
-                const auto& subs = get_subs(i, 1);
                 for (const auto& c: conc->getChildren()) {
                     if (!current_children.contains(c)) {
                         const auto assumption = c->renameVars(subs);
@@ -509,8 +515,12 @@ std::optional<Int> TRPUtil::refine_abstraction(const Range& range) {
                         b.erase(id);
                     }
                 }
+                solver->pop();
                 return 0;
         }
+    }
+    if (fix_trace) {
+        solver->pop();
     }
     return std::nullopt;
 }

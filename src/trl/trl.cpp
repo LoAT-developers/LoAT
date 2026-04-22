@@ -50,7 +50,7 @@ std::optional<Range> TRL::has_looping_infix() {
 bool TRL::handle_loop(const Range &range) {
     const auto old_model = *model;
     if (Config::Analysis::abstraction_refinement) {
-        if (const auto backtrack_point = refine_abstraction(range)) {
+        if (const auto backtrack_point = refine_abstraction(range, true)) {
             if (Config::Analysis::log) {
                 std::cout << "refined loop" << std::endl;
             }
@@ -223,11 +223,11 @@ std::optional<SmtResult> TRL::do_step() {
             return SmtResult::Unknown;
         case SmtResult::Sat:
             if (Config::Analysis::abstraction_refinement && depth > 0) {
-                model = solver->model();
+                build_trace();
                 if (Config::Analysis::log) {
                     std::cout << "proving safety failed, abstraction refinement" << std::endl;
                 }
-                if (const auto backtrack_point = refine_abstraction(Range::from_length(0, trace.size()))) {
+                if (const auto backtrack_point = refine_abstraction(Range::from_length(0, trace.size()), true)) {
                     solver->pop();
                     while (depth > *backtrack_point) {
                         pop();
