@@ -82,21 +82,34 @@ void ADCLSat::handle_loop(const Range& range) {
     if (add_blocking_clauses(range, model)) {
         if (Config::Analysis::abstraction_refinement) {
             if (!add_blocking_clauses(range, old_model->composeBackwards(get_subs(range.start(), range.length())))) {
-                const auto backtrack_point = refine_by_model(range, old_model);
-                if (!backtrack_point) {
-                    throw std::logic_error("failed to refine with original model");
+                if (last_model) {
+                    CellSet cells;
+                    loop_non_bool->collectCells(cells);
+                    loop_bool->collectCells(cells);
+                    if (std::ranges::all_of(cells, [&](const auto& c) {
+                        return theory::apply(c, [&](const auto& c) {
+                            return (*last_model)->get(c) == model->get(c);
+                        });
+                    })) {
+                        last_model.reset();
+                        const auto backtrack_point = refine_by_model(range, old_model);
+                        if (!backtrack_point) {
+                            throw std::logic_error("failed to refine with original model");
+                        }
+                        if (Config::Analysis::log) {
+                            std::cout << "refined loop" << std::endl;
+                        }
+                        trace.pop_back();
+                        while (trace.size() > *backtrack_point) {
+                            trace.pop_back();
+                            solver->pop();
+                        }
+                        backtracking = false;
+                        return;
+                    }
                 }
-                if (Config::Analysis::log) {
-                    std::cout << "refined loop" << std::endl;
-                }
-                trace.pop_back();
-                while (trace.size() > *backtrack_point) {
-                    trace.pop_back();
-                    solver->pop();
-                }
-                backtracking = false;
-                return;
             }
+            last_model = model;
         }
         if (Config::Analysis::log) {
             std::cout << "***** Covered *****" << std::endl;
