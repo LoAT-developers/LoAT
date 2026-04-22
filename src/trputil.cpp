@@ -515,7 +515,9 @@ std::optional<Int> TRPUtil::refine_abstraction(const Range& range, const bool fi
                         b.erase(id);
                     }
                 }
-                solver->pop();
+                if (fix_trace) {
+                    solver->pop();
+                }
                 return 0;
         }
     }
