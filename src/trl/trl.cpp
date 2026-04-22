@@ -222,8 +222,8 @@ std::optional<SmtResult> TRL::do_step() {
         case SmtResult::Unknown:
             return SmtResult::Unknown;
         case SmtResult::Sat:
+            build_trace();
             if (Config::Analysis::abstraction_refinement && depth > 0) {
-                build_trace();
                 if (Config::Analysis::log) {
                     std::cout << "proving safety failed, abstraction refinement" << std::endl;
                 }
@@ -239,7 +239,6 @@ std::optional<SmtResult> TRL::do_step() {
             if (Config::Analysis::log) {
                 std::cout << "proving safety failed, trying to construct counterexample" << std::endl;
             }
-            build_trace();
             return build_cex() ? SmtResult::Unsat : SmtResult::Unknown;
         case SmtResult::Unsat: {
             // pop error states
