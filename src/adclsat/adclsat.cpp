@@ -39,7 +39,7 @@ std::optional<Range> ADCLSat::has_looping_infix() {
         for (unsigned start = 0; start + i < trace.size(); ++start) {
             if (dependency_graph.hasEdge(trace[start + i].implicant, trace[start].implicant) && (i > 0 || trace[start].id <= last_orig_clause)) {
                 if (i == 0) {
-                    if (const auto loop = trace[start].implicant; SmtFactory::check(loop->renameVars(get_subs(0,1)) && loop->renameVars(get_subs(1,1))) == SmtResult::Unsat) {
+                    if (const auto loop {trp.mbp(trace[start].implicant, (*model)->composeBackwards(get_subs(start, 1)), theory::isTempCell)}; SmtFactory::check(loop->renameVars(get_subs(0,1)) && loop->renameVars(get_subs(1,1))) == SmtResult::Unsat) {
                         continue;
                     }
                 }
@@ -236,7 +236,7 @@ std::optional<SmtResult> ADCLSat::do_step() {
                 return safe ? SmtResult::Sat : SmtResult::Unknown;
             }
             backtracking = true;
-            const auto projection{trace.back().implicant};
+            const auto projection{trp.mbp(trace.back().implicant, (*model)->composeBackwards(get_subs(trace.size() - 1, 1)), theory::isTempCell)};
             solver->pop(); // current step
             solver->pop(); // blocking clauses
             solver->pop(); // backtracking
