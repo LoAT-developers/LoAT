@@ -464,7 +464,7 @@
     "name": "s_split_10_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "s_split_30_000.smt2"
   },
   {
@@ -3264,7 +3264,7 @@
     "name": "apache-escape-absolute.c_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "DRAGON_all2_e3_4612_e1_6463_000.smt2"
   },
   {
@@ -4052,7 +4052,7 @@
     "name": "s_disj_ite_06_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "DRAGON_all2_e3_4612_e4_3719_000.smt2"
   },
   {
@@ -4716,7 +4716,7 @@
     "name": "metros_3_e4_987_e1_1115_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "dillig05.c_000.smt2"
   },
   {
