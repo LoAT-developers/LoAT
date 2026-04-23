@@ -138,7 +138,6 @@ void ADCLSat::handle_loop(const Range& range) {
     } else {
         ti = Preprocess::preprocessFormula(ti);
         id = add_learned_clause(range, ti);
-        model->put(n, 1);
         projected = rule_map.at(id)->subs(Subs::build(trp.get_n(), arith::one()));
     }
     const auto fst_elem {trace.at(range.start())};
@@ -236,7 +235,7 @@ std::optional<SmtResult> ADCLSat::do_step() {
                 return safe ? SmtResult::Sat : SmtResult::Unknown;
             }
             backtracking = true;
-            const auto projection{trace.back().implicant};
+            const auto projection{trp.mbp(trace.back().implicant, (*model)->composeBackwards(get_subs(trace.size() - 1, 1)), theory::isTempCell)};
             solver->pop(); // current step
             solver->pop(); // blocking clauses
             solver->pop(); // backtracking
