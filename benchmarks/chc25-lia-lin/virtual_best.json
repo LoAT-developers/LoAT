@@ -3876,7 +3876,7 @@
     "name": "SYNAPSE_4_000.smt2"
   },
   {
-    "result": "unknown",
+    "result": "sat",
     "name": "s_split_33_000.smt2"
   },
   {
