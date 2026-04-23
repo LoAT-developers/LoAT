@@ -1,7 +1,5 @@
 #include "trl.hpp"
 
-#include <ranges>
-
 #include "dependencygraph.hpp"
 #include "formulapreprocessing.hpp"
 #include "intmbp.hpp"
@@ -36,7 +34,7 @@ std::optional<Range> TRL::has_looping_infix() {
             }
             if (dependency_graph.hasEdge(trace[start + i].implicant, trace[start].implicant) && (i > 0 || trace[start].id <= last_orig_clause)) {
                 if (i == 0) {
-                    if (const auto loop {trp.mbp(trace[start].implicant, (*model)->composeBackwards(get_subs(start, 1)), theory::isTempCell)}; SmtFactory::check(loop->renameVars(get_subs(0,1)) && loop->renameVars(get_subs(1,1))) == SmtResult::Unsat) {
+                    if (const auto loop {trace[start].implicant}; SmtFactory::check(loop->renameVars(get_subs(0,1)) && loop->renameVars(get_subs(1,1))) == SmtResult::Unsat) {
                         continue;
                     }
                 }
@@ -130,10 +128,7 @@ bool TRL::handle_loop(const Range &range) {
     } else {
         ti = Preprocess::preprocessFormula(ti);
         id = add_learned_clause(range, ti);
-        model->put(n, 1);
-        projected = mbp::int_mbp(rule_map.at(id), model, mbp_kind, [&](const Cell &x) {
-            return x == Cell(n);
-        });
+        projected = rule_map.at(id)->subs(Subs::build(trp.get_n(), arith::one()));
     }
     step = step || encode_transition(rule_map.at(id), id);
     add_projection(id, projected);
