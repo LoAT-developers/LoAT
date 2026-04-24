@@ -8,21 +8,23 @@ namespace util {
 
     public:
 
-        static VarSet find(
-                const VarSet &varsOfInterest,
+        static CellSet find(
+                const CellSet &varsOfInterest,
                 const Subs &up) {
-            VarSet res = varsOfInterest;
+            CellSet res = varsOfInterest;
             // Compute the closure of res under all updates and the guard
-            VarSet todo = res;
+            CellSet todo = res;
             while (!todo.empty()) {
-                VarSet next;
-                for (const auto &x : todo) {
-                    std::visit([&up, &next](const auto &x) {
-                        const auto val {up.get(x)};
-                        if (val != theory::toExpr(x)) {
-                            theory::collectVars(val, next);
-                        }
-                    }, x);
+                CellSet next;
+                for (const auto& x : todo) {
+                    theory::apply(
+                        x,
+                        [&](const auto& x) {
+                            using T = decltype(theory::theory(x));
+                            if (const auto val{x->subs(up)}; val != T::cellToExpr(x)) {
+                                val->collectCells(next);
+                            }
+                        });
                 }
                 todo.clear();
                 for (const auto &var : next) {
@@ -33,11 +35,7 @@ namespace util {
                 // collect all variables from every iteration
                 res.insertAll(todo);
             }
-            VarSet symbols;
-            for (const auto &x: res) {
-                symbols.insert(x);
-            }
-            return symbols;
+            return res;
         }
 
     };

@@ -38,6 +38,11 @@ namespace sexpresso {
         count += 2; // for parantheses
     }
 
+    Sexp::Sexp(const Sexp& that): kind(that.kind), count(that.count) {
+        this->value.str = that.value.str;
+        this->value.sexp = that.value.sexp;
+    }
+
     auto Sexp::addChild(Sexp sexp) -> void {
         if(this->kind == SexpValueKind::STRING) {
             this->kind = SexpValueKind::SEXP;
@@ -173,6 +178,14 @@ namespace sexpresso {
 
     auto Sexp::operator[](size_t idx) -> Sexp& {
         return getChild(idx);
+    }
+
+    auto Sexp::operator=(const Sexp& that) -> Sexp& {
+        this->kind = that.kind;
+        this->value.str = that.value.str;
+        this->value.sexp = that.value.sexp;
+        this->count = that.count;
+        return *this;
     }
 
     auto Sexp::str() -> std::string& {

@@ -1,35 +1,63 @@
 #include "itstosafetyproblem.hpp"
+
+#include <utility>
 #include "formulapreprocessing.hpp"
 #include "config.hpp"
 
-ITSToSafety::ITSToSafety(const ITSPtr its)
-    : its(its) {}
+ITSToSafety::ITSToSafety(ITSPtr  its)
+    : its(std::move(its)) {}
 
 ITSModel ITSToSafety::transform_model(const Bools::Expr &e) const {
     ITSModel res;
     const auto loc_var {its->getLocVar()};
     for (const auto &x : its->getLocations()) {
-        Subs s{Subs::build<Arith>(loc_var, arith::mkConst(x))};
-        res.set_invariant(x, s(e));
+        Subs s{Subs::build(loc_var, arith::mkConst(x))};
+        res.set_invariant(x, e->subs(s));
     }
     res.set_invariant(its->getInitialLocation(), top());
     return res;
 }
 
-Bools::Expr ITSToSafety::rule_to_formula(const RulePtr r, const VarSet &prog_vars) {
+Bools::Expr ITSToSafety::rule_to_formula(const RulePtr& r, const VarSet &prog_vars) {
     Subs subs;
     std::vector<Bools::Expr> conjuncts;
     conjuncts.push_back(r->getGuard());
-    for (const auto &x : prog_vars) {
-        if (const auto y {theory::is_var(r->getUpdate().get(x))}) {
-            if (theory::isTempVar(*y) && !subs.contains(*y)) {
-                subs.put(*y, theory::toExpr(theory::postVar(x)));
-                continue;
-            }
-        }
-        conjuncts.push_back(theory::mkEq(theory::toExpr(theory::postVar(x)), r->getUpdate().get(x)));
+    for (const auto& x : prog_vars) {
+        theory::apply(
+            x,
+            [&](const Bools::Var& x) {
+                const auto up{r->getUpdate().get(x)};
+                if (const auto y{up->isVar()}; y && (*y)->isTempVar() && !subs.contains(*y)) {
+                    subs.put(*y, Bools::varToExpr(x->postVar()));
+                } else {
+                    conjuncts.push_back(Bools::mkEq(bools::mkLit(bools::mk(x->postVar())), up));
+                }
+            },
+            [&](const Arrays<Arith>::Var& x) {
+                const auto up{r->getUpdate().get(x)};
+                if (x->dim() == 0) {
+                    // we write to a scalar
+                    if (const auto &y{up->isArrayWrite()}) {
+                        // we write the array-write y to x
+                        const auto val {(*y)->val()};
+                        // the value that is being written to y
+                        if (const auto var{val->isVar()}; var && (*var)->dim() == 0 && (*var)->isTempVar()) {
+                            // the value that is being written to y is a temporary scalar
+                            if (!subs.contains((*var)->var())) {
+                                subs.put((*var)->var(), Arrays<Arith>::varToExpr(x->postVar()));
+                                return;
+                            }
+                        }
+                    }
+                }
+                if (const auto y{up->isVar()}; y && (*y)->isTempVar() && !subs.contains(*y)) {
+                    subs.put(*y, Arrays<Arith>::varToExpr(x->postVar()));
+                } else {
+                    conjuncts.push_back(bools::mkLit(arrays::mkEq(x->postVar(), up)));
+                }
+            });
     }
-    const auto res {subs(bools::mkAnd(conjuncts))};
+    const auto res {bools::mkAnd(conjuncts)->subs(subs)};
     if (Config::Analysis::model) {
         rev_map.emplace(res, r);
     }
@@ -38,45 +66,53 @@ Bools::Expr ITSToSafety::rule_to_formula(const RulePtr r, const VarSet &prog_var
 
 SafetyProblem ITSToSafety::transform() {
     SafetyProblem sp;
-    const auto vars {its->getVars()};
-    for (const auto &x: vars) {
+    for (const auto &x: its->getVars()) {
         if (theory::isProgVar(x)) {
             sp.add_pre_var(x);
             sp.add_post_var(theory::postVar(x));
-        } else if (theory::isPostVar(x)) {
-            sp.add_pre_var(theory::progVar(x));
-            sp.add_post_var(x);
         }
     }
-    for (const auto &y: sp.post_vars()) {
-        const auto x {theory::progVar(y)};
-        init_map.insert(y, x);
-        init_map.insert(x, theory::next(x));
+    for (const auto& y : sp.post_vars()) {
+        theory::apply(
+            y,
+            [&](const auto& y) {
+                using T = decltype(theory::theory(y));
+                const auto x{y->progVar()};
+                post_to_pre.insert(y, x);
+                post_to_pre.insert(x, T::next(x->dim()));
+            });
     }
     std::vector<Bools::Expr> init;
     std::vector<Bools::Expr> err;
     linked_hash_map<RulePtr, Bools::Expr> map;
     for (const auto &r: its->getAllTransitions()) {
         if (its->isInitialTransition(r)) {
-            init.emplace_back(Preprocess::preprocessFormula(init_map(rule_to_formula(r, sp.pre_vars()))));
+            const auto b {Preprocess::preprocessFormula(rule_to_formula(r, sp.pre_vars())->renameVars(post_to_pre))};
+            init.emplace_back(b);
+            if (Config::Analysis::model) {
+                rev_init_map.emplace(b, r);
+            }
         }
         if (its->isSinkTransition(r)) {
-            err.emplace_back(Preprocess::preprocessFormula(r->getGuard()));
+            const auto b {Preprocess::preprocessFormula(r->getGuard())};
+            err.emplace_back(b);
+            if (Config::Analysis::model) {
+                rev_err_map.emplace(b, r);
+            }
         }
         if (!its->isInitialTransition(r) && !its->isSinkTransition(r)) {
             const auto t {rule_to_formula(r, sp.pre_vars())};
+
             map.emplace(r, t);
             sp.add_transition(t);
-            const auto preds {its->getPredecessors(r)};
-            for (const auto &p: preds) {
+            for (const auto &p: its->getPredecessors(r)) {
                 if (its->isInitialTransition(p)) {
                     sp.mark_initial_transition(t);
                 } else if (map.contains(p)) {
                     sp.add_edge(map.at(p), t);
                 }
             }
-            const auto succs {its->getSuccessors(r)};
-            for (const auto &s: succs) {
+            for (const auto &s: its->getSuccessors(r)) {
                 if (its->isSinkTransition(s)) {
                     sp.mark_sink_transition(t);
                 } else if (map.contains(s)) {
@@ -92,34 +128,39 @@ SafetyProblem ITSToSafety::transform() {
 
 ITSSafetyCex ITSToSafety::transform_cex(const SafetyCex &cex) const {
     ITSSafetyCex res{its};
-    auto init_model{cex.get_state(0).composeBackwards(init_map)};
+    const auto init_model{cex.get_state(0)->composeBackwards(post_to_pre)};
     res.set_initial_state(init_model);
-    for (const auto &init: its->getInitialTransitions()) {
-        if (res.try_step(init, cex.get_state(0))) {
+    const auto& fst {cex.get_state(0)};
+    for (const auto &[b,t]: rev_init_map) {
+        if (fst->eval(b)) {
+            res.do_step(t, fst);
             break;
         }
     }
     assert(res.num_transitions() == 1);
     const auto steps{cex.num_transitions()};
     Renaming pre_to_post;
-    for (const auto &x: its->getVars()) {
-        if (theory::isProgVar(x)) {
-            pre_to_post.insert(x, theory::postVar(x));
-        }
+    for (const auto& x : its->getVars()) {
+        theory::apply(
+            x,
+            [&](const auto& x) {
+                if (x->isProgVar()) {
+                    pre_to_post.insert(x, x->postVar());
+                }
+            });
     }
     for (size_t i = 0; i < steps; ++i) {
-        const auto &[model, transition]{cex.get_step(i)};
-        const auto next{model.composeBackwards(pre_to_post)};
-        const auto rule{rev_map.at(transition)};
-        if (!res.try_step(rule, next)) {
-            throw std::logic_error("transform_cex failed");
+        const auto& [model, transition]{cex.get_step(i)};
+        const auto rule = rev_map.at(transition);
+        res.do_step(rule, model->composeBackwards(pre_to_post));
+    }
+    const auto last {cex.get_state(steps)};
+    for (const auto &[b,t]: rev_err_map) {
+        if (last->eval(b)) {
+            res.add_final_transition(t);
+            break;
         }
     }
-    const auto sinks{its->getSinkTransitions()};
-    if (!std::any_of(sinks.begin(), sinks.end(), [&](const auto &t) {
-            return res.try_final_transition(t);
-        })) {
-        throw std::logic_error("transform_cex failed");
-    }
+    assert(res.num_transitions() == steps + 2);
     return res;
 }

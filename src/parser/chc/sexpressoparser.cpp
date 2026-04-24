@@ -2,6 +2,7 @@
 #include "smtlibutil.hpp"
 
 #include <fstream>
+#include <boost/algorithm/string/split.hpp>
 
 CHCPtr SexpressoParser::loadFromFile(const std::string &filename) {
     SexpressoParser parser;
@@ -20,79 +21,92 @@ FunAppPtr parsePred(sexpresso::Sexp &exp, SMTLibParsingState &state) {
     return FunApp::mk(exp[0].str(), args);
 }
 
-std::optional<FunAppPtr> parseTopLevelBoolExpr(sexpresso::Sexp &exp, SMTLibParsingState &state) {
+std::vector<FunAppPtr> parseTopLevelBoolExpr(sexpresso::Sexp &exp, SMTLibParsingState &state) {
     if (exp.isString()) {
-        const auto name {exp.str()};
-        if (name == "true" || name == "false" || state.vars.find(name) != state.vars.end() || std::any_of(state.bindings.rbegin(), state.bindings.rend(), [&](const auto &b) {
-            return b.contains(name);
-        })) {
-            state.refinement.emplace_back(parseBoolExpr(exp, state));
+        // get_type returns a value iff the given name has been declared as a variable, or if there is a binding for it
+        if (const auto name {exp.str()}; name == "true" || name == "false" || state.get_type(name)) {
+            state.add_refinement(parseBoolExpr(exp, state));
             return {};
-        } else {
-            return parsePred(exp, state);
         }
+        return std::vector{parsePred(exp, state)};
     }
-    const auto f {exp[0].str()};
-    if (f == "and") {
-        std::optional<FunAppPtr> lhs;
+    if (const auto f {exp[0].str()}; f == "and") {
+        std::vector<FunAppPtr> args;
         for (unsigned i = 1; i < exp.childCount(); ++i) {
             const auto l {parseTopLevelBoolExpr(exp[i], state)};
-            if (l) {
-                if (lhs) {
-                    throw std::invalid_argument("LoAT cannot handle non-linear clauses");
-                }
-                lhs = l;
+            args.insert(args.end(), l.begin(), l.end());
+            if (args.size() > 1) {
+                std::cerr << exp.toString() << std::endl;
+                throw std::invalid_argument("LoAT cannot handle non-linear clauses");
             }
         }
-        return lhs;
-    } else if (f == "ite" || f == "let" || f == "or" || f == "not" || f == "<" || f == "<=" || f == ">" || f == ">=" || f == "=" || f == "distinct") {
-        state.refinement.emplace_back(parseBoolExpr(exp, state));
-        return {};
+        return args;
     } else {
-        return parsePred(exp, state);
+        if (f == "let" || f == "ite" || f == "or" || f == "not" || f == "=>" || f == "<" || f == "<=" || f == ">" || f == ">=" || f == "=" || f == "distinct") {
+            state.add_refinement(parseBoolExpr(exp, state));
+            return {};
+        }
+        return std::vector{parsePred(exp, state)};
     }
+}
+
+theory::Type parse_type(sexpresso::Sexp& type) {
+    if (type.isString()) {
+        if (type.str() == "Int") {
+            return theory::Type::Int;
+        }
+        if (type.str() == "Bool") {
+            return theory::Type::Bool;
+        }
+        throw std::invalid_argument("unknown type");
+    }
+    if (type[0].isString("Array")
+        && type[1].isString("Int")) {
+        switch (const auto& [base, dim] = parse_type(type[2]); base) {
+        case theory::BaseType::Int: {
+            return theory::Type(base, dim + 1);
+        }
+        case theory::BaseType::Bool: ; // do nothing
+        }
+    }
+    throw std::invalid_argument("unknown type " + type.toString());
 }
 
 void SexpressoParser::run(const std::string &filename) {
     std::ifstream ifs(filename);
     std::string content(
-        (std::istreambuf_iterator<char>(ifs)),
+        (std::istreambuf_iterator(ifs)),
         (std::istreambuf_iterator<char>()));
-    sexpresso::Sexp sexp = sexpresso::parse(content);
-    SMTLibParsingState state;
-    for (auto &ex: sexp.arguments()) {
+    for (sexpresso::Sexp sexp = sexpresso::parse(content); auto &ex: sexp.arguments()) {
         if (ex[0].isString("assert")) {
-            sexpresso::Sexp imp;
-            if (ex[1].childCount() > 0 && ex[1][0].isString("forall")) {
-                auto vars {ex[1][1]};
+            state.push();
+            sexpresso::Sexp clause = ex[1];
+            while (clause[0].isString("forall")) {
+                auto vars = clause[1];
                 for (unsigned i = 0; i < vars.childCount(); ++i) {
-                    const auto name{vars[i][0].str()};
-                    const auto type{vars[i][1].str()};
-                    if (type == "Int") {
-                        state.vars.emplace(name, ArithVar::next());
-                    } else if (type == "Bool") {
-                        state.vars.emplace(name, Bools::next());
-                    } else {
-                        throw std::invalid_argument("unknown type " + type);
-                    }
+                    const auto t = parse_type(vars[i][1]);
+                    state.create_var(vars[i][0].str(), t, true);
                 }
-                imp = ex[1][2];
-            } else {
-                imp = ex[1];
+                clause = clause[2];
             }
-            std::optional<FunAppPtr> premise, conclusion;
+            std::vector<FunAppPtr> premise;
+            std::optional<FunAppPtr> conclusion;
             sexpresso::Sexp conc;
-            if (imp[0].isString("=>")) {
-                premise = parseTopLevelBoolExpr(imp[1], state);
-                conc = imp[2];
+            if (clause[0].isString("=>")) {
+                premise = parseTopLevelBoolExpr(clause[1], state);
+                conc = clause[2];
+            } else if (clause[0].isString("not")) {
+                premise = parseTopLevelBoolExpr(clause[1], state);
+                conc = sexpresso::Sexp("false");
             } else {
-                conc = imp[0];
+                conc = clause;
             }
             if (!conc.isString("false")) {
                 conclusion = parsePred(conc, state);
             }
-            chcs->add_clause(Clause::mk(premise, bools::mkAnd(state.refinement), conclusion));
-            state.clear();
+            const auto res = Clause::mk(premise, state.refinement(), conclusion);
+            chcs->add_clause(res);
+            state.pop();
         }
     }
 }

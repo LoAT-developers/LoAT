@@ -1,35 +1,39 @@
 #include "smtfactory.hpp"
 #include "yices.hpp"
-#include "z3.hpp"
 #include "swine.hpp"
-#include "cvc5.hpp"
 #include "config.hpp"
 
 namespace SmtFactory {
 
-SmtPtr solver(Logic logic) {
+SmtPtr solver(const Logic logic) {
     std::unique_ptr<Smt> res;
     switch (Config::Analysis::smtSolver) {
     case Config::Analysis::Heuristic: {
         switch (logic) {
-        case QF_LA:
+        case Logic::QF_LA:
+        case Logic::QF_ALA:
             res = std::unique_ptr<Smt>(new Yices(logic));
             break;
-        case QF_NA:
-            res = std::unique_ptr<Smt>(new Z3());
-            break;
-        case QF_NAT:
-            res = std::unique_ptr<Smt>(new Swine());
+        default:
+            res = std::unique_ptr<Smt>(new Swine(logic));
             break;
         }
         break;
     }
     case Config::Analysis::Yices: {
-        res = std::unique_ptr<Smt>(new Yices(logic));
+        switch (logic) {
+        case Logic::QF_EA:
+        case Logic::QF_AEA:
+            res = std::unique_ptr<Smt>(new Swine(logic));
+            break;
+        default:
+            res = std::unique_ptr<Smt>(new Yices(logic));
+            break;
+        }
         break;
     }
-    default: {
-        res = solver();
+    case Config::Analysis::Swine: {
+        res = std::unique_ptr<Smt>(new Swine(logic));
         break;
     }
     }
@@ -39,32 +43,24 @@ SmtPtr solver(Logic logic) {
 SmtPtr solver() {
     std::unique_ptr<Smt> solver;
     switch (Config::Analysis::smtSolver) {
-    case Config::Analysis::Z3:
-        solver = std::unique_ptr<Smt>(new Z3());
-        break;
-    case Config::Analysis::CVC5:
-        solver = std::unique_ptr<Smt>(new CVC5());
-        break;
     case Config::Analysis::Yices:
-        solver = std::unique_ptr<Smt>(new Yices(Logic::QF_NA));
+        solver = std::unique_ptr<Smt>(new Yices(Logic::QF_ANA));
         break;
-    case Config::Analysis::Swine:
-        [[fallthrough]];
-    case Config::Analysis::Heuristic:
-        solver = std::unique_ptr<Smt>(new Swine());
+    default:
+        solver = std::unique_ptr<Smt>(new Swine(Logic::QF_ANA));
         break;
     }
     return solver;
 }
 
-SmtPtr modelBuildingSolver(Logic logic) {
+SmtPtr modelBuildingSolver(const Logic logic) {
     auto res {solver(logic)};
     res->enableModels();
     return res;
 }
 
-SmtResult check(const Bools::Expr e) {
-    auto s {solver(Smt::chooseLogic(BoolExprSet{e}))};
+SmtResult check(const Bools::Expr& e) {
+    const auto s {solver(Smt::chooseLogic(e))};
     s->add(e);
     return s->check();
 }

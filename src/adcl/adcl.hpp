@@ -7,9 +7,8 @@
 #include "smtfactory.hpp"
 #include "itssafetycex.hpp"
 #include "itscpxcex.hpp"
+#include "range.hpp"
 
-#include <limits>
-#include <list>
 #include <optional>
 
 /**
@@ -29,7 +28,7 @@ struct Step {
     /**
      * a conjunction that implies the condition of the clause
      */
-    const Bools::Expr implicant;
+    const RulePtr implicant;
 
     /**
      * renames the program variables to fresh variables that serve as input for the next step
@@ -39,11 +38,9 @@ struct Step {
 
     const RulePtr resolvent;
 
-    Step(const RulePtr transition, const Bools::Expr sat, const Renaming &var_renaming, const Renaming &tmp_var_renaming, const RulePtr resolvent);
+    Step(RulePtr transition, RulePtr sat, Renaming var_renaming, Renaming tmp_var_renaming, RulePtr resolvent);
 
-    Step(const Step &that);
-
-    Step& operator=(const Step &that);
+    Step(const Step &that) = default;
 
 };
 
@@ -65,7 +62,7 @@ class ProvedUnsat;
 class LearningState {
 
 protected:
-    LearningState();
+    LearningState() = default;
 
 public:
     /**
@@ -85,7 +82,7 @@ public:
 
     virtual std::optional<Restart> restart();
 
-    virtual ~LearningState();
+    virtual ~LearningState() = default;
 
 };
 
@@ -102,7 +99,7 @@ class Succeeded final: public LearningState {
     LearnedClauses learned;
 
 public:
-    Succeeded(const LearnedClauses &learned);
+    explicit Succeeded(LearnedClauses learned);
     std::optional<Succeeded> succeeded() override;
     const LearnedClauses& operator*() const;
     const LearnedClauses* operator->() const;
@@ -115,26 +112,24 @@ class Covered final: public LearningState {
 class Dropped final: public LearningState {
 
 public:
-    Dropped();
+    Dropped() = default;
     std::optional<Dropped> dropped() override;
 };
 
 class Unroll final: public LearningState {
-
-private:
 
     std::optional<unsigned> max {};
     bool accel_failed {false};
 
 public:
 
-    Unroll();
+    Unroll() = default;
 
-    Unroll(unsigned max, bool accel_failed = false);
+    explicit Unroll(unsigned max, bool accel_failed = false);
 
-    std::optional<unsigned> get_max();
+    std::optional<unsigned> get_max() const;
 
-    bool acceleration_failed();
+    bool acceleration_failed() const;
 
     std::optional<Unroll> unroll() override;
 };
@@ -142,7 +137,7 @@ public:
 class ProvedUnsat final: public LearningState {
 
 public:
-    ProvedUnsat();
+    ProvedUnsat() = default;
     std::optional<ProvedUnsat> unsat() override;
 };
 
@@ -153,6 +148,8 @@ class Restart final: public LearningState {
 class ADCL {
 
     ITSPtr chcs;
+
+    DependencyGraph<RulePtr> dependency_graph {};
 
     SmtPtr solver {SmtFactory::solver()};
 
@@ -200,15 +197,15 @@ class ADCL {
 
     const std::function<void(const ITSCpxCex&)> &print_cpx_cex;
 
-    bool is_learned_clause(const RulePtr idx) const;
+    bool is_learned_clause(const RulePtr& idx) const;
 
-    bool is_orig_clause(const RulePtr idx) const;
+    bool is_orig_clause(const RulePtr& idx) const;
 
-    void set_cpx_witness(const RulePtr witness, const ArithSubs &subs, const Arith::Var &param);
+    void set_cpx_witness(const RulePtr&, const ModelPtr&, const ArithVarPtr&);
 
     void update_cpx();
 
-    std::optional<RulePtr> instantiate(const Arith::Var n, const RulePtr rule) const;
+    static std::optional<RulePtr> instantiate(const ArithVarPtr& n, const RulePtr& rule);
 
     /**
      * initializes all data structures after preprocessing
@@ -218,67 +215,65 @@ class ADCL {
     /**
      * finishes the analysis when we were able to prove unsat
      */
-    void unsat();
+    void unsat() const;
 
-    unsigned get_penalty(const RulePtr idx) const;
+    unsigned get_penalty(const RulePtr& idx) const;
 
-    void bump_penalty(const RulePtr idx);
+    void bump_penalty(const RulePtr& idx);
 
     /**
      * tries to resolve the trace with the given clause
      */
-    std::optional<RulePtr> resolve(const RulePtr idx);
+    std::optional<RulePtr> resolve(const RulePtr& idx);
 
     /**
      * computes (an approximation of) the language associated with the clause used for the given step
      */
-    Automaton get_language(const Step &step);
+    Automaton get_language(const Step &step) const;
 
     /**
      * computes (an approximation of) the language associated with the clause that can be learned
      * from the looping suffix of the trace
      * @param backlink the start of the looping suffix of the trace
      */
-    Automaton build_language(const int backlink);
+    Automaton build_language(const Range& range) const;
 
     /**
      * computes a clause that is equivalent to the looping suffix of the trace
      * @param backlink the start of the looping suffix of the trace
      */
-    std::pair<RulePtr, Model> build_loop(const int backlink);
+    std::pair<RulePtr, ModelPtr> build_loop(const Range& range) const;
 
     /**
      * adds a learned clause to all relevant data structures
-     * @param lang (an approximation of) the language associated with the learned clause
      */
-    void add_learned_clause(const RulePtr accel, const unsigned backlink);
+    void add_learned_clause(const RulePtr& accel, const Range&) const;
 
     /**
      * tries to accelerate the given clause
-     * @param lang the language associated with the learned clause.
      */
-    std::unique_ptr<LearningState> learn_clause(const RulePtr rule, const Model &model, const unsigned backlink);
+    std::unique_ptr<LearningState> learn_clause(const RulePtr& rule, const ModelPtr& model, const Range& range);
 
-    bool check_consistency();
+    bool check_consistency() const;
 
-    void drop_until(const int new_size);
+    void drop_until(int new_size);
 
     /**
      * does everything that needs to be done if the trace has a looping suffix
      */
-    std::unique_ptr<LearningState> handle_loop(const unsigned backlink);
+    std::unique_ptr<LearningState> handle_loop(const Range& range);
 
     /**
      * @return the start position of the looping suffix of the trace, if any, or -1
      */
-    std::optional<unsigned> has_looping_suffix(int start);
+    std::optional<Range> has_looping_infix(int start) const;
 
     /**
      * Generates a fresh copy of the program variables and fixes their value according to the update of the
      * given clause by adding corresponding constraints to the SMT solver.
      * @return a variable renaming from the program variables to the fresh copy
      */
-    std::pair<Renaming, Renaming> handle_update(const RulePtr idx);
+    std::pair<Renaming, Renaming> handle_update(const RulePtr& idx);
 
     /**
      * blocks the given step
@@ -295,17 +290,17 @@ class ADCL {
 
     void add_to_trace(const Step &step);
 
-    RulePtr compute_resolvent(const RulePtr idx, const Bools::Expr implicant) const;
+    RulePtr compute_resolvent(const RulePtr& idx, const Bools::Expr& implicant) const;
 
     /**
      * Assumes that the trace can be resolved with the given clause.
      * Does everything that needs to be done to apply the rule "Step".
      */
-    bool store_step(const RulePtr idx, const RulePtr resolvent);
+    bool store_step(const RulePtr& idx, const RulePtr& implicant);
 
-    void print_trace(std::ostream &s);
+    void print_trace(std::ostream &s) const;
 
-    void print_state();
+    void print_state() const;
 
     bool try_to_finish();
 
@@ -313,7 +308,7 @@ class ADCL {
 
 public:
 
-    ADCL(ITSPtr its, const std::function<void(const ITSCpxCex&)> &print_cpx_cex);
+    ADCL(const ITSPtr&, const std::function<void(const ITSCpxCex&)> &print_cpx_cex);
 
     SmtResult analyze();
 

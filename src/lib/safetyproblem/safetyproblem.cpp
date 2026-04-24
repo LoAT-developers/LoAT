@@ -1,16 +1,22 @@
 #include "safetyproblem.hpp"
 #include "subs.hpp"
 
-SafetyProblem::SafetyProblem() {}
-
 void SafetyProblem::add_pre_var(const Var &x) {
     pre_variables.insert(x);
-    m_pre_to_post.insert(x, theory::postVar(x));
+    theory::apply(
+        x,
+        [&](const auto& x) {
+            m_pre_to_post.insert(x, x->postVar());
+        });
 }
 
 void SafetyProblem::add_post_var(const Var &x) {
     post_variables.insert(x);
-    m_pre_to_post.insert(theory::progVar(x), x);
+    theory::apply(
+        x,
+        [&](const auto& x) {
+            m_pre_to_post.insert(x->progVar(), x);
+        });
 }
 
 const linked_hash_set<Bools::Expr>& SafetyProblem::trans() const {
@@ -52,27 +58,27 @@ void SafetyProblem::replace_transition(const Bools::Expr &old_trans, const Bools
     transitions.insert(new_trans);
 }
 
-void SafetyProblem::add_transition(const Bools::Expr e) {
+void SafetyProblem::add_transition(const Bools::Expr& e) {
     transitions.insert(e);
 }
 
-void SafetyProblem::set_init(const Bools::Expr e) {
+void SafetyProblem::set_init(const Bools::Expr& e) {
     initial_states = e;
 }
 
-void SafetyProblem::set_err(const Bools::Expr e) {
+void SafetyProblem::set_err(const Bools::Expr& e) {
     error_states = e;
 }
 
-void SafetyProblem::add_edge(const Bools::Expr from, const Bools::Expr to) {
+void SafetyProblem::add_edge(const Bools::Expr& from, const Bools::Expr& to) {
     graph.addEdge(from, to);
 }
 
-void SafetyProblem::mark_initial_transition(const Bools::Expr t) {
+void SafetyProblem::mark_initial_transition(const Bools::Expr& t) {
     graph.markRoot(t);
 }
 
-void SafetyProblem::mark_sink_transition(const Bools::Expr t) {
+void SafetyProblem::mark_sink_transition(const Bools::Expr& t) {
     graph.markSink(t);
 }
 

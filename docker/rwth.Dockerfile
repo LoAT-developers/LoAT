@@ -1,7 +1,8 @@
-FROM loat/loat-base:b37623ce
+FROM loat/loat-base:1420a6da
 
 RUN git clone https://github.com/LoAT-developers/LoAT.git
 WORKDIR /LoAT
+RUN git checkout arrays5
 RUN mkdir /LoAT/build
 WORKDIR /LoAT/build
 RUN cmake -DCMAKE_BUILD_TYPE=Release ..

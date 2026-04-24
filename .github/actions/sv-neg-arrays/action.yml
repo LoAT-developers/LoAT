@@ -1,0 +1,21 @@
+name: 'SV Array Benchmarks with negated assertions'
+
+inputs:
+  pat:
+    description: 'personal access token'
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+
+    - uses: actions/checkout@v4
+      with:
+        repository: LoAT-developers/sv-neg-array-benchmarks
+        path: sv-neg-array-benchmarks
+        token: ${{ inputs.pat }}
+
+    - run: |
+        mkdir benchmarks
+        mv sv-neg-array-benchmarks/*.smt2 benchmarks
+      shell: bash

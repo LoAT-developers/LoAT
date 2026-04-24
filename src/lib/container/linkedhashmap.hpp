@@ -8,8 +8,6 @@
 template <class S, class T>
 class linked_hash_map {
 
-private:
-
     struct first {
         typedef S result_type;
         result_type operator()(const std::pair<S, T>& p) const {
@@ -36,9 +34,9 @@ private:
 
 public:
 
-    typedef typename container::template index<list>::type::const_iterator const_iterator;
+    typedef container::template index<list>::type::const_iterator const_iterator;
 
-    linked_hash_map() {}
+    linked_hash_map() = default;
 
     linked_hash_map(std::initializer_list<std::pair<const S, T>> init) {
         auto &h {boost::multi_index::get<hash>(c)};
@@ -63,9 +61,8 @@ public:
         const auto it {h.find(key)};
         if (it == h.end()) {
             return {};
-        } else {
-            return it->second;
         }
+        return it->second;
     }
 
     auto erase(const S &key) {
@@ -115,7 +112,7 @@ public:
         }
     }
 
-    void project(const std::function<bool(const S)> &p) {
+    void project(const std::function<bool(const S&)> &p) {
         for (auto it = begin(); it != end();) {
             if (p(it->first)) {
                 ++it;

@@ -29,6 +29,8 @@ namespace Config {
         bool logPreproc = false;
         bool logAccel = false;
         bool model = false;
+        bool abstraction_refinement = false;
+        bool fail_early = false;
         Direction dir;
 
         std::string modeName(const Mode mode) {
@@ -78,6 +80,7 @@ namespace Config {
 
     namespace Accel {
         bool non_linear {true};
+        bool arrays {true};
     }
 
     bool validate() {

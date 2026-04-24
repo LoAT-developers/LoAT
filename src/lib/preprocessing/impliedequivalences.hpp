@@ -3,4 +3,4 @@
 #include "boolsubs.hpp"
 #include "theory.hpp"
 
-BoolSubs impliedEquivalences(const Bools::Expr e);
+Subs impliedEquivalences(const Bools::Expr& e);

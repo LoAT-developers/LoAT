@@ -7,24 +7,18 @@
 #include <boost/multiprecision/cpp_int.hpp>
 #include <boost/bimap.hpp>
 #include <boost/bimap/unordered_set_of.hpp>
+#include <memory>
 
 namespace sexpresso {
 struct Sexp;
 }
 
-template <class Abstract, class Concrete, class Hash, class Eq, class... Args>
+template <class T, class... Args>
 class ConsHash;
 
-namespace cpp {
-inline namespace bitwizeshift {
+namespace cpp::inline bitwizeshift {
 template <typename T>
 class not_null;
-}
-} // namespace cpp
-
-namespace std {
-template <class T>
-class shared_ptr;
 }
 
 template <class T> class linked_hash_set;
@@ -34,26 +28,84 @@ template <class T>
 using ptr = cpp::not_null<std::shared_ptr<const T>>;
 
 namespace theory {
-    enum class Type {
+
+    enum class BaseType {
         Int,
         Bool
     };
-    std::string abbrev(const Type t);
-}
 
-template<theory::Type T, class S> class TVar;
+    struct Type {
+        BaseType base;
+        size_t dim;
+
+        static const Type Int;
+        static const Type Bool;
+
+    };
+
+    std::string abbrev(Type t);
+}
 
 class ArithLit;
 class ArithExpr;
-class ArithSubs;
 
-using ArithVar = TVar<theory::Type::Int, ArithExpr>;
 using ArithLitPtr = ptr<ArithLit>;
 using ArithExprPtr = ptr<ArithExpr>;
-using ArithVarPtr = ptr<ArithVar>;
-
-using arith_var_map = boost::bimap<boost::bimaps::unordered_set_of<ArithVarPtr>, boost::bimaps::unordered_set_of<ArithVarPtr>>;
 
 namespace mp = boost::multiprecision;
 using Int = mp::cpp_int;
 using Rational = mp::cpp_rational;
+
+class BoolVar;
+class BoolExpr;
+class BoolSubs;
+using BoolExprPtr = ptr<BoolExpr>;
+using BoolVarPtr = ptr<BoolVar>;
+
+template <class T>
+class ArrayVar;
+
+template <class T>
+using ArrayVarPtr = ptr<ArrayVar<T>>;
+
+template <class T>
+using array_var_map = boost::bimap<boost::bimaps::unordered_set_of<ArrayVarPtr<T>>, boost::bimaps::unordered_set_of<ArrayVarPtr<T>>>;
+
+template <class T>
+class ArraySubs;
+
+class Subs;
+class Renaming;
+
+class Model;
+using ModelPtr = cpp::not_null<std::shared_ptr<Model>>;
+
+struct Arith;
+
+template <class>
+class ArrayRead;
+
+template <class T>
+using ArrayReadPtr = ptr<ArrayRead<T>>;
+
+using ArithVarPtr = ArrayReadPtr<Arith>;
+
+template <class... T>
+class VariantSet;
+using VarSet = VariantSet<ArrayVarPtr<Arith>, BoolVarPtr>;
+
+using CellSet = VariantSet<ArrayReadPtr<Arith>, BoolVarPtr>;
+
+class BoolLit;
+using BoolLitPtr = ptr<BoolLit>;
+
+template <class T>
+class ArrayLit;
+
+template <class T>
+using ArrayLitPtr = ptr<ArrayLit<T>>;
+
+using Lit = std::variant<ArithLitPtr, ArrayLitPtr<Arith>, BoolLitPtr>;
+using Var = std::variant<ArrayVarPtr<Arith>, BoolVarPtr>;
+
+using LitSet = VariantSet<ArithLitPtr, ArrayLitPtr<Arith>, BoolLitPtr>;

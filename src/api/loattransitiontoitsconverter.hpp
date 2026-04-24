@@ -16,21 +16,14 @@
 #include "bools.hpp"
 #include "optional.hpp"
 
-namespace std
-{
-    template <>
-    struct hash<std::pair<std::string, bool>>
-    {
-        std::size_t operator()(const std::pair<std::string, bool> &p) const
-        {
-            return std::hash<std::string>{}(p.first) ^ (std::hash<bool>{}(p.second) << 1);
-        }
-    };
-}
+template <>
+struct std::hash<std::pair<std::string, bool>> {
+    std::size_t operator()(const std::pair<std::string, bool> &p) const noexcept {
+        return std::hash<std::string>{}(p.first) ^ (std::hash<bool>{}(p.second) << 1);
+    }
+};
 
-class LoatTransitionToITSConverter
-{
-private:
+class LoatTransitionToITSConverter {
     // Cache (api bool expr to internal bool Expr)
     std::unordered_map<LoatBoolExprPtr, Bools::Expr> m_boolExprCache;
 
@@ -38,8 +31,8 @@ private:
     std::unordered_map<LoatIntExprPtr, Arith::Expr> m_arithExprCache;
 
     // Cache LoAT -> ITS (Pre- and Post-Vars)
-    std::unordered_map<std::string, Arith::Var> m_arithVarPreMap;
-    std::unordered_map<std::string, Arith::Var> m_arithVarPostMap;
+    std::unordered_map<std::string, ArithVarPtr> m_arithVarPreMap;
+    std::unordered_map<std::string, ArithVarPtr> m_arithVarPostMap;
     std::unordered_set<std::string> m_arithVarsUsed;
 
     // Cache LoAT -> ITS (Bool Pre- and Post-Vars)
@@ -61,6 +54,6 @@ public:
     Bools::Expr convertBool(const LoatBoolExprPtr &expr);
 
 private:
-    Arith::Var getArithVar(const std::string &name, bool isPost);
+    ArithVarPtr getArithVar(const std::string &name, bool isPost);
     Bools::Var getBoolVar(const std::string &name, bool isPost);
 };

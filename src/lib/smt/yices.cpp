@@ -1,5 +1,8 @@
 #include "yices.hpp"
 #include "exprconverter.hpp"
+#include "yicesmodel.hpp"
+
+using Converter = ExprConverter<term_t, term_t, std::vector<term_t>, std::vector<term_t>>;
 
 namespace yices {
 
@@ -13,17 +16,27 @@ void exit() {
 
 }
 
-Yices::Yices(Logic logic): ctx(YicesContext()), config(yices_new_config()) {
+Yices::Yices(const Logic logic): ctx(YicesContext()), config(yices_new_config()) {
     std::string l;
-    switch (logic) {
-    case QF_LA:
-        l = "QF_LIA";
-        break;
-    case QF_NA:
+    const auto check_mcsat = []() {
         if (!yices_has_mcsat()) {
             throw std::runtime_error("mcsat missing");
         }
+    };
+    switch (logic) {
+    case Logic::QF_LA:
+        l = "QF_LIA";
+        break;
+    case Logic::QF_ALA:
+        l = "QF_ALIA";
+        break;
+    case Logic::QF_NA:
+        check_mcsat();
         l = "QF_NIA";
+        break;
+    case Logic::QF_ANA:
+        check_mcsat();
+        l = "QF_ANIA";
         break;
     default:
         throw std::invalid_argument("unsupported logic");
@@ -33,23 +46,58 @@ Yices::Yices(Logic logic): ctx(YicesContext()), config(yices_new_config()) {
         throw std::logic_error("error from yices");
     }
     solver = yices_new_context(config);
+    yices::check_err();
+}
+
+std::pair<SmtResult, BoolExprSet> Yices::check_with_assumptions(const BoolExprSet& set) {
+    std::unordered_map<term_t, Bools::Expr> map;
+    std::vector<term_t> converted;
+    for (const auto& a: set) {
+        const auto c = Converter::convert(a, ctx);
+        map.emplace(c, a);
+        converted.emplace_back(c);
+    }
+    const auto res = processResult(yices_check_context_with_assumptions(solver, nullptr, converted.size(), converted.data()));
+    BoolExprSet core;
+    if (res == SmtResult::Unsat) {
+        term_vector_t vec;
+        yices_init_term_vector(&vec);
+        yices_get_unsat_core(solver, &vec);
+        yices::check_err();
+        for (unsigned i = 0; i < vec.size; i++) {
+            core.emplace(map.at(vec.data[i]));
+        }
+        yices_delete_term_vector(&vec);
+    }
+    return {res, core};
 }
 
 void Yices::add(const Bools::Expr e) {
-    if (yices_assert_formula(solver, ExprConverter<term_t, term_t, std::vector<term_t>, std::vector<term_t>>::convert(e, ctx)) < 0) {
+    if (yices_assert_formula(solver, Converter::convert(e, ctx)) < 0) {
         throw YicesError();
     }
+    yices::check_err();
 }
 
 void Yices::push() {
-    yices_push(solver);
+    if (yices_context_status(solver) == STATUS_UNSAT) {
+        ++pushes_since_unsat;
+    } else {
+        yices_push(solver);
+        yices::check_err();
+    }
 }
 
 void Yices::pop() {
-    yices_pop(solver);
+    if (pushes_since_unsat > 0) {
+        --pushes_since_unsat;
+    } else {
+        yices_pop(solver);
+        yices::check_err();
+    }
 }
 
-SmtResult Yices::processResult(smt_status status) {
+SmtResult Yices::processResult(const smt_status status) {
     switch (status) {
     case STATUS_SAT:
         return SmtResult::Sat;
@@ -65,50 +113,15 @@ SmtResult Yices::processResult(smt_status status) {
 }
 
 SmtResult Yices::check() {
-    return processResult(yices_check_context(solver, nullptr));
+    const auto res = processResult(yices_check_context(solver, nullptr));
+    yices::check_err();
+    return res;
 }
 
-Model Yices::model(const std::optional<const VarSet> &vars) {
-    if (ctx.getArithSymbolMap().empty() && ctx.getBoolSymbolMap().empty()) {
-        return Model();
-    }
-    model_t *m = yices_get_model(solver, true);
-    Model res;
-    const auto add = [&](const Var &x) {
-        std::visit(Overload{
-            [&](const Arith::Var x) {
-                const auto y{ctx.getArithSymbolMap().get(x)};
-                if (y) {
-                    const auto val{getRealFromModel(m, *y)};
-                    assert(mp::denominator(val) == 1);
-                    res.template put<Arith>(x, mp::numerator(val));
-                }
-            },
-            [&](const Bools::Var x) {
-                const auto y{ctx.getBoolSymbolMap().get(x)};
-                if (y) {
-                    int32_t val;
-                    if (yices_get_bool_value(m, *y, &val) != 0) {
-                        throw YicesError();
-                    }
-                    res.template put<Bools>(x, val);
-                }
-            }}, x);
-    };
-    if (vars) {
-        for (const auto &x: *vars) {
-            add(x);
-        }
-    } else {
-        for (const auto &[x,_]: ctx.getArithSymbolMap()) {
-            add(x);
-        }
-        for (const auto &[x,_]: ctx.getBoolSymbolMap()) {
-            add(x);
-        }
-    }
-    yices_free_model(m);
-    return res;
+ModelPtr Yices::model() {
+    auto m {std::shared_ptr<model_t>(yices_get_model(solver, true), &yices_free_model)};
+    yices::check_err();
+    return cpp::assume_not_null(std::make_shared<YicesModel>(ctx, m, Subs()));
 }
 
 void Yices::randomize(unsigned seed) {
@@ -119,24 +132,28 @@ void Yices::enableModels() {}
 
 void Yices::resetSolver() {
     yices_reset_context(solver);
+    pushes_since_unsat = 0;
+    yices::check_err();
 }
 
 Yices::~Yices() {
     yices_free_config(config);
     yices_free_context(solver);
+    yices::check_err();
 }
 
 std::ostream& Yices::print(std::ostream& os) const {
     throw std::invalid_argument("print not supported by yices");
 }
 
-Rational Yices::getRealFromModel(model_t *model, type_t symbol) {
+Rational Yices::getRealFromModel(model_t *model, const type_t symbol) {
     int64_t num;
     uint64_t denom;
     if (yices_get_rational64_value(model, symbol, &num, &denom) != NO_ERROR) {
         std::cerr << yices_error_string() << std::endl;
         throw std::logic_error("error during conversion of model");
     }
+    yices::check_err();
     assert(denom != 0);
     Rational res {num};
     res = res / denom;

@@ -5,8 +5,15 @@
 #include "renaming.hpp"
 #include "intmbp.hpp"
 
-BMC::BMC(ITSPtr its, const bool do_kind): to_safety(its), do_kind(do_kind) {
-    sp = to_safety.transform();
+BMC::BMC(const ITSPtr& its, const bool do_kind) :
+    to_safety(its),
+    sp(to_safety.transform()),
+    step(bools::mkOr(sp.trans())),
+    do_kind(do_kind) {
+    const auto logic = max({Smt::chooseLogic(sp.init()), Smt::chooseLogic(step), Smt::chooseLogic(sp.err())});
+    solver = SmtFactory::modelBuildingSolver(logic);
+    kind = SmtFactory::modelBuildingSolver(logic);
+    bkind = SmtFactory::modelBuildingSolver(logic);
 }
 
 SmtResult BMC::analyze() {
@@ -19,7 +26,7 @@ SmtResult BMC::analyze() {
         bkind->add(init);
     }
 
-    auto step {bools::mkOr(sp.trans())};
+    const auto step {bools::mkOr(sp.trans())};
 
     const auto err = do_kind ? mbp::int_qe(sp.err()) : sp.err();
 
@@ -27,11 +34,15 @@ SmtResult BMC::analyze() {
     step->collectVars(vars);
     err->collectVars(vars);
     for (const auto &var: vars) {
-        if (theory::isProgVar(var)) {
-            pre_to_post.insert(var, theory::postVar(var));
-        } else if (theory::isPostVar(var)) {
-            pre_to_post.insert(theory::progVar(var), var);
-        }
+        theory::apply(
+            var,
+            [&](const auto& var) {
+                if (var->isProgVar()) {
+                    pre_to_post.insert(var, var->postVar());
+                } else if (var->isPostVar()) {
+                    pre_to_post.insert(var->progVar(), var);
+                }
+            });
     }
 
     Renaming last_s;
@@ -40,7 +51,7 @@ SmtResult BMC::analyze() {
             renamings.emplace_back(last_s);
         }
         solver->push();
-        solver->add(last_s(err));
+        solver->add(err->renameVars(last_s));
         switch (solver->check()) {
         case SmtResult::Sat:
             return SmtResult::Unsat;
@@ -54,21 +65,32 @@ SmtResult BMC::analyze() {
         }
         solver->pop();
         Renaming s;
-        for (const auto &[pre,post]: pre_to_post) {
-            s.insert(pre, last_s.get(post));
-            s.insert(post, theory::next(post));
+        for (const auto &p: pre_to_post) {
+            theory::apply(
+                p,
+                [&](const auto& p) {
+                    const auto& [pre, post] {p};
+                    using T = decltype(theory::theory(pre));
+                    s.insert(pre, last_s.get(post));
+                    s.insert(post, T::next(post->dim()));
+                });
         }
-        for (const auto &var: vars) {
-            if (theory::isTempVar(var)) {
-                s.insert(var, theory::next(var));
-            }
+        for (const auto& var : vars) {
+            theory::apply(
+                var,
+                [&](const auto& var) {
+                    using T = decltype(theory::theory(var));
+                    if (var->isTempVar()) {
+                        s.insert(var, T::next(var->dim()));
+                    }
+                });
         }
         ++depth;
         if (!approx && do_kind) {
-            kind->add(last_s(!err));
-            kind->add(last_s(step));
+            kind->add(!err->renameVars(last_s));
+            kind->add(step->renameVars(last_s));
             kind->push();
-            kind->add(s(err));
+            kind->add(err->renameVars(s));
             if (kind->check() == SmtResult::Unsat) {
                 if (Config::Analysis::log) {
                     std::cout << "forward k-induction" << std::endl;
@@ -77,8 +99,8 @@ SmtResult BMC::analyze() {
                 return SmtResult::Sat;
             }
             kind->pop();
-            bkind->add(s(!init));
-            bkind->add(last_s(step));
+            bkind->add(!init->renameVars(s));
+            bkind->add(step->renameVars(last_s));
             if (bkind->check() == SmtResult::Unsat) {
                 if (Config::Analysis::log) {
                     std::cout << "backward k-induction" << std::endl;
@@ -87,13 +109,12 @@ SmtResult BMC::analyze() {
                 return SmtResult::Sat;
             }
         }
-        solver->add(last_s(step));
+        solver->add(step->renameVars(last_s));
         if (solver->check() == SmtResult::Unsat) {
             if (approx) {
                 return SmtResult::Unknown;
-            } else {
-                return SmtResult::Sat;
             }
+            return SmtResult::Sat;
         }
         if (Config::Analysis::log) {
             std::cout << "depth: " << depth << std::endl;
@@ -106,19 +127,25 @@ ITSModel BMC::get_model() const {
     const auto step {bools::mkOr(sp.trans())};
     switch (winner) {
         case Winner::BMC: {
-            std::vector<Bools::Expr> res{sp.init()};
+            std::vector res{sp.init()};
             Bools::Expr last{sp.init()};
             for (unsigned i = 0; i + 1 < depth; ++i) {
                 const auto &s1{renamings.at(i)};
-                last = last && s1(step);
+                last = last && step->renameVars(s1);
                 Renaming s2;
-                for (const auto &[pre,post]: pre_to_post) {
-                    if (theory::isProgVar(pre)) {
-                        s2.insert(s1.get(post), pre);
-                        s2.insert(pre, theory::next(pre));
-                    }
+                for (const auto &p: pre_to_post) {
+                    theory::apply(
+                        p,
+                        [&](const auto& p) {
+                            const auto& [pre, post] {p};
+                            using T = decltype(theory::theory(pre));
+                            if (pre->isProgVar()) {
+                                s2.insert(s1.get(post), pre);
+                                s2.insert(pre, T::next(pre->dim()));
+                            }
+                        });
                 }
-                res.push_back(s2(last));
+                res.push_back(last->renameVars(s2));
             }
             return to_safety.transform_model(bools::mkOr(res));
         }
@@ -127,24 +154,22 @@ ITSModel BMC::get_model() const {
             throw std::invalid_argument("models for k-induction are not yet supported");
         }
     }
+    throw std::logic_error("model requested, but SAT was neither proved by BMC nor by k-induction");
 }
-
 
 ITSSafetyCex BMC::get_cex() const {
     SafetyCex res {sp};
     const auto candidates = sp.trans();
     const auto model {solver->model()};
-    std::optional<Bools::Expr> last;
     for (size_t i = 0; i < depth; ++i) {
-        const auto current {model.composeBackwards(renamings.at(i))};
-        const auto it{std::find_if(candidates.begin(), candidates.end(), [&](const auto &c) {
+        auto current {model->composeBackwards(renamings.at(i))};
+        const auto it{std::ranges::find_if(candidates, [&](const auto &c) {
             return res.try_step(current, c);
         })};
         if (it == candidates.end()) {
             throw std::logic_error("get_cex failed");
         }
-        last = *it;
     }
-    res.set_final_state(model.composeBackwards(renamings.at(depth)));
+    res.set_final_state(model->composeBackwards(renamings.at(depth)));
     return to_safety.transform_cex(res);
 }

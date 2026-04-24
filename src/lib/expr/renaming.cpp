@@ -1,10 +1,10 @@
 #include "renaming.hpp"
 
-Renaming::It Renaming::Iterator::begin(size_t i) const {
+Renaming::It Renaming::Iterator::begin(const size_t i) const {
     return beginImpl(i);
 }
 
-Renaming::It Renaming::Iterator::end(size_t i) const {
+Renaming::It Renaming::Iterator::end(const size_t i) const {
     return endImpl(i);
 }
 
@@ -21,7 +21,7 @@ Renaming::Iterator::reference Renaming::Iterator::operator*() {
 
 Renaming::Iterator::pointer Renaming::Iterator::operator->() {
     current = getCurrent();
-    return &(*current);
+    return &*current;
 }
 
 void Renaming::Iterator::increment() {
@@ -31,7 +31,7 @@ void Renaming::Iterator::increment() {
 // Prefix increment
 Renaming::Iterator& Renaming::Iterator::operator++() {
     increment();
-    while (ptr.index() + 1 < num_theories && ptr == end(ptr.index())) {
+    while (ptr.index() + 1 < variants && ptr == end(ptr.index())) {
         ptr = begin(ptr.index() + 1);
     }
     return *this;
@@ -40,27 +40,26 @@ Renaming::Iterator& Renaming::Iterator::operator++() {
 // Postfix increment
 Renaming::Iterator Renaming::Iterator::operator++(int) {
     Iterator tmp = *this;
-    ++(*this);
+    ++*this;
     return tmp;
 }
 
 bool operator==(const Renaming::Iterator& a, const Renaming::Iterator& b) {
     return a.ptr == b.ptr;
-};
+}
 
 Renaming::Iterator Renaming::end() const {
-    return Renaming::Iterator(*this, std::get<num_theories - 1>(t).left.end());
+    return {*this, std::get<variants - 1>(t).left.end()};
 }
 
 template <size_t I = 0>
-inline Renaming::Iterator beginImpl(const Renaming &s) {
-    if constexpr (I < num_theories) {
+Renaming::Iterator beginImpl(const Renaming &s) {
+    if constexpr (I < Renaming::variants) {
         const auto& x = s.get<I>();
         if (x.empty()) {
             return beginImpl<I+1>(s);
-        } else {
-            return Renaming::Iterator(s, x.left.begin());
         }
+        return Renaming::Iterator(s, x.left.begin());
     } else {
         return s.end();
     }
@@ -70,70 +69,49 @@ Renaming::Iterator Renaming::begin() const {
     return beginImpl(*this);
 }
 
-template<std::size_t I = 0>
-inline void insertImpl(Renaming &s, const Renaming::Pair &p) {
-    if constexpr (I < num_theories) {
-        if (p.index() == I) {
-            using value_t = typename std::tuple_element_t<I, Theories>::Renaming::left_value_type;
-            s.get<I>().left.insert(value_t(std::get<I>(Renaming::first(p)), std::get<I>(Renaming::second(p))));
-        } else {
-            insertImpl<I+1>(s, p);
-        }
-    }
-}
-
 void Renaming::insert(const Pair &p) {
-    insertImpl(*this, p);
+    theory::apply(
+        p,
+        [&](const auto& p) {
+            using T = decltype(theory::theory(p.first));
+            using value_t = T::Renaming::left_value_type;
+            std::get<typename T::Renaming>(t).left.insert(value_t(p.first, p.second));
+        });
 }
 
-template<std::size_t I = 0>
-inline void insertImpl(Renaming &s, const Var &x, const Var &y) {
-    if constexpr (I < num_theories) {
-        if (x.index() == I) {
-            using value_t = typename std::tuple_element_t<I, Theories>::Renaming::left_value_type;
-            s.get<I>().left.insert(value_t(std::get<I>(x), std::get<I>(y)));
-        } else {
-            insertImpl<I+1>(s, x, y);
-        }
-    }
+void Renaming::insert(const Bools::Var& x, const Bools::Var& y) {
+    std::get<Bools::Renaming>(t).insert(Bools::Renaming::value_type(x, y));
 }
 
-void Renaming::insert(const Var &x, const Var &y) {
-    insertImpl(*this, x, y);
+void Renaming::insert(const Arrays<Arith>::Var& x, const Arrays<Arith>::Var& y) {
+    std::get<Arrays<Arith>::Renaming>(t).insert(Arrays<Arith>::Renaming::value_type(x, y));
 }
 
-Renaming::Renaming(){}
-
-Renaming::Renaming(Pair &p) {
+Renaming::Renaming(const Pair &p) {
     insert(p);
 }
 
 template<std::size_t I = 0>
-inline Var getImpl(const Renaming &s, const Var &var) {
-    if constexpr (I >= num_theories) {
-        throw std::invalid_argument("variable not found");
-    } else if (var.index() == I) {
-        const auto &map {s.get<I>().left};
-        const auto it {map.find(std::get<I>(var))};
-        return it == map.end() ? var : it->second;
-    } else {
-        return getImpl<I+1>(s, var);
-    }
-}
-
-Var Renaming::get(const Var &var) const {
-    return getImpl(*this, var);
-}
-
-template<std::size_t I = 0>
-inline void uniteImpl(const Renaming &fst, const Renaming &snd, Renaming &res) {
-    if constexpr (I < num_theories) {
+void uniteImpl(const Renaming &fst, const Renaming &snd, Renaming &res) {
+    if constexpr (I < Renaming::variants) {
         auto &r {res.get<I>()};
         r = fst.get<I>();
         const auto &s {snd.get<I>()};
         r.insert(s.begin(), s.end());
         uniteImpl<I+1>(fst, snd, res);
     }
+}
+
+Bools::Var Renaming::get(const Bools::Var& x) const {
+    const auto& map {get<Bools>()};
+    const auto it {map.left.find(x)};
+    return it == map.left.end() ? x : it->second;
+}
+
+Arrays<Arith>::Var Renaming::get(const Arrays<Arith>::Var& x) const {
+    const auto& map {get<Arrays<Arith>>()};
+    const auto it {map.left.find(x)};
+    return it == map.left.end() ? x : it->second;
 }
 
 Renaming Renaming::unite(const Renaming &that) const {
@@ -143,15 +121,14 @@ Renaming Renaming::unite(const Renaming &that) const {
 }
 
 template<std::size_t I = 0>
-inline bool changesImpl(const Renaming &s, const Var &x) {
-    if constexpr (I < num_theories) {
+bool changesImpl(const Renaming &s, const Var &x) {
+    if constexpr (I < Renaming::variants) {
         if (x.index() == I) {
             const auto &map {s.get<I>().left};
             const auto it {map.find(std::get<I>(x))};
             return it != map.end() && it->first != it->second;
-        } else {
-            return changesImpl<I+1>(s, x);
         }
+        return changesImpl<I+1>(s, x);
     } else {
         return false;
     }
@@ -162,8 +139,8 @@ bool Renaming::changes(const Var &x) const {
 }
 
 template<std::size_t I = 0>
-inline void eraseImpl(Renaming &subs, const Var &x) {
-    if constexpr (I < num_theories) {
+void eraseImpl(Renaming &subs, const Var &x) {
+    if constexpr (I < Renaming::variants) {
         if (x.index() == I) {
             subs.get<I>().left.erase(std::get<I>(x));
         } else {
@@ -177,10 +154,10 @@ void Renaming::erase(const Var &x) {
 }
 
 template<std::size_t I = 0>
-inline void eraseImpl(Renaming &subs, const VarSet &xs) {
-    if constexpr (I < num_theories) {
+void eraseImpl(Renaming &subs, const VarSet &xs) {
+    if constexpr (I < Renaming::variants) {
         auto &s = subs.get<I>();
-        for (const auto &x: xs.template get<I>()) {
+        for (const auto &x: xs.get<I>()) {
             s.left.erase(x);
         }
         eraseImpl<I+1>(subs, xs);
@@ -192,10 +169,9 @@ void Renaming::erase(const VarSet &xs) {
 }
 
 template<std::size_t I = 0>
-inline void printImpl(const Renaming &subs, std::ostream &s, bool first = true) {
-    if constexpr (I < num_theories) {
-        const auto &m {subs.get<I>()};
-        if (!m.empty()) {
+void printImpl(const Renaming &subs, std::ostream &s, bool first = true) {
+    if constexpr (I < Renaming::variants) {
+        if (const auto &m {subs.get<I>()}; !m.empty()) {
             if (first) {
                 first = false;
             } else {
@@ -210,7 +186,7 @@ inline void printImpl(const Renaming &subs, std::ostream &s, bool first = true) 
                 s << l << "=" << r;
             }
         }
-        if constexpr (I + 1 < num_theories) {
+        if constexpr (I + 1 < Renaming::variants) {
             printImpl<I+1>(subs, s, first);
         }
     }
@@ -225,14 +201,13 @@ size_t Renaming::hash() const {
 }
 
 template<std::size_t I = 0>
-inline bool containsImpl(const Renaming &s, const Var &var) {
-    if constexpr (I < num_theories) {
+bool containsImpl(const Renaming &s, const Var &var) {
+    if constexpr (I < Renaming::variants) {
         if (var.index() == I) {
             const auto &subs = s.get<I>();
             return subs.left.find(std::get<I>(var)) != subs.left.end();
-        } else {
-            return containsImpl<I+1>(s, var);
         }
+        return containsImpl<I+1>(s, var);
     } else {
         return false;
     }
@@ -250,50 +225,25 @@ bool Renaming::empty() const {
     return std::apply([](const auto&... x){return (true && ... && x.empty());}, t);
 }
 
-template<std::size_t I = 0>
-inline Lit renameVarsImpl(const Renaming &s, const Lit &lit) {
-    if constexpr (I < num_theories) {
-        if (lit.index() == I) {
-            return Lit(std::get<I>(lit)->renameVars(s.template get<I>()));
-        } else {
-            return renameVarsImpl<I+1>(s, lit);
-        }
-    } else {
-        throw std::logic_error("unknown theory");
-    }
+Lit Renaming::operator()(const Lit& lit) const {
+    return theory::apply(
+        lit,
+        [&](const auto& lit) -> Lit {
+            return lit->renameVars(*this);
+        });
 }
 
-Lit Renaming::operator()(const Lit &lit) const {
-    return renameVarsImpl<0>(*this, lit);
-}
-
-Expr Renaming::operator()(const Expr &expr) const {
-    return std::visit(
-        Overload{
-            [&](const Arith::Expr expr) {
-                return Expr(expr->renameVars(get<Arith>()));
-            },
-            [&](const Bools::Expr expr) {
-                return Expr{(*this)(expr)};
-            }
-        }, expr);
-}
-
-Bools::Expr Renaming::operator()(const Bools::Expr e) const {
-    if (const auto lit {e->getTheoryLit()}) {
-        return bools::mkLit((*this)(*lit));
-    }
-    BoolExprSet children;
-    for (const auto &c: e->getChildren()) {
-        children.insert((*this)(c));
-    }
-    const auto op = e->isAnd() ? ConcatAnd : ConcatOr;
-    return BoolExpr::from_cache(children, op);
+Expr Renaming::operator()(const Expr& expr) const {
+    return theory::apply(
+        expr,
+        [&](const auto& expr) -> Expr {
+            return expr->renameVars(*this);
+        });
 }
 
 template<std::size_t I = 0>
-inline void collectCoDomainVarsImpl(const Renaming &subs, VarSet &res) {
-    if constexpr (I < num_theories) {
+void collectCoDomainVarsImpl(const Renaming &subs, VarSet &res) {
+    if constexpr (I < Renaming::variants) {
         for (const auto &[_,v]: subs.get<I>()) {
             res.insert(v);
         }
@@ -311,88 +261,75 @@ void Renaming::collectCoDomainVars(VarSet &res) const {
     collectCoDomainVarsImpl<0>(*this, res);
 }
 
-template<std::size_t I = 0>
-inline void composeImpl(const Renaming &fst, const Renaming &snd, Renaming &res) {
-    if constexpr (I < num_theories) {
-        using value_t = typename std::tuple_element_t<I, Theories>::Renaming::value_type;
-        auto &r {res.get<I>()};
-        const auto &f {fst.get<I>()};
-        const auto &s {snd.get<I>()};
-        for (const auto &[k,v]: f) {
-            const auto it {s.left.find(v)};
-            if (it == s.left.end()) {
-                r.insert(value_t(k, v));
-            } else {
-                r.insert(value_t(k, it->second));
-            }
-        }
-        for (const auto &[k,v]: s) {
-            if (r.left.find(k) == r.left.end()) {
-                r.insert(value_t(k, v));
-            }
-        }
-        composeImpl<I+1>(fst, snd, res);
-    }
-}
 
-Renaming Renaming::compose(const Renaming &that) const {
+Renaming Renaming::compose(const Renaming& that) const {
     Renaming res;
-    composeImpl(*this, that, res);
+    theory::iter(
+        t,
+        [&]<typename T>(const T& f) {
+            using value_t = T::value_type;
+            auto& r{std::get<T>(res.t)};
+            const auto& s{std::get<T>(that.t)};
+            for (const auto& [k,v] : f) {
+                const auto it{s.left.find(v)};
+                if (it == s.left.end()) {
+                    r.insert(value_t(k, v));
+                }
+                else {
+                    r.insert(value_t(k, it->second));
+                }
+            }
+            for (const auto& [k,v] : s) {
+                if (r.left.find(k) == r.left.end()) {
+                    r.insert(value_t(k, v));
+                }
+            }
+        });
     return res;
 }
 
-template<std::size_t I = 0>
-inline void projectImpl(const Renaming &s, Renaming& res, const VarSet &vars) {
-    if constexpr (I < num_theories) {
-        using value_t = typename std::tuple_element_t<I, Theories>::Renaming::value_type;
-        auto &map {res.get<I>()};
-        for (const auto &[k,v]: s.get<I>()) {
-            if (vars.contains(k)) {
-                map.insert(value_t(k, v));
-            }
-        }
-        projectImpl<I+1>(s, res, vars);
-    }
-}
-
-Renaming Renaming::project(const VarSet &vars) const {
+Renaming Renaming::project(const VarSet& vars) const {
     Renaming res;
-    projectImpl(*this, res, vars);
+    theory::iter(
+        t,
+        [&]<class T>(const T& s) {
+            using value_t = T::value_type;
+            auto& map{std::get<T>(res.t)};
+            for (const auto& [k,v] : s) {
+                if (vars.contains(k)) {
+                    map.insert(value_t(k, v));
+                }
+            }
+        });
     return res;
-}
-
-template<std::size_t I = 0>
-inline void invertImpl(const Renaming &s, Renaming& res) {
-    if constexpr (I < num_theories) {
-        using Th = std::tuple_element_t<I, Theories>;
-        auto &map {res.get<I>()};
-        for (const auto &[x,y]: s.get<I>()) {
-            map.insert(typename Th::Renaming::value_type(y, x));
-        }
-        invertImpl<I+1>(s, res);
-    }
 }
 
 Renaming Renaming::invert() const {
     Renaming res;
-    invertImpl(*this, res);
+    theory::iter(
+        t,
+        [&]<class T>(const T& s) {
+            using value_t = T::value_type;
+            auto& map{std::get<T>(res.t)};
+            for (const auto& [x,y] : s) {
+                map.insert(value_t(y, x));
+            }
+        });
     return res;
 }
 
 Renaming Renaming::Empty {};
 
 Var Renaming::first(const Pair &p) {
-    return std::visit(
-        [](const auto &p){
-            return Var(p.first);
-        }, p);
+    return theory::apply(p, [](const auto &p) {
+        return Var(p.first);
+    });
 }
 
 Var Renaming::second(const Pair &p) {
-    return std::visit(
-        [](const auto &p) {
-            return Var(p.second);
-        }, p);
+    return theory::apply(p, [](const auto &p) {
+        return Var(p.second);
+    });
 }
 
 std::ostream& operator<<(std::ostream &s, const Renaming &subs) {
@@ -400,11 +337,14 @@ std::ostream& operator<<(std::ostream &s, const Renaming &subs) {
     return s;
 }
 
-Var Renaming::renameVar(const Var &x, Renaming &sigma) {
-    return theory::apply(x, [&](const auto &x) {
-        const auto th {theory::theory(x)};
-        const auto next {th.next()};
-        sigma.insert<decltype(th)>(x, next);
-        return Var(next);
-    });
+Bools::Var Renaming::renameVar(const Bools::Var& x, Renaming& sigma) {
+    const auto next{BoolVar::next()};
+    sigma.insert(x, next);
+    return next;
+}
+
+Arrays<Arith>::Var Renaming::renameVar(const Arrays<Arith>::Var& x, Renaming& sigma) {
+    const auto next{ArrayVar<Arith>::next(x->dim())};
+    sigma.insert(x, next);
+    return next;
 }

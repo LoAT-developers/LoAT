@@ -71,7 +71,7 @@ jobs:
 
       - name: Run Benchmark
         run: |
-          ./actions/scripts/run_benchmarks.sh --engine ${{ inputs.engine }}
+          ./actions/scripts/run_benchmarks.sh "--engine ${{ inputs.engine }}"
         env:
           CI_TOTAL: ${{ matrix.ci_total }}
           CI_INDEX: ${{ matrix.ci_index }}

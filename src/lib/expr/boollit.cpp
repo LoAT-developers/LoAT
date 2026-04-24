@@ -1,13 +1,17 @@
 #include "boollit.hpp"
 #include "optional.hpp"
 #include "conshash.hpp"
+#include "boolsubs.hpp"
+#include "subs.hpp"
 
-#include <stdexcept>
 #include <ostream>
 #include <boost/functional/hash.hpp>
 #include <functional>
+#include <utility>
 
-ConsHash<BoolLit, BoolLit, BoolLit::CacheHash, BoolLit::CacheEqual, BoolVarPtr, bool> BoolLit::cache {};
+#include "model.hpp"
+
+ConsHash<BoolLit, BoolVarPtr, bool> BoolLit::cache {};
 
 bool BoolLit::CacheEqual::operator()(const std::tuple<BoolVarPtr, bool> &args1, const std::tuple<BoolVarPtr, bool> &args2) const noexcept {
     return args1 == args2;
@@ -20,11 +24,11 @@ size_t BoolLit::CacheHash::operator()(const std::tuple<BoolVarPtr, bool> &args) 
     return seed;
 }
 
-BoolLitPtr bools::mk(const BoolVarPtr var, bool negated) {
+BoolLitPtr bools::mk(const BoolVarPtr& var, const bool negated) {
     return BoolLit::cache.from_cache(var, negated);
 }
 
-BoolLit::BoolLit(const BoolVarPtr var, bool negated): var(var), negated(negated) {}
+BoolLit::BoolLit(BoolVarPtr var, const bool negated): var(std::move(var)), negated(negated) {}
 
 BoolLit::~BoolLit() {
     cache.erase(var, negated);
@@ -34,11 +38,11 @@ bool BoolLit::isNegated() const {
     return negated;
 }
 
-bool BoolLit::isPoly() const {
+bool BoolLit::isPoly() {
     return true;
 }
 
-bool BoolLit::isLinear() const {
+bool BoolLit::isLinear() {
     return true;
 }
 
@@ -46,11 +50,11 @@ BoolVarPtr BoolLit::getBoolVar() const {
     return var;
 }
 
-bool BoolLit::isTriviallyTrue() const {
+bool BoolLit::isTriviallyTrue() {
     return false;
 }
 
-bool BoolLit::isTriviallyFalse() const {
+bool BoolLit::isTriviallyFalse() {
     return false;
 }
 
@@ -95,15 +99,15 @@ sexpresso::Sexp BoolLit::to_smtlib() const {
     return res;
 }
 
-BoolLitPtr BoolLit::renameVars(const bool_var_map &map) const {
-    const auto it {map.left.find(var)};
-    if (it == map.left.end()) {
-        return cpp::assume_not_null(shared_from_this());
-    } else {
-        return bools::mk(it->second, negated);
-    }
+BoolLitPtr BoolLit::renameVars(const Renaming &map) const {
+    return bools::mk(map.get(var), negated);
 }
 
-BoolVarPtr bools::mkVar(const int idx) {
-    return theory::mkVar<theory::Type::Bool, Empty>(idx);
+BoolExprPtr BoolLit::subs(const Subs& subs) const {
+    const auto res {subs.get(var)};
+    return negated ? !res : res;
+}
+
+void BoolLit::syntacticImplicant(ModelPtr m, LitSet& res) const {
+    res.insert(cpp::assume_not_null(shared_from_this()));
 }

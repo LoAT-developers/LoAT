@@ -12,8 +12,8 @@ class CHCModel {
 
 public:
 
-    void set_interpretation(const std::string &f, const std::vector<Var> &args, const Bools::Expr interp);
-    const linked_hash_map<std::string, std::pair<std::vector<Var>, Bools::Expr>> get_interpretations() const;
+    void set_interpretation(const std::string &f, const std::vector<Var> &args, const Bools::Expr& interp);
+    linked_hash_map<std::string, std::pair<std::vector<Var>, Bools::Expr>> get_interpretations() const;
     sexpresso::Sexp to_smtlib() const;
 
 };

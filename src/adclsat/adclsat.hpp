@@ -2,20 +2,19 @@
 
 #include "trputil.hpp"
 
-class ADCLSat: public TRPUtil {
-
-private:
+class ADCLSat final: public TRPUtil {
 
     bool backtracking {false};
-    DependencyGraph<Bools::Expr> dg_over_approx;
+    DependencyGraph<Int> dg_over_approx;
 
-    void add_blocking_clause(const Range &range, const Int &id, const Bools::Expr loop) override;
-    std::optional<unsigned> has_looping_suffix();
-    bool handle_loop(const unsigned start);
+    void add_blocking_clause(const Range &range, const Int &id, Bools::Expr loop) override;
+    std::optional<Range> has_looping_infix();
+    void handle_loop(const Range&);
 
 public:
 
-    explicit ADCLSat(const ITSPtr its, const Config::TRPConfig &config);
+    ~ADCLSat() override = default;
+    explicit ADCLSat(const ITSPtr& its, const Config::TRPConfig &config);
     std::optional<SmtResult> do_step() override;
     ITSModel get_model() override;
 

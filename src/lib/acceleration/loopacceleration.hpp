@@ -9,15 +9,15 @@
 class LoopAcceleration {
 public:
 
-    static acceleration::Result accelerate(const RulePtr rule, const Subs &sample_point, const AccelConfig &config);
+    static acceleration::Result accelerate(const RulePtr& rule, const ModelPtr &sample_point, const AccelConfig &config);
 
-    static acceleration::Result accelerate(const RulePtr rule, const AccelConfig &config);
+    static acceleration::Result accelerate(const RulePtr& rule, const AccelConfig &config);
 
-    static std::pair<RulePtr, unsigned> chain(const RulePtr rule);
+    static std::pair<RulePtr, unsigned> chain(const RulePtr& rule);
 
 private:
 
-    LoopAcceleration(const RulePtr rule, const std::optional<Subs> &sample_point, const AccelConfig &config);
+    LoopAcceleration(RulePtr rule, const std::optional<ModelPtr> &sample_point, AccelConfig config);
 
     void chain();
     void removeTrivialUpdates();
@@ -29,9 +29,10 @@ private:
     void prepend_prefix();
 
     RulePtr rule;
-    const std::optional<Subs> sample_point;
+    const std::optional<ModelPtr> sample_point;
     const AccelConfig config;
     acceleration::Result res {};
     std::optional<Recurrence::Result> rec {};
+    Bools::Expr refinement {top()};
 
 };

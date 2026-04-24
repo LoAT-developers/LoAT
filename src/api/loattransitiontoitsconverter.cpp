@@ -3,7 +3,7 @@
 ITSPtr LoatTransitionToITSConverter::convertTransitionsToITS(const std::vector<LoatTransition> &transitions, const LoatLocation &start, const std::optional<LoatLocation> &sink)
 {
     // Create empty ITS
-    ITSPtr its = std::make_shared<ITSProblem>();
+    auto its = std::make_shared<ITSProblem>();
 
     // Transfer start location
     LocationIdx startIdx = its->getOrAddLocation(start.getName());
@@ -17,7 +17,7 @@ ITSPtr LoatTransitionToITSConverter::convertTransitionsToITS(const std::vector<L
     }
 
     // Get location var
-    Arith::Var locVar = its->getLocVar();
+    ArithVarPtr locVar = its->getLocVar();
 
     // Loop through all transitions
     for (const LoatTransition &transition : transitions)
@@ -34,7 +34,7 @@ ITSPtr LoatTransitionToITSConverter::convertTransitionsToITS(const std::vector<L
         LocationIdx targetIdx = its->getOrAddLocation(target.getName());
 
         // New Guard: locVar == srcIdx && old Guard
-        Arith::Expr curLoc = arith::toExpr(locVar);
+        Arith::Expr curLoc = locVar;
         Bools::Expr locGuard = bools::mkLit(arith::mkEq(curLoc, arith::mkConst(sourceIdx)));
         BoolExprSet conjuncts;
         conjuncts.insert(rule->getGuard());
@@ -43,9 +43,9 @@ ITSPtr LoatTransitionToITSConverter::convertTransitionsToITS(const std::vector<L
 
         // Update loc var after transition
         Subs update = rule->getUpdate();
-        update.put<Arith>(locVar, arith::mkConst(targetIdx));
+        update.update(locVar, arith::mkConst(targetIdx));
 
-        // Create new rule and insert this into the its
+        // Create new rule and insert this into the ITS
         RulePtr ruleWithLoc = Rule::mk(combinedGuard, update);
         its->addRule(ruleWithLoc, sourceIdx);
     }
@@ -63,21 +63,21 @@ RulePtr LoatTransitionToITSConverter::convert(const LoatTransition &transition)
     const LoatBoolExprPtr &formula = transition.getFormula();
 
     // Convert Formula
-    Bools::Expr guard = convertBool(formula);
+    const Bools::Expr guard = convertBool(formula);
 
     // Create subs (x = x' etc.)
     Subs subs;
-    for (const auto name : m_arithVarsUsed)
+    for (const auto& name : m_arithVarsUsed)
     {
-        Arith::Var pre = getArithVar(name, false);
-        Arith::Var post = getArithVar(name, true);
-        subs.put<Arith>(pre, Arith::varToExpr(post));
+        const ArithVarPtr pre = getArithVar(name, false);
+        const ArithVarPtr post = getArithVar(name, true);
+        subs.update(pre, post);
     }
-    for (const auto name : m_boolVarsUsed)
+    for (const auto& name : m_boolVarsUsed)
     {
         Bools::Var pre = getBoolVar(name, false);
         Bools::Var post = getBoolVar(name, true);
-        subs.put<Bools>(pre, Bools::varToExpr(post));
+        subs.put(pre, Bools::varToExpr(post));
     }
 
     // Create the internal its transition/rule
@@ -87,15 +87,13 @@ RulePtr LoatTransitionToITSConverter::convert(const LoatTransition &transition)
 Arith::Expr LoatTransitionToITSConverter::convertArith(const LoatIntExprPtr &expr)
 {
     // Search for expression in cache and use it if possible
-    auto it = m_arithExprCache.find(expr);
-    if (it != m_arithExprCache.end())
-    {
+    if (const auto it = m_arithExprCache.find(expr); it != m_arithExprCache.end()) {
         return it->second;
     }
 
     // Declare result and use it as return variable
     using Kind = LoatIntExpression::Kind;
-    Arith::Expr result = arith::mkConst(0);
+    Arith::Expr result = arith::zero();
 
     // Switch over expr kind
     switch (expr->getKind())
@@ -114,13 +112,13 @@ Arith::Expr LoatTransitionToITSConverter::convertArith(const LoatIntExprPtr &exp
         const auto *v = static_cast<const LoatIntVar *>(expr.get());
 
         // Get Var
-        Arith::Var var = getArithVar(v->getName(), v->isPost());
+        const ArithVarPtr var = getArithVar(v->getName(), v->isPost());
 
         // Add Var to used map
         m_arithVarsUsed.emplace(v->getName());
 
         // Set result as internal var expr
-        result = arith::toExpr(var);
+        result = var;
         break;
     }
     case Kind::Plus:
@@ -184,9 +182,7 @@ Arith::Expr LoatTransitionToITSConverter::convertArith(const LoatIntExprPtr &exp
 Bools::Expr LoatTransitionToITSConverter::convertBool(const LoatBoolExprPtr &expr)
 {
     // Search for expression in cache and use it if possible
-    auto it = m_boolExprCache.find(expr);
-    if (it != m_boolExprCache.end())
-    {
+    if (const auto it = m_boolExprCache.find(expr); it != m_boolExprCache.end()) {
         return it->second;
     }
 
@@ -203,7 +199,7 @@ Bools::Expr LoatTransitionToITSConverter::convertBool(const LoatBoolExprPtr &exp
         const auto *v = static_cast<const LoatBoolVar *>(expr.get());
 
         // Get Var
-        Bools::Var var = getBoolVar(v->getName(), v->isPost());
+        const Bools::Var var = getBoolVar(v->getName(), v->isPost());
 
         // Add Var to used map
         m_boolVarsUsed.emplace(v->getName());
@@ -322,54 +318,38 @@ Bools::Expr LoatTransitionToITSConverter::convertBool(const LoatBoolExprPtr &exp
     return result;
 }
 
-Arith::Var LoatTransitionToITSConverter::getArithVar(const std::string &name, bool isPost)
+ArithVarPtr LoatTransitionToITSConverter::getArithVar(const std::string &name, const bool isPost)
 {
-    if (isPost)
-    {
-        auto it = m_arithVarPostMap.find(name);
-        if (it != m_arithVarPostMap.end())
-        {
+    if (isPost) {
+        if (const auto it = m_arithVarPostMap.find(name); it != m_arithVarPostMap.end()) {
             return it->second;
         }
-        Arith::Var postVar = ArithVar::next();
+        ArithVarPtr postVar = arrays::nextConst<Arith>();
         m_arithVarPostMap.emplace(name, postVar);
         return postVar;
     }
-    else
-    {
-        auto it = m_arithVarPreMap.find(name);
-        if (it != m_arithVarPreMap.end())
-        {
-            return it->second;
-        }
-        Arith::Var preVar = ArithVar::nextProgVar();
-        m_arithVarPreMap.emplace(name, preVar);
-        return preVar;
+    if (const auto it = m_arithVarPreMap.find(name); it != m_arithVarPreMap.end()) {
+        return it->second;
     }
+    ArithVarPtr preVar = arrays::nextProgConst<Arith>();
+    m_arithVarPreMap.emplace(name, preVar);
+    return preVar;
 }
 
-Bools::Var LoatTransitionToITSConverter::getBoolVar(const std::string &name, bool isPost)
+Bools::Var LoatTransitionToITSConverter::getBoolVar(const std::string &name, const bool isPost)
 {
-    if (isPost)
-    {
-        auto it = m_boolVarPostMap.find(name);
-        if (it != m_boolVarPostMap.end())
-        {
+    if (isPost) {
+        if (const auto it = m_boolVarPostMap.find(name); it != m_boolVarPostMap.end()) {
             return it->second;
         }
         Bools::Var postVar = BoolVar::next();
         m_boolVarPostMap.emplace(name, postVar);
         return postVar;
     }
-    else
-    {
-        auto it = m_boolVarPreMap.find(name);
-        if (it != m_boolVarPreMap.end())
-        {
-            return it->second;
-        }
-        Bools::Var preVar = BoolVar::nextProgVar();
-        m_boolVarPreMap.emplace(name, preVar);
-        return preVar;
+    if (const auto it = m_boolVarPreMap.find(name); it != m_boolVarPreMap.end()) {
+        return it->second;
     }
+    Bools::Var preVar = BoolVar::nextProgVar();
+    m_boolVarPreMap.emplace(name, preVar);
+    return preVar;
 }

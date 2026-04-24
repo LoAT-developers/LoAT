@@ -16,6 +16,7 @@
 #include "yices.hpp"
 #include "adclsat.hpp"
 #include "ariparser.hpp"
+#include "inline.hpp"
 
 #include <boost/algorithm/string.hpp>
 #include <chrono>
@@ -25,18 +26,18 @@
 // Variables for command line flags
 std::string filename;
 
-void printHelp(char *arg0) {
+void printHelp(const char *arg0) {
     std::cout << "Usage: " << arg0 << " [options] <file>" << std::endl;
     std::cout << "Options:" << std::endl;
     std::cout << "  --print_dep_graph                                               Print the dependency graph in the proof output (can be very verbose)" << std::endl;
     std::cout << "  --mode <complexity|termination|relative_termination|safety>     Analysis mode" << std::endl;
-    std::cout << "  --format <horn|ari>                                             Input format" << std::endl;
     std::cout << "  --engine <adcl|bmc|abmc|trl|kind>                               Analysis engine" << std::endl;
     std::cout << "  --log                                                           Enable logging" << std::endl;
     std::cout << "  --proof                                                         Print model/counterexample/recurrent set/..." << std::endl;
     std::cout << "  --abmc::blocking_clauses <true|false>                           ABMC: En- or disable blocking clauses" << std::endl;
+    std::cout << "  --abstraction_refinement <true|false>                           En- or disable abstraction refinement" << std::endl;
     std::cout << "  --accel::non_linear <true|false>                                Also use acceleration if the result is non-linear" << std::endl;
-    std::cout << "  --smt <z3|cvc5|swine|yices|heuristic>                           Choose the SMT solver" << std::endl;
+    std::cout << "  --smt <swine|yices|heuristic>                                   Choose the SMT solver" << std::endl;
     std::cout << "  --direction <forward|backward|interleaved>                      run the analysis forward, backward, or both directions interleaved (if supported)" << std::endl;
     std::cout << "  --trl::recurrent_exps <true|false>                              TRL: En- or disable recurrence analysis for variables with exponential bounds" << std::endl;
     std::cout << "  --trl::recurrent_cycles <true|false>                            TRL: En- or disable search for variables that behave recurrently after more than one iteration" << std::endl;
@@ -63,21 +64,18 @@ void print_version() {
     std::cout << "       build mode: " << std::string(yices_build_mode) << std::endl;
     std::cout << "       build arch: " << std::string(yices_build_arch) << std::endl;
     std::cout << "       build date: " << std::string(yices_build_date) << std::endl;
-    std::string z3_version {Z3_get_full_version()};
-    std::cout << "Z3:    " << z3_version << std::endl;
     std::cout << "SwInE: " << swine::Version::GIT_SHA << std::endl;
 }
 
-void parseFlags(int argc, char *argv[]) {
+void parseFlags(const int argc, char *argv[]) {
     int arg = 0;
 
-    auto getNext = [&]() {
+    auto getNext = [&] {
         if (arg < argc - 1) {
             return argv[++arg];
-        } else {
-            std::cout << "Error: Argument missing for " << argv[arg] << std::endl;
-            exit(1);
         }
+        std::cout << "Error: Argument missing for " << argv[arg] << std::endl;
+        exit(1);
     };
     auto has_engine{false};
     auto has_mode{false};
@@ -90,6 +88,7 @@ void parseFlags(int argc, char *argv[]) {
             Config::Output::PrintDependencyGraph = true;
         } else if (strcmp("--log", argv[arg]) == 0) {
             Config::Analysis::log = true;
+            Config::Analysis::logAccel = true;
         } else if (strcmp("--proof", argv[arg]) == 0) {
             Config::Analysis::model = true;
         } else if (strcmp("--mode", argv[arg]) == 0) {
@@ -106,8 +105,7 @@ void parseFlags(int argc, char *argv[]) {
             }
         } else if (strcmp("--engine", argv[arg]) == 0) {
             has_engine = true;
-            std::string str = getNext();
-            if (boost::iequals("adcl", str)) {
+            if (std::string str = getNext(); boost::iequals("adcl", str)) {
                 Config::Analysis::engine = Config::Analysis::ADCL;
             } else if (boost::iequals("abmc", str)) {
                 Config::Analysis::engine = Config::Analysis::ABMC;
@@ -124,12 +122,7 @@ void parseFlags(int argc, char *argv[]) {
                 exit(1);
             }
         } else if (strcmp("--smt", argv[arg]) == 0) {
-            std::string str = getNext();
-            if (boost::iequals("z3", str)) {
-                Config::Analysis::smtSolver = Config::Analysis::Z3;
-            } else if (boost::iequals("cvc5", str)) {
-                Config::Analysis::smtSolver = Config::Analysis::CVC5;
-            } else if (boost::iequals("swine", str)) {
+            if (std::string str = getNext(); boost::iequals("swine", str)) {
                 Config::Analysis::smtSolver = Config::Analysis::Swine;
             } else if (boost::iequals("yices", str)) {
                 Config::Analysis::smtSolver = Config::Analysis::Yices;
@@ -140,8 +133,7 @@ void parseFlags(int argc, char *argv[]) {
                 exit(1);
             }
         } else if (strcmp("--polyaccel", argv[arg]) == 0) {
-            std::string str = getNext();
-            if (boost::iequals("full", str)) {
+            if (std::string str = getNext(); boost::iequals("full", str)) {
                 AccelerationProblem::polyaccel = AccelerationProblem::PolyAccelMode::Full;
             } else if (boost::iequals("low_degree", str)) {
                 AccelerationProblem::polyaccel = AccelerationProblem::PolyAccelMode::LowDegree;
@@ -151,24 +143,19 @@ void parseFlags(int argc, char *argv[]) {
                 std::cout << "Error: unknown mode " << str << " for polynomial acceleration" << std::endl;
                 exit(1);
             }
-        } else if (strcmp("--format", argv[arg]) == 0) {
-            std::string str = getNext();
-            if (boost::iequals("horn", str)) {
-                Config::Input::format = Config::Input::Horn;
-            } else if (boost::iequals("ari", str)) {
-                Config::Input::format = Config::Input::Ari;
-            } else {
-                std::cout << "Error: unknown format " << str << std::endl;
-                exit(1);
-            }
         } else if (strcmp("--abmc::blocking_clauses", argv[arg]) == 0) {
             setBool(getNext(), Config::ABMC::blocking_clauses);
+        } else if (strcmp("--abstraction_refinement", argv[arg]) == 0) {
+            setBool(getNext(), Config::Analysis::abstraction_refinement);
         } else if (strcmp("--accel::non_linear", argv[arg]) == 0) {
             setBool(getNext(), Config::Accel::non_linear);
+        } else if (strcmp("--accel::arrays", argv[arg]) == 0) {
+            setBool(getNext(), Config::Accel::arrays);
+        } else if (strcmp("--fail_early", argv[arg]) == 0) {
+            setBool(getNext(), Config::Analysis::fail_early);
         } else if (strcmp("--direction", argv[arg]) == 0) {
             has_direction = true;
-            const auto str{getNext()};
-            if (boost::iequals("forward", str)) {
+            if (const auto str{getNext()}; boost::iequals("forward", str)) {
                 Config::Analysis::dir = Config::Analysis::Direction::Forward;
             } else if (boost::iequals("backward", str)) {
                 Config::Analysis::dir = Config::Analysis::Direction::Backward;
@@ -189,8 +176,7 @@ void parseFlags(int argc, char *argv[]) {
         } else if (strcmp("--trl::recurrent_bounds", argv[arg]) == 0) {
             setBool(getNext(), Config::trp.recurrent_bounds);
         } else if (strcmp("--trl::mbp_kind", argv[arg]) == 0) {
-            const auto str{getNext()};
-            if (boost::iequals("lower_int", str)) {
+            if (const auto str{getNext()}; boost::iequals("lower_int", str)) {
                 Config::trp.mbpKind = Config::TRPConfig::MbpKind::LowerIntMbp;
             } else if (boost::iequals("upper_int", str)) {
                 Config::trp.mbpKind = Config::TRPConfig::MbpKind::UpperIntMbp;
@@ -233,6 +219,15 @@ void parseFlags(int argc, char *argv[]) {
                 exit(1);
             }
             filename = argv[arg];
+            if (boost::ends_with(filename, ".smt2")) {
+                Config::Input::format = Config::Input::Horn;
+            } else if (boost::ends_with(filename, ".ari")) {
+                Config::Input::format = Config::Input::Ari;
+            } else {
+                std::cout << "filename: " << filename << std::endl;
+                std::cout << "Error: unknown format" << std::endl;
+                exit(1);
+            }
         }
     }
     if (!has_mode) {
@@ -305,6 +300,21 @@ int main(int argc, char *argv[]) {
             break;
         case Config::Input::Horn: {
             chcs = SexpressoParser::loadFromFile(filename);
+            if (Config::Analysis::log) {
+                std::cout << "CHCs:" << std::endl;
+                std::cout << *chcs << std::endl;
+            }
+            if (!(*chcs)->is_linear()) {
+                Inline lin{*chcs};
+                chcs = lin.run();
+                if (!(*chcs)->is_linear()) {
+                    if (Config::Analysis::log) {
+                        std::cout << "failed to linearize CHCs" << std::endl;
+                    }
+                    print_result(SmtResult::Unknown);
+                    exit(0);
+                }
+            }
             if (Config::Analysis::dir == Config::Analysis::Direction::Backward) {
                 reverse = Reverse(*chcs);
                 chcs = reverse->reverse();

@@ -2,11 +2,11 @@
 
 #include <boost/algorithm/string.hpp>
 
-const Bools::Expr top() {
+Bools::Expr top() {
     return BoolExpr::top();
 }
 
-const Bools::Expr bot() {
+Bools::Expr bot() {
     return BoolExpr::bot();
 }
 
@@ -16,308 +16,304 @@ Bools::Expr mkLit(const Lit &lit) {
     return BoolExpr::mkLit(lit);
 }
 
-Bools::Expr mkAndFromLits(const std::initializer_list<Lit> &lits) {
-    return BoolExpr::mkAndFromLits(lits);
-}
-
 }
 
 namespace theory {
 
-std::string getName(const Var &var) {
-    return std::visit([](const auto &var){return var->getName();}, var);
-}
+    const Type Type::Int = Type(BaseType::Int, 0);
+    const Type Type::Bool = Type(BaseType::Bool, 0);
 
-bool isTempVar(const Var &var) {
-    return std::visit([](const auto &var){return var->isTempVar();}, var);
-}
+    std::string getName(const Var &var) {
+        return std::visit([](const auto &var){return var->getName();}, var);
+    }
 
-bool isProgVar(const Var &var) {
-    return std::visit([](const auto &var){return var->isProgVar();}, var);
-}
+    bool isTempVar(const Var &var) {
+        return std::visit([](const auto &var){return var->isTempVar();}, var);
+    }
 
-bool isPostVar(const Var &var) {
-    return std::visit([](const auto &var){return var->isPostVar();}, var);
-}
+    bool isTempCell(const Cell &var) {
+        return std::visit([](const auto &var){return var->isTempVar();}, var);
+    }
 
-Var next(const Var &var) {
-    return std::visit([](const auto x) {return Var(theory(x).next());}, var);
-}
+    bool isProgVar(const Var &var) {
+        return std::visit([](const auto &var){return var->isProgVar();}, var);
+    }
 
-Var next(const Expr &x) {
-    return std::visit([](const auto x) {return Var(theory(x).next());}, x);
-}
+    bool isProgCell(const Cell &var) {
+        return std::visit([](const auto &var){return var->isProgVar();}, var);
+    }
 
-Var postVar(const Var &var) {
-    return std::visit([](const auto x) {return Var(decltype(x)::element_type::postVar(x));}, var);
-}
+    bool isPostVar(const Var &var) {
+        return std::visit([](const auto &var){return var->isPostVar();}, var);
+    }
 
-Var progVar(const Var &var) {
-    return std::visit([](const auto x) {return Var(decltype(x)::element_type::progVar(x));}, var);
-}
+    bool isPostCell(const Cell &var) {
+        return std::visit([](const auto &var){return var->isPostVar();}, var);
+    }
 
-Expr toExpr(const Var &var) {
-    return TheTheory::varToExpr(var);
-}
+    Var next(const Var &var) {
+        return std::visit([](const auto& x) {return Var(theory(x).next(x->dim()));}, var);
+    }
 
-Expr toExpr(const Const &c) {
-    return TheTheory::constToExpr(c);
+    Var postVar(const Var &var) {
+        return std::visit([]<typename X>(const X& x) {return Var(x->postVar());}, var);
+    }
 
-}
-theory::Type to_type(const Expr &x) {
-    return std::visit(
-        Overload{
-            [&](const Arith::Expr &) {
-                return Type::Int;
-            },
-            [&](const Bools::Expr &) {
-                return Type::Bool;
-            }},
-        x);
-}
+    Var progVar(const Var &var) {
+        return std::visit([]<typename X>(const X& x) {return Var(x->progVar());}, var);
+    }
 
-theory::Type to_type(const Var &x) {
-    return std::visit(
-        Overload{
-            [&](const Arith::Var &) {
-                return Type::Int;
-            },
-            [&](const Bools::Var &) {
-                return Type::Bool;
-            }},
-        x);
-}
+    Type to_type(const Expr &x) {
+        return std::visit(
+            Overload{
+                [](const Arith::Expr &) {
+                    return Type::Int;
+                },
+                [](const Bools::Expr &) {
+                    return Type::Bool;
+                },
+                [](const Arrays<Arith>::Expr &e) {
+                    return Type(BaseType::Int, e->dim());
+                }},
+            x);
+    }
 
-theory::Type to_type(const std::string &x) {
-    if (boost::iequals(x, "int")) {
-        return theory::Type::Int;
-    } else if (boost::iequals(x, "bool")) {
-        return theory::Type::Bool;
-    } else {
+    Type to_type(const Var &x) {
+        return std::visit(
+            Overload{
+                [&](const Bools::Var &) {
+                    return Type::Bool;
+                },
+                [&](const Arrays<Arith>::Var& x) {
+                    const auto dim = x->dim();
+                    return x->dim() == 0 ? Type::Int : Type(BaseType::Int, dim);
+                }},
+            x);
+    }
+
+    Type to_type(const std::string &x) {
+        if (boost::iequals(x, "int")) {
+            return Type::Int;
+        }
+        if (boost::iequals(x, "bool")) {
+            return Type::Bool;
+        }
         throw std::invalid_argument("unknown type");
     }
-}
 
-std::optional<Var> is_var(const Expr &x) {
-    using opt = std::optional<Var>;
-    return std::visit(
-        Overload{
-            [&](const auto &e) {
-                if (const auto &x {e->isVar()}) {
-                    return opt{*x};
-                } else {
-                    return opt{};
-                }
-            }},
-        x);
-}
-
-std::string abbrev(const Type t) {
-    switch (t) {
-        case Type::Bool: return "b";
-        case Type::Int: return "i";
+    std::string abbrev(const Type t) {
+        switch (t.base) {
+        case BaseType::Bool: return "b";
+        case BaseType::Int: return "i";
         default: throw std::invalid_argument("unknown type");
-    }
-}
-
-sexpresso::Sexp to_smtlib(const Lit &l) {
-    return std::visit([&](const auto x) {return x->to_smtlib();}, l);
-}
-
-sexpresso::Sexp to_smtlib(const Expr &e) {
-    return std::visit([&](const auto x) {return x->to_smtlib();}, e);
-}
-
-void collectVars(const Expr &expr, VarSet &vars) {
-    std::visit(Overload{
-                   [&vars](const Arith::Expr expr) {
-                       expr->collectVars(vars.get<Arith::Var>());
-                   },
-                   [&vars](const Bools::Expr expr) {
-                       expr->collectVars(vars);
-                   }
-               }, expr);
-}
-
-VarSet vars(const Expr &e) {
-    VarSet res;
-    collectVars(e, res);
-    return res;
-}
-
-Bools::Expr mkEq(const Expr &e1, const Expr &e2) {
-    return std::visit(
-        Overload {
-            [&e2](const Arith::Expr &e1) {
-                return bools::mkLit(arith::mkEq(e1, std::get<Arith::Expr>(e2)));
-            },
-            [&e2](const Bools::Expr lhs) {
-                const auto rhs = std::get<Bools::Expr>(e2);
-                return (lhs && rhs) || ((!lhs) && (!rhs));
-            }
-        }, e1);
-}
-
-Bools::Expr mkNeq(const Expr &e1, const Expr &e2) {
-    return std::visit(
-        Overload {
-            [&e2](const Arith::Expr &e1) {
-                return bools::mkLit(arith::mkNeq(e1, std::get<Arith::Expr>(e2)));
-            },
-            [&e2](const Bools::Expr lhs) {
-                const auto rhs = std::get<Bools::Expr>(e2);
-                return (lhs && (!rhs)) || ((!lhs) && rhs);
-            }
-        }, e1);
-}
-
-Arith theory(const Arith::Var) {
-    return arith::t;
-}
-
-Bools theory(const Bools::Var) {
-    return bools::t;
-}
-
-Arith theory(const Arith::Expr) {
-    return arith::t;
-}
-
-Bools theory(const Bools::Expr) {
-    return bools::t;
-}
-
-template <size_t I = 0>
-inline bool isLinearImpl(const Lit &lit) {
-    if constexpr (I < num_theories) {
-        if (lit.index() == I) {
-            return std::get<I>(lit)->isLinear();
         }
-        return isLinearImpl<I+1>(lit);
-    } else {
-        throw std::logic_error("unknown theory");
     }
-}
 
-bool isLinear(const Lit &lit) {
-    return isLinearImpl<0>(lit);
-}
-
-template <size_t I = 0>
-inline bool isPolyImpl(const Lit &lit) {
-    if constexpr (I < num_theories) {
-        if (lit.index() == I) {
-            return std::get<I>(lit)->isPoly();
-        }
-        return isPolyImpl<I+1>(lit);
-    } else {
-        throw std::logic_error("unknown theory");
+    sexpresso::Sexp to_smtlib(const Lit &l) {
+        return std::visit([&](const auto& x) {return x->to_smtlib();}, l);
     }
-}
 
-bool isPoly(const Lit &lit) {
-    return isPolyImpl<0>(lit);
-}
+    sexpresso::Sexp to_smtlib(const Expr &e) {
+        return std::visit([&](const auto& x) {return x->to_smtlib();}, e);
+    }
 
-template<std::size_t I = 0>
-inline void collectVarsImpl(const Lit &lit, VarSet &s) {
-    if constexpr (I < num_theories) {
-        if (lit.index() == I) {
-            return std::get<I>(lit)->collectVars(s.template get<I>());
+    void collectVars(const Expr& expr, VarSet& vars) {
+        theory::apply(
+            expr,
+            [&](const Bools::Expr& expr) {
+                expr->collectVars(vars);
+            },
+            [&](const auto& expr) {
+                expr->collectVars(vars);
+            });
+    }
+
+    VarSet vars(const Expr &e) {
+        VarSet res;
+        collectVars(e, res);
+        return res;
+    }
+
+    Bools theory(const Bools::Var&) {
+        return bools::t;
+    }
+
+    Arrays<Arith> theory(const Arrays<Arith>::Var&) {
+        return arrays::arith;
+    }
+
+    Arith theory(const Arith::Expr&) {
+        return arith::t;
+    }
+
+    Bools theory(const Bools::Expr&) {
+        return bools::t;
+    }
+
+    Arrays<Arith> theory(const Arrays<Arith>::Expr&) {
+        return arrays::arith;
+    }
+
+    template <size_t I = 0>
+    bool isLinearImpl(const Lit &lit) {
+        if constexpr (I < num_theories) {
+            if (lit.index() == I) {
+                return std::get<I>(lit)->isLinear();
+            }
+            return isLinearImpl<I+1>(lit);
         } else {
-            return collectVarsImpl<I+1>(lit, s);
+            throw std::logic_error("unknown theory");
         }
-    } else {
-        throw std::logic_error("unknown theory");
     }
-}
 
-
-void collectVars(const Lit &lit, VarSet &s) {
-    collectVarsImpl<0>(lit, s);
-}
-
-VarSet vars(const Lit &lit) {
-    VarSet res;
-    collectVars(lit, res);
-    return res;
-}
-
-template <size_t I = 0>
-inline bool isTriviallyTrueImpl(const Lit &lit) {
-    if constexpr (I < num_theories) {
-        if (lit.index() == I) {
-            return std::get<I>(lit)->isTriviallyTrue();
-        }
-        return isTriviallyTrueImpl<I+1>(lit);
-    } else {
-        throw std::logic_error("unknown theory");
+    bool isLinear(const Lit &lit) {
+        return isLinearImpl<0>(lit);
     }
-}
 
-bool isTriviallyTrue(const Lit &lit) {
-    return isTriviallyTrueImpl<0>(lit);
-}
-
-template <size_t I = 0>
-inline bool isTriviallyFalseImpl(const Lit &lit) {
-    if constexpr (I < num_theories) {
-        if (lit.index() == I) {
-            return std::get<I>(lit)->isTriviallyFalse();
-        }
-        return isTriviallyFalseImpl<I+1>(lit);
-    } else {
-        throw std::logic_error("unknown theory");
-    }
-}
-
-bool isTriviallyFalse(const Lit &lit) {
-    return isTriviallyFalseImpl<0>(lit);
-}
-
-template <size_t I = 0>
-inline Lit negateImpl(const Lit &lit) {
-    if constexpr (I < num_theories) {
-        if (lit.index() == I) {
-            return !std::get<I>(lit);
-        }
-        return negateImpl<I+1>(lit);
-    } else {
-        throw std::logic_error("unknown theory");
-    }
-}
-
-Lit negate(const Lit &lit) {
-    return negateImpl<0>(lit);
-}
-
-size_t hash(const Lit &lit) {
-    return std::visit(
-        Overload {
-            [](const auto &lit) {
-                return lit->hash();
+    template <size_t I = 0>
+    bool isPolyImpl(const Lit &lit) {
+        if constexpr (I < num_theories) {
+            if (lit.index() == I) {
+                return std::get<I>(lit)->isPoly();
             }
-        }, lit);
-}
-
-template <size_t I = 0>
-inline void simplifyAndImpl(LitSet &lits) {
-    if constexpr (I < num_theories) {
-        using Th = std::tuple_element_t<I, Theories>;
-        if constexpr (!std::is_same_v<Th, Bools>) {
-            auto &ls {lits.get<typename Th::Lit>()};
-            if (!ls.empty()) {
-                (*ls.begin())->simplifyAnd(ls);
-            }
+            return isPolyImpl<I+1>(lit);
+        } else {
+            throw std::logic_error("unknown theory");
         }
-        simplifyAndImpl<I+1>(lits);
     }
-}
 
-void simplifyAnd(LitSet &lits) {
-    return simplifyAndImpl(lits);
-}
+    bool isPoly(const Lit &lit) {
+        return isPolyImpl<0>(lit);
+    }
 
+    void collectVars(const Lit& lit, VarSet& s) {
+        theory::apply(
+            lit,
+            [&](const Bools::Lit& lit) {
+                return lit->collectVars(s.get<Bools::Var>());
+            },
+            [&](const auto& lit) {
+                return lit->collectVars(s);
+            });
+    }
+
+    VarSet vars(const Lit &lit) {
+        VarSet res;
+        collectVars(lit, res);
+        return res;
+    }
+
+    void collectCells(const Lit& lit, CellSet& s) {
+        theory::apply(
+            lit,
+            [&](const Bools::Lit& lit) {
+                return lit->collectVars(s.get<Bools::Var>());
+            },
+            [&](const Arith::Lit& lit) {
+                return lit->collectCells(s.get<ArithVarPtr>());
+            },
+            [&](const auto& lit) {
+                return lit->collectCells(s);
+            });
+    }
+
+    CellSet cells(const Lit& lit) {
+        CellSet res;
+        collectCells(lit, res);
+        return res;
+    }
+
+    template <size_t I = 0>
+    bool isTriviallyTrueImpl(const Lit &lit) {
+        if constexpr (I < num_theories) {
+            if (lit.index() == I) {
+                return std::get<I>(lit)->isTriviallyTrue();
+            }
+            return isTriviallyTrueImpl<I+1>(lit);
+        } else {
+            throw std::logic_error("unknown theory");
+        }
+    }
+
+    bool isTriviallyTrue(const Lit &lit) {
+        return isTriviallyTrueImpl<0>(lit);
+    }
+
+    template <size_t I = 0>
+    bool isTriviallyFalseImpl(const Lit &lit) {
+        if constexpr (I < num_theories) {
+            if (lit.index() == I) {
+                return std::get<I>(lit)->isTriviallyFalse();
+            }
+            return isTriviallyFalseImpl<I+1>(lit);
+        } else {
+            throw std::logic_error("unknown theory");
+        }
+    }
+
+    bool isTriviallyFalse(const Lit &lit) {
+        return isTriviallyFalseImpl<0>(lit);
+    }
+
+    template <size_t I = 0>
+    Lit negateImpl(const Lit &lit) {
+        if constexpr (I < num_theories) {
+            if (lit.index() == I) {
+                return !std::get<I>(lit);
+            }
+            return negateImpl<I+1>(lit);
+        } else {
+            throw std::logic_error("unknown theory");
+        }
+    }
+
+    Lit negate(const Lit &lit) {
+        return negateImpl<0>(lit);
+    }
+
+    size_t hash(const Lit &lit) {
+        return std::visit(
+            Overload {
+                [](const auto &lit) {
+                    return lit->hash();
+                }
+            }, lit);
+    }
+
+    template <size_t I = 0>
+    void simplifyAndImpl(LitSet &lits) {
+        if constexpr (I < num_theories) {
+            using Th = std::tuple_element_t<I, Theories>;
+            if constexpr (!std::is_same_v<Th, Bools>) {
+                if (auto &ls {lits.get<typename Th::Lit>()}; !ls.empty()) {
+                    (*ls.begin())->simplifyAnd(ls);
+                }
+            }
+            simplifyAndImpl<I+1>(lits);
+        }
+    }
+
+    void simplifyAnd(LitSet &lits) {
+        return simplifyAndImpl(lits);
+    }
+
+    std::ostream& operator<<(std::ostream& s, const Type& e) {
+        switch (e.base) {
+        case BaseType::Bool: {
+            return s << "Bool";
+        }
+        case BaseType::Int: {
+            s << "Int";
+            for (size_t i = 0; i < e.dim; ++i) {
+                s << "[]";
+            }
+            return s;
+        }
+        default: {
+            throw std::invalid_argument("unknown type");
+        }
+        }
+    }
 }
 
 std::ostream& operator<<(std::ostream &s, const Var &e) {
@@ -335,14 +331,6 @@ std::ostream& operator<<(std::ostream &s, const Lit &e) {
     return s;
 }
 
-std::ostream& theory::operator<<(std::ostream &s, const theory::Type &e) {
-    switch (e) {
-        case theory::Type::Int:
-            s << "Int";
-            break;
-        case theory::Type::Bool:
-            s << "Bool";
-            break;
-    }
-    return s;
+bool operator==(const theory::Type& t1, const theory::Type& t2) {
+    return t1.base == t2.base && t1.dim == t2.dim;
 }

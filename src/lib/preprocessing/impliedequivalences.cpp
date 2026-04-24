@@ -1,28 +1,23 @@
 #include "impliedequivalences.hpp"
+#include "subs.hpp"
 
-BoolSubs impliedEquivalences(const Bools::Expr e) {
-    BoolSubs res;
+Subs impliedEquivalences(const Bools::Expr& e) {
+    Subs res;
     std::vector<Bools::Expr> todo;
-    const auto find_elim = [](const Bools::Expr &c) {
-        std::optional<Bools::Var> elim;
-        const auto vars {c->vars().template get<Bools::Var>()};
-        for (const auto &x: vars) {
-            if (x->isTempVar()) {
-                if (elim) {
-                    return std::optional<Bools::Var>{};
-                } else {
-                    elim = x;
-                }
+    const auto find_elim = [&](const Bools::Expr &c) -> std::optional<Bools::Var> {
+        const auto blocked = res.vars();
+        for (const auto vars {c->vars().get<Bools::Var>()}; const auto &x: vars) {
+            if (x->isTempVar() && !blocked.contains(x)) {
+                return x;
             }
         }
-        return elim;
+        return std::nullopt;
     };
     if (e->isAnd()) {
         const auto children {e->getChildren()};
         for (const auto &c: children) {
             if (c->isOr()) {
-                const auto elim {find_elim(c)};
-                if (elim) {
+                if (const auto elim {find_elim(c)}) {
                     auto grandChildren {c->getChildren()};
                     auto lit {bools::mkLit(bools::mk(*elim))};
                     bool positive {grandChildren.contains(lit)};
@@ -33,10 +28,9 @@ BoolSubs impliedEquivalences(const Bools::Expr e) {
                         }
                     }
                     grandChildren.erase(lit);
-                    const Bools::Expr cand {bools::mkOr(grandChildren)};
                     // we have     lit \/  cand
                     // search for !lit \/ !cand
-                    if (children.contains((!lit) || (!cand))) {
+                    if (const Bools::Expr cand {bools::mkOr(grandChildren)}; children.contains(!lit || !cand)) {
                         // we have (lit \/ cand) /\ (!lit \/ !cand), i.e., lit <==> !cand
                         res.put(*elim, positive ? !cand : cand);
                     }
@@ -49,12 +43,10 @@ BoolSubs impliedEquivalences(const Bools::Expr e) {
     }
     for (const auto &current: todo) {
         if (current->isOr()) {
-            const auto children {current->getChildren()};
-            if (children.size() == 2) {
+            if (const auto children {current->getChildren()}; children.size() == 2) {
                 for (const auto &c: children) {
                     if (c->isAnd()) {
-                        const auto elim {find_elim(c)};
-                        if (elim) {
+                        if (const auto elim {find_elim(c)}) {
                             auto grandChildren {c->getChildren()};
                             auto lit {bools::mkLit(bools::mk(*elim))};
                             bool positive {grandChildren.contains(lit)};
@@ -65,8 +57,7 @@ BoolSubs impliedEquivalences(const Bools::Expr e) {
                                 }
                             }
                             grandChildren.erase(lit);
-                            const Bools::Expr cand {bools::mkAnd(grandChildren)};
-                            if (children.contains((!lit) && (!cand))) {
+                            if (const Bools::Expr cand {bools::mkAnd(grandChildren)}; children.contains(!lit && !cand)) {
                                 // we have (lit /\ cand) \/ (!lit /\ !cand), i.e., lit <==> cand
                                 res.put(*elim, positive ? cand : !cand);
                             }
@@ -75,11 +66,9 @@ BoolSubs impliedEquivalences(const Bools::Expr e) {
                 }
             }
         } else if (current->isTheoryLit()) {
-            const auto lit {*current->getTheoryLit()};
-            if (std::holds_alternative<Bools::Lit>(lit)) {
+            if (const auto lit {*current->getTheoryLit()}; std::holds_alternative<Bools::Lit>(lit)) {
                 const auto &bool_lit {std::get<Bools::Lit>(lit)};
-                const auto var {bool_lit->getBoolVar()};
-                if (var->isTempVar()) {
+                if (const auto var {bool_lit->getBoolVar()}; var->isTempVar()) {
                     res.put(var, bool_lit->isNegated() ? bot() : top());
                 }
             }

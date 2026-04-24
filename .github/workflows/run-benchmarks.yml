@@ -8,63 +8,51 @@ on:
         required: true
         type: number
         default: 30
-      config:
+      mode:
         required: true
         type: choice
-        default: loat_sat
         options:
-        - loat_sat
-        - loat_adcl_sat
-        - loat_unsat
-        - loat_abmc_interleaved
-        - loat_ari_nonterm
-        - loat_nonterm
-        - loat_nonterm_abmc
-        - loat_term_int_mbp
-        - loat_term_real_mbp
-        - loat_term_real_qe
-        - loat_term_adcl_sat
-        - loat_ari_lb
-        - loat_lb
-        - loat_lb_z3
-        - loat_bmc
-        - loat_kind
-        - loat_release_chc_comp_2024_bmc
-        - loat_release_chc_comp_2024_abmc
-        - loat_release_termcomp_2023_nonterm
-        - loat_release_termcomp_2023_lb
-        - z3_gspacer
-        - z3_spacer
-        - z3_bmc
-        - golem_spacer
-        - golem_lawi
-        - golem_split-tpa
-        - golem_bmc
-        - golem_imc
-        - golem_kind
-        - golem_pa
-        - golem_pdkind
-        - eld
-        - verymax
-        - irankfinder
-        - t2
-        - koat
+        - safety
+        - termination
+        - complexity
+      engine:
+        required: true
+        type: choice
+        options:
+        - trl
+        - abmc
+        - adcl
+        - adcl_sat
+        - bmc
+        - kind
+      direction:
+        required: true
+        type: choice
+        options:
+        - forward
+        - interleaved
+        - backward
+      release:
+        required: true
+        type: string
+        default: HEAD
+      args:
+        required: false
+        type: string
       benchmarks:
         required: true
         type: choice
-        default: chc23-lia-lin
+        default: chc25-lia-lin
         options:
         - chc22-lia-lin
         - chc23-lia-lin
         - chc24-lia-lin
+        - chc25-lia-lin
+        - chc25-lia-lin-arrays
         - tpdb-ari-termination
         - tpdb-ari-complexity
-        - tpdb-termination
-        - tpdb-complexity
-      build:
-        required: true
-        type: boolean
-        default: true
+        - sv-arrays
+        - sv-neg-arrays
 
 permissions:
   # deployments permission to deploy GitHub pages website
@@ -75,7 +63,7 @@ permissions:
 jobs:
 
   build:
-    if: ${{ inputs.build && startsWith(inputs.config, 'loat') && !startsWith(inputs.config, 'loat_release') }}
+    if: ${{ startsWith(inputs.release, 'HEAD') }}
     uses: ./.github/workflows/build-loat.yml
 
   chc-comp-benchmark:
@@ -92,8 +80,21 @@ jobs:
       - name: Checkout LoAT Repository
         uses: actions/checkout@v4
         with:
-          sparse-checkout: .github/actions
+          sparse-checkout: |
+            .github/actions
+            scripts
           path: actions
+
+      - if: ${{ startsWith(inputs.release, 'HEAD') }}
+        uses: ./actions/.github/actions/get-loat-build
+
+      - if: ${{ inputs.benchmarks == 'chc25-lia-lin-arrays' }}
+        uses: ./actions/.github/actions/chc25-lia-lin-arrays
+
+      - if: ${{ inputs.benchmarks == 'chc25-lia-lin' }}
+        uses: ./actions/.github/actions/chc25-lia-lin
+        with:
+          pat: ${{ secrets.LOAT_DEVELOPERS_PAT }}
 
       - if: ${{ inputs.benchmarks == 'chc24-lia-lin' }}
         uses: ./actions/.github/actions/chc24-lia-lin
@@ -116,186 +117,28 @@ jobs:
       - if: ${{ inputs.benchmarks == 'tpdb-complexity' }}
         uses: ./actions/.github/actions/tpdb-complexity
 
-      - if: ${{ startsWith(inputs.config, 'loat_release_chc_comp_2024') }}
-        uses: ./actions/.github/actions/get-loat-chc-comp-2024
-
-      - if: ${{ startsWith(inputs.config, 'loat_release_termcomp_2023') }}
-        uses: ./actions/.github/actions/get-loat-termcomp-2023
-
-      - if: ${{ !inputs.build && startsWith(inputs.config, 'loat') && !startsWith(inputs.config, 'loat_release') }}
-        uses: ./actions/.github/actions/get-loat
-
-      - if: ${{ inputs.build && startsWith(inputs.config, 'loat') && !startsWith(inputs.config, 'loat_release') }}
-        uses: ./actions/.github/actions/get-loat-build
-
-      - if: ${{ startsWith(inputs.config, 'z3') }}
-        uses: ./actions/.github/actions/get-z3
-
-      - if: ${{ startsWith(inputs.config, 'eld') }}
-        uses: ./actions/.github/actions/get-eld
-
-      - if: ${{ startsWith(inputs.config, 'golem') }}
-        uses: ./actions/.github/actions/get-golem
-
-      - if: ${{ startsWith(inputs.config, 'koat') }}
-        uses: ./actions/.github/actions/get-koat
-
-      - if: ${{ startsWith(inputs.config, 'verymax') }}
-        uses: ./actions/.github/actions/get-verymax
+      - if: ${{ inputs.benchmarks == 'sv-arrays' }}
+        uses: ./actions/.github/actions/sv-arrays
         with:
-          token: ${{ secrets.TERMTOOLS }}
+          pat: ${{ secrets.LOAT_DEVELOPERS_PAT }}
 
-      - if: ${{ startsWith(inputs.config, 'irankfinder') }}
-        uses: ./actions/.github/actions/get-irankfinder
+      - if: ${{ inputs.benchmarks == 'sv-neg-arrays' }}
+        uses: ./actions/.github/actions/sv-neg-arrays
         with:
-          token: ${{ secrets.TERMTOOLS }}
+          pat: ${{ secrets.LOAT_DEVELOPERS_PAT }}
 
-      - if: ${{ startsWith(inputs.config, 't2') }}
-        uses: ./actions/.github/actions/get-t2
+      - if: ${{ !startsWith(inputs.release, 'HEAD') }}
+        uses: ./actions/.github/actions/get-loat-release
         with:
-          token: ${{ secrets.TERMTOOLS }}
+          tag: ${{ inputs.release }}
 
       - name: Run Benchmark
-        run: |
-          # function to run a single benchmark
-          function benchmark() {
-            filename=$1
-            printf "running ${filename} ... "
-            start=`date +%s.%N`
-
-            set +e
-            if [ ${{ inputs.config }} = "loat_sat" ]; then
-              output=$(timeout ${{ inputs.timeout }} solver --mode safety --format horn --engine trl --direction interleaved "${filename}")
-            elif [ ${{ inputs.config }} = "loat_adcl_sat" ]; then
-              output=$(timeout ${{ inputs.timeout }} solver --mode safety --format horn --engine adcl_sat --direction interleaved "${filename}")
-            elif [ ${{ inputs.config }} = "loat_unsat" ]; then
-              output=$(timeout ${{ inputs.timeout }} solver --mode safety --format horn --engine abmc "${filename}")
-            elif [ ${{ inputs.config }} = "loat_abmc_interleaved" ]; then
-              output=$(timeout ${{ inputs.timeout }} solver --mode safety --format horn --engine abmc --direction interleaved "${filename}")
-            elif [ ${{ inputs.config }} = "loat_nonterm" ]; then
-              output=$(timeout ${{ inputs.timeout }} solver --mode termination --format its --engine adcl "${filename}")
-            elif [ ${{ inputs.config }} = "loat_ari_nonterm" ]; then
-              output=$(timeout ${{ inputs.timeout }} solver --mode termination --format ari --engine adcl "${filename}")
-            elif [ ${{ inputs.config }} = "loat_nonterm_abmc" ]; then
-              output=$(timeout ${{ inputs.timeout }} solver --mode termination --format its --engine abmc "${filename}")
-            elif [ ${{ inputs.config }} = "loat_term_real_qe" ]; then
-              output=$(timeout ${{ inputs.timeout }} solver --mode termination --format its --engine trl --trl::recurrent_exps false --trl::recurrent_pseudo_divs false --trl::mbp_kind real_qe --trl::recurrent_pseudo_bounds false  "${filename}")
-            elif [ ${{ inputs.config }} = "loat_term_adcl_sat" ]; then
-              output=$(timeout ${{ inputs.timeout }} solver --mode termination --format its --engine adcl_sat --trl::recurrent_exps false --trl::recurrent_pseudo_divs false --trl::mbp_kind real_qe --trl::recurrent_pseudo_bounds false  "${filename}")
-            elif [ ${{ inputs.config }} = "loat_term_int_mbp" ]; then
-              output=$(timeout ${{ inputs.timeout }} solver --mode termination --format its --engine trl --trl::recurrent_exps false --trl::recurrent_pseudo_divs false --trl::recurrent_pseudo_bounds false "${filename}")
-            elif [ ${{ inputs.config }} = "loat_term_real_mbp" ]; then
-              output=$(timeout ${{ inputs.timeout }} solver --mode termination --format its --engine trl --trl::recurrent_exps false --trl::recurrent_pseudo_divs false --trl::mbp_kind real --trl::recurrent_pseudo_bounds false "${filename}")
-            elif [ ${{ inputs.config }} = "loat_lb" ]; then
-              output=$(timeout ${{ inputs.timeout }} solver --mode complexity --format koat --engine adcl "${filename}")
-            elif [ ${{ inputs.config }} = "loat_ari_lb" ]; then
-              output=$(timeout ${{ inputs.timeout }} solver --mode complexity --format ari --engine adcl "${filename}")
-            elif [ ${{ inputs.config }} = "loat_lb_z3" ]; then
-              output=$(timeout ${{ inputs.timeout }} solver --mode complexity --format koat --engine adcl --smt z3 "${filename}")
-            elif [ ${{ inputs.config }} = "loat_bmc" ]; then
-              output=$(timeout ${{ inputs.timeout }} solver --mode safety --format horn --engine bmc "${filename}")
-            elif [ ${{ inputs.config }} = "loat_kind" ]; then
-              output=$(timeout ${{ inputs.timeout }} solver --mode safety --format horn --engine kind "${filename}")
-            elif [[ ${{ inputs.config }} == loat_release_chc_comp_2024_* ]]; then
-              config=${{ inputs.config }}
-              engine=${config:27:100}
-              output=$(timeout ${{ inputs.timeout }} solver --mode reachability --format horn --engine $engine --plain --proof-level 0 "${filename}")
-            elif [ ${{ inputs.config }} = loat_release_termcomp_2023_nonterm ]; then
-              output=$(timeout ${{ inputs.timeout }} solver --mode non_termination --format its --plain --proof-level 0 "${filename}")
-            elif [ ${{ inputs.config }} = loat_release_termcomp_2023_lb ]; then
-              output=$(timeout ${{ inputs.timeout }} solver --mode complexity --format koat --plain --proof-level 0 "${filename}")
-            elif [ ${{ inputs.config }} = "z3_gspacer" ]; then
-              output=$(timeout ${{ inputs.timeout }} solver fp.engine=spacer fp.spacer.global=true "${filename}")
-            elif [ ${{ inputs.config }} = "z3_spacer" ]; then
-              output=$(timeout ${{ inputs.timeout }} solver fp.engine=spacer "${filename}")
-            elif [ ${{ inputs.config }} = "z3_bmc" ]; then
-              output=$(timeout ${{ inputs.timeout }} solver fp.engine=bmc "${filename}")
-            elif [[ ${{ inputs.config }} == golem* ]]; then
-              config=${{ inputs.config }}
-              engine=${config:6:100}
-              output=$(timeout ${{ inputs.timeout }} solver -e $engine -l QF_LIA "${filename}")
-            elif [ ${{ inputs.config }} = "eld" ]; then
-              output=$(timeout ${{ inputs.timeout }} solver "${filename}")
-            elif [ ${{ inputs.config }} = "koat" ]; then
-              # to="$((${{ inputs.timeout }}-2))"
-              # output=$(timeout --kill-after=2 ${{ inputs.timeout }} solver analyse --cfr=pe --local=mprf,twn -d5 --timeout=$to -r termcomp -i "${filename}")
-              ulimit -v 1000000
-              output=$(timeout --kill-after=2 ${{ inputs.timeout }} solver analyse --cfr=pe --local=mprf,twn -d5 -r termcomp -i "${filename}")
-            elif [ ${{ inputs.config }} = "verymax" ] || [ ${{ inputs.config }} = "irankfinder" ]  || [ ${{ inputs.config }} = "t2" ]; then
-              output=$(timeout ${{ inputs.timeout }} solver "${filename}")
-            fi
-
-            exit_status=$?
-            set -e
-
-            end=`date +%s.%N`
-            runtime=$( echo "1000 * ($end - $start)" | bc -l )
-            runtime=$( printf %.0f $runtime )
-
-            if [[ $exit_status -eq 0 || $exit_status -eq 124 ]]; then
-              if [[ $exit_status -eq 0 ]]; then
-                result="unknown"
-              else
-                result="timeout"
-              fi
-              for res in $output; do
-                if [[ $res == *sat || $res == YES || $res == NO || $res == WORST_CASE* ]]; then
-                  result=$res
-                fi
-              done
-            else
-              result="error"
-            fi
-
-            printf "${result} after ${runtime}ms\n"
-
-            echo -e "{\"name\": \"$filename\", \"result\": \"$result\", \"runtime\": \"$runtime\"}" >> ${filename}.json
-          }
-
-          # make 'benchmark' available for 'parallel'
-          export -f benchmark
-
-          # permissions are not preserved for artifacts:
-          chmod +x /usr/local/bin/solver
-
-          cd benchmarks
-          bench=()
-          if [ ${{ inputs.benchmarks }} = "tpdb-complexity" ]; then
-            readarray -d '' bench < <(find * -name "*.koat" -print0)
-          elif [[ ${{ inputs.benchmarks }} =~ tpdb-ari-* ]]; then
-            readarray -d '' bench < <(find * -name "*.ari" -print0)
-          else
-            readarray -d '' bench < <(find * -name "*.smt2" -print0)
-          fi
-
-          # sort the array of benchmarks
-          IFS=$'\n' sorted=($(sort <<<"${bench[*]}"))
-          unset IFS
-
-          my_bench=()
-          i=$CI_INDEX
-          while [[ $i -lt ${#sorted[@]} ]]; do
-            my_bench+=(${sorted[i]})
-            i=$(( i+CI_TOTAL ))
-          done
-
-          if [[ 0 -eq $CI_INDEX ]]; then
-             echo $VERSION > solver.version
-          fi
-
-          if [[ ${{ inputs.config }} == koat* ]]; then
-            # no parallelism for koat
-            for b in "${my_bench[@]}"; do
-              benchmark $b
-            done
-          else
-            # execute benchmarks in parallel
-            parallel benchmark ::: ${my_bench[@]}
-          fi
-
+        run: ./actions/scripts/run_benchmarks.sh "--mode ${{ inputs.mode }} --engine ${{ inputs.engine }} --direction ${{ inputs.direction }} ${{ inputs.args }}"
         env:
           CI_TOTAL: ${{ matrix.ci_total }}
           CI_INDEX: ${{ matrix.ci_index }}
+          TIMEOUT: ${{ inputs.timeout }}
+          BENCHMARKS: ${{ inputs.benchmarks }}
 
       - name: Upload Benchmark Results
         uses: actions/upload-artifact@master
@@ -327,10 +170,13 @@ jobs:
           declare -A results
           VERSION=$(cat ${{ inputs.benchmarks }}-0/solver.version)
           echo "VERSION=${VERSION}" >> $GITHUB_ENV
-          results="./benchmarks/${{ inputs.benchmarks }}/${{ inputs.timeout }}/${{ inputs.config }}-$VERSION.json"
+          results="./benchmarks/${{ inputs.benchmarks }}/${{ inputs.timeout }}/${{ inputs.engine }}-$VERSION.json"
           echo -e "{" > $results
           echo -e "\t\"benchmarks\": \"${{ inputs.benchmarks }}\"," >> $results
-          echo -e "\t\"config\": \"${{ inputs.config }}\"," >> $results
+          echo -e "\t\"goal\": \"${{ inputs.goal }}\"," >> $results
+          echo -e "\t\"engine\": \"${{ inputs.engine }}\"," >> $results
+          echo -e "\t\"direction\": \"${{ inputs.direction }}\"," >> $results
+          echo -e "\t\"args\": \"${{ inputs.args }}\"," >> $results
           echo -e "\t\"branch\": \"${{ github.ref_name }}\"," >> $results
           echo -e "\t\"version\": \"$VERSION\"," >> $results
           echo -e "\t\"timeout\": \"${{ inputs.timeout }}\"," >> $results
@@ -350,4 +196,4 @@ jobs:
            author_email: florian.frohn@cs.rwth-aachen.de
            fetch: false
            pull: '--rebase --autostash'
-           message: 'benchmark results; config ${{ inputs.config }}; benchmarks: ${{ inputs.benchmarks }}'
+           message: 'benchmark results; engine ${{ inputs.engine }}; benchmarks: ${{ inputs.benchmarks }}'

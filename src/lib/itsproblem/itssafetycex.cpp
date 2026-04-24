@@ -3,62 +3,24 @@
 #include "vector.hpp"
 #include "smtfactory.hpp"
 
-#include <assert.h>
+#include <cassert>
 
-ITSSafetyCex::ITSSafetyCex(ITSPtr its): ITSCex(its) {}
+ITSSafetyCex::ITSSafetyCex(const ITSPtr& its): ITSCex(its) {}
 
-bool ITSSafetyCex::try_step(const RulePtr trans, const Model &next) {
-    const auto last {states.back()};
-    auto solver {SmtFactory::modelBuildingSolver(Logic::QF_NAT)};
-    const auto last_subs {last.toSubs()};
-    solver->add(last_subs(trans->getGuard()));
-    const auto &up{trans->getUpdate()};
-    for (const auto &x : its->getVars()) {
-        if (theory::isProgVar(x) && next.contains(x)) {
-            solver->add(theory::mkEq(theory::toExpr(next.get(x)), last_subs(up.get(x))));
-        }
-    }
-    if (solver->check() == SmtResult::Sat) {
-        const auto new_last{last.unite(solver->model())};
-        states.pop_back();
-        states.push_back(new_last);
-        auto new_next{next};
-        for (const auto &x : its->getVars()) {
-            if (theory::isProgVar(x) && !new_next.contains(x)) {
-                std::visit(
-                    Overload{
-                        [&](const auto &x) {
-                            using Th = decltype(theory::theory(x));
-                            new_next.put<Th>(x, new_last.eval<Th>(up.get<Th>(x)));
-                        }},
-                    x);
-            }
-        }
-        states.push_back(new_next);
-        transitions.push_back(trans);
-        return true;
-    }
-    return false;
+void ITSSafetyCex::do_step(const RulePtr& trans, const ModelPtr &next) {
+    states.push_back(next);
+    transitions.push_back(trans);
 }
 
-void ITSSafetyCex::set_initial_state(const Model &m) {
+void ITSSafetyCex::set_initial_state(const ModelPtr &m) {
     assert(transitions.empty());
     states.clear();
     states.push_back(m);
 }
 
-bool ITSSafetyCex::try_final_transition(const RulePtr trans) {
-    assert(trans->getUpdate().get<Arith>(its->getLocVar()) == arith::mkConst(its->getSink()));
-    auto solver {SmtFactory::modelBuildingSolver(Logic::QF_NAT)};
-    auto &last {states.back()};
-    solver->add(last.toSubs()(trans->getGuard()));
-    if (solver->check() == SmtResult::Sat) {
-        last = last.unite(solver->model());
-        transitions.push_back(trans);
-        return true;
-    } else {
-        return false;
-    }
+void ITSSafetyCex::add_final_transition(const RulePtr& trans) {
+    assert(trans->getUpdate().getConst(its->getLocVar()) == arith::mkConst(its->getSink()));
+    transitions.push_back(trans);
 }
 
 std::ostream& operator<<(std::ostream &s, const ITSSafetyCex &cex) {
@@ -103,13 +65,17 @@ std::ostream& operator<<(std::ostream &s, const ITSSafetyCex &cex) {
             }
         }
         s << "\ncounterexample:" << std::endl;
+        VarSet prog_vars;
         for (size_t i = 0; i < cex.transitions.size(); ++i) {
             const auto &trans{cex.transitions.at(i)};
-            const auto vars{trans->vars()};
-            const auto projection{cex.states.at(i).project([&](const auto &x) {
-                return theory::isProgVar(x) || vars.contains(x);
-            })};
-            s << "\t" << projection << "\n\t-" << trans->getId() << "->\n";
+            auto vars{trans->vars()};
+            for (const auto& x: vars) {
+                if (theory::isProgVar(x)) {
+                    prog_vars.insert(x);
+                }
+            }
+            vars.insertAll(prog_vars);
+            s << "\t" << cex.states.at(i)->toString(vars) << "\n\t-" << trans->getId() << "->\n";
         }
         s << "\terr";
     }
@@ -120,7 +86,7 @@ size_t ITSSafetyCex::num_states() const {
     return states.size();
 }
 
-Model ITSSafetyCex::get_state(const size_t i) const {
+ModelPtr ITSSafetyCex::get_state(const size_t i) const {
     return states.at(i);
 }
 
@@ -154,17 +120,13 @@ ITSSafetyCex ITSSafetyCex::replace_rules(const linked_hash_map<RulePtr, RulePtr>
     for (const auto &[x, y] : recurrent_set) {
         res.add_recurrent_set(map.get(y).value_or(y), map.get(x).value_or(x));
     }
-    res.set_initial_state(states.front().project(theory::isProgVar));
+    res.set_initial_state(states.front());
     for (size_t i = 1; i < num_states(); ++i) {
         auto trans{transitions.at(i - 1)};
-        auto state{states.at(i).project(theory::isProgVar)};
-        if (!res.try_step(map.get(trans).value_or(trans), state)) {
-            throw std::logic_error("replace_rules failed");
-        }
+        auto state{states.at(i)};
+        res.do_step(map.get(trans).value_or(trans), state);
     }
     const auto trans{transitions.back()};
-    if (!res.try_final_transition(map.get(trans).value_or(trans))) {
-        throw std::logic_error("replace_rules failed");
-    }
+    res.add_final_transition(map.get(trans).value_or(trans));
     return res;
 }

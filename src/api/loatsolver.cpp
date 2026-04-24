@@ -10,7 +10,7 @@
 
 #include <stdexcept>
 
-void LoatSolver::setParameter(DynamicParameterKey key, const std::any &value)
+void LoatSolver::setParameter(const DynamicParameterKey key, const std::any &value)
 {
     // Try setting the option
     try
@@ -18,14 +18,13 @@ void LoatSolver::setParameter(DynamicParameterKey key, const std::any &value)
         m_config.getDynamic().set(key, value);
     }
     // Pass the exception through the layer
-    catch (const std::exception &e)
+    catch (const std::exception&)
     {
         throw;
     }
 }
 
-void LoatSolver::refreshConfig()
-{
+void LoatSolver::refreshConfig() const {
     // Apply the current config into the internal global config
     m_config.applyToGlobalConfig();
 }
@@ -104,7 +103,7 @@ LoatResult LoatSolver::check()
     std::optional<ITSSafetyCex> its_cex;
 
     // Create and apply preprocessor
-    auto preprocessor = std::make_shared<Preprocessor>(m_its);
+    const auto preprocessor = std::make_shared<Preprocessor>(m_its);
     std::cout << "[LoAT] Running preprocessor..." << std::endl;
     auto res = preprocessor->preprocess();
     std::cout << "[LoAT] Preprocessor result: "
@@ -159,7 +158,7 @@ LoatResult LoatSolver::check()
             {
                 adcl::ADCL r(m_its, [&](const ITSCpxCex &) {});
                 res = r.analyze();
-                std::cout << "[LoAT] ADCL result: " << (int)res << "\n";
+                std::cout << "[LoAT] ADCL result: " << static_cast<int>(res) << "\n";
 
                 if (Config::Analysis::model && !Config::Analysis::complexity() && res == SmtResult::Unsat)
                 {
@@ -176,7 +175,7 @@ LoatResult LoatSolver::check()
             {
                 BMC bmc(m_its, Config::Analysis::engine == Config::Analysis::KIND);
                 res = bmc.analyze();
-                std::cout << "[LoAT] BMC/KIND result: " << (int)res << "\n";
+                std::cout << "[LoAT] BMC/KIND result: " << static_cast<int>(res) << "\n";
 
                 if (Config::Analysis::model)
                 {
@@ -200,7 +199,7 @@ LoatResult LoatSolver::check()
             {
                 ABMC abmc(m_its);
                 res = abmc.analyze();
-                std::cout << "[LoAT] ABMC result: " << (int)res << "\n";
+                std::cout << "[LoAT] ABMC result: " << static_cast<int>(res) << "\n";
 
                 if (Config::Analysis::model)
                 {
@@ -224,7 +223,7 @@ LoatResult LoatSolver::check()
             {
                 TRL trl(m_its, Config::trp);
                 res = trl.analyze();
-                std::cout << "[LoAT] TRL result: " << (int)res << "\n";
+                std::cout << "[LoAT] TRL result: " << static_cast<int>(res) << "\n";
 
                 if (Config::Analysis::model)
                 {
@@ -248,7 +247,7 @@ LoatResult LoatSolver::check()
             {
                 ADCLSat adcl(m_its, Config::trp);
                 res = adcl.analyze();
-                std::cout << "[LoAT] ADCLSAT result: " << (int)res << "\n";
+                std::cout << "[LoAT] ADCLSAT result: " << static_cast<int>(res) << "\n";
 
                 if (Config::Analysis::model)
                 {
@@ -257,7 +256,7 @@ LoatResult LoatSolver::check()
                         std::cout << "[LoAT] ERROR: Model requested from ADCLSAT (not supported)\n";
                         throw std::logic_error("Model is not supported for ADCLSAT");
                     }
-                    else if (res == SmtResult::Unsat)
+                    if (res == SmtResult::Unsat)
                     {
                         std::cout << "[LoAT] Getting CEX from ADCLSAT\n";
                         its_cex = adcl.get_cex();
@@ -311,8 +310,6 @@ LoatResult LoatSolver::check()
         throw std::invalid_argument("[LoAT] Unexpected type of the result");
     }
 }
-
-#include <stdexcept>
 
 LoatModel LoatSolver::getModel()
 {

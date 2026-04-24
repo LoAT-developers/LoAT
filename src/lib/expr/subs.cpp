@@ -1,27 +1,25 @@
 #include "subs.hpp"
 
-Subs::It Subs::Iterator::begin(size_t i) const {
+Subs::It Subs::Iterator::begin(const size_t i) const {
     return beginImpl(i);
 }
 
-Subs::It Subs::Iterator::end(size_t i) const {
+Subs::It Subs::Iterator::end(const size_t i) const {
     return endImpl(i);
 }
 
-Subs::Pair Subs::Iterator::getCurrent() const {
+std::optional<Subs::Pair> Subs::Iterator::getCurrent() const {
     return getCurrentImpl<0>();
 }
 
-Subs::Iterator::Iterator(const Subs &subs, const It &ptr) : subs(subs), ptr(ptr) {}
+Subs::Iterator::Iterator(const Subs &subs, const It &ptr) : subs(&subs), ptr(ptr), current(getCurrent()) {}
 
-Subs::Iterator::reference Subs::Iterator::operator*() {
-    current = getCurrent();
+Subs::Iterator::reference Subs::Iterator::operator*() const {
     return *current;
 }
 
-Subs::Iterator::pointer Subs::Iterator::operator->() {
-    current = getCurrent();
-    return &(*current);
+Subs::Iterator::pointer Subs::Iterator::operator->() const {
+    return &*current;
 }
 
 void Subs::Iterator::increment() {
@@ -31,36 +29,37 @@ void Subs::Iterator::increment() {
 // Prefix increment
 Subs::Iterator& Subs::Iterator::operator++() {
     increment();
-    while (ptr.index() + 1 < num_theories && ptr == end(ptr.index())) {
+    while (ptr.index() + 1 < variants && ptr == end(ptr.index())) {
         ptr = begin(ptr.index() + 1);
     }
+    current = getCurrent();
     return *this;
 }
 
 // Postfix increment
 Subs::Iterator Subs::Iterator::operator++(int) {
     Iterator tmp = *this;
-    ++(*this);
+    ++*this;
+    current = getCurrent();
     return tmp;
 }
 
 bool operator==(const Subs::Iterator& a, const Subs::Iterator& b) {
     return a.ptr == b.ptr;
-};
+}
 
 Subs::Iterator Subs::end() const {
-    return Subs::Iterator(*this, std::get<num_theories - 1>(t).end());
+    return {*this, std::get<variants - 1>(t).end()};
 }
 
 template <size_t I = 0>
-inline Subs::Iterator beginImpl(const Subs &s) {
-    if constexpr (I < num_theories) {
+Subs::Iterator beginImpl(const Subs &s) {
+    if constexpr (I < Subs::variants) {
         const auto& x = s.get<I>();
         if (x.empty()) {
             return beginImpl<I+1>(s);
-        } else {
-            return Subs::Iterator(s, x.begin());
         }
+        return Subs::Iterator(s, x.begin());
     } else {
         return s.end();
     }
@@ -71,9 +70,9 @@ Subs::Iterator Subs::begin() const {
 }
 
 template<std::size_t I = 0>
-inline void projectImpl(const Subs &s, Subs& res, const VarSet &vars) {
-    if constexpr (I < num_theories) {
-        res.get<I>() = s.get<I>().project(vars.template get<I>());
+void projectImpl(const Subs &s, Subs& res, const VarSet &vars) {
+    if constexpr (I < Subs::variants) {
+        res.get<I>() = s.get<I>().project(vars.get<I>());
         projectImpl<I+1>(s, res, vars);
     }
 }
@@ -85,8 +84,8 @@ Subs Subs::project(const VarSet &vars) const {
 }
 
 template<std::size_t I = 0>
-inline void projectImpl(const Subs &s, Subs& res, const std::function<bool(Var)> &keep) {
-    if constexpr (I < num_theories) {
+void projectImpl(const Subs &s, Subs& res, const std::function<bool(Var)> &keep) {
+    if constexpr (I < Subs::variants) {
         res.get<I>() = s.get<I>().project([&](const auto &x) {
             return keep(x);
         });
@@ -97,12 +96,12 @@ inline void projectImpl(const Subs &s, Subs& res, const std::function<bool(Var)>
 Subs Subs::project(const std::function<bool(Var)> &keep) const {
     Subs res;
     projectImpl(*this, res, keep);
-    return Subs(res);
+    return {res};
 }
 
 template<std::size_t I = 0>
-inline void putImpl(Subs &s, const Subs::Pair &p) {
-    if constexpr (I < num_theories) {
+void putImpl(Subs &s, const Subs::Pair &p) {
+    if constexpr (I < Subs::variants) {
         if (p.index() == I) {
             s.get<I>().put(std::get<I>(Subs::first(p)), std::get<I>(Subs::second(p)));
         } else {
@@ -115,31 +114,57 @@ void Subs::put(const Pair &p) {
     putImpl(*this, p);
 }
 
-template<std::size_t I = 0>
-inline void putImpl(Subs &s, const Var &x, const Expr &y) {
-    if constexpr (I < num_theories) {
-        if (x.index() == I) {
-            s.get<I>().put(std::get<I>(x), std::get<I>(y));
-        } else {
-            putImpl<I+1>(s, x, y);
-        }
-    }
+void Subs::put(const Bools::Var& var, const Bools::Expr& expr) {
+    std::get<Bools::Subs>(t).put(var, expr);
 }
 
-void Subs::put(const Var &x, const Expr &y) {
-    putImpl(*this, x, y);
+void Subs::put(const Arrays<Arith>::Var& var, const Arrays<Arith>::Expr& expr) {
+    std::get<Arrays<Arith>::Subs>(t).put(var, expr);
 }
 
-Subs::Subs(){}
+void Subs::writeConst(const Arrays<Arith>::Var& var, const Arith::Expr& expr) {
+    put(var, arrays::writeConst(expr));
+}
 
-Subs::Subs(Pair &p) {
+void Subs::update(const ArrayReadPtr<Arith>& read, const Arith::Expr& expr) {
+    put(read->var(), arrays::update(read, expr));
+}
+
+Subs::Subs(const Pair &p) {
     put(p);
 }
 
+Subs::Subs(const Renaming& r) {
+    for (const auto &p: r) {
+        theory::apply(p, [&](const auto &p) {
+            using Th = decltype(theory::theory(p.first));
+            put(p.first, Th::varToExpr(p.second));
+        });
+    }
+}
+
+Subs Subs::build(const Bools::Var& var, const Bools::Expr& expr) {
+    Subs subs;
+    subs.put(var, expr);
+    return subs;
+}
+
+Subs Subs::build(const Arrays<Arith>::Var& var, const Arrays<Arith>::Expr& expr) {
+    Subs subs;
+    subs.put(var, expr);
+    return subs;
+}
+
+Subs Subs::build(const ArrayReadPtr<Arith>& read, const Arith::Expr& expr) {
+    Subs subs;
+    subs.update(read, expr);
+    return subs;
+}
+
 template<std::size_t I = 0>
-inline void domainImpl(const Subs &s, VarSet &res) {
-    if constexpr (I < num_theories) {
-        res.template get<I>() = s.get<I>().domain();
+void domainImpl(const Subs &s, VarSet &res) {
+    if constexpr (I < Subs::variants) {
+        res.get<I>() = s.get<I>().domain();
         domainImpl<I+1>(s, res);
     }
 }
@@ -150,43 +175,26 @@ VarSet Subs::domain() const {
     return res;
 }
 
-template<std::size_t I = 0>
-inline Expr getImpl(const Subs &s, const Var &var) {
-    if constexpr (I >= num_theories) {
-        throw std::invalid_argument("variable not found");
-    } else if (var.index() == I) {
-        return s.get<I>().get(std::get<I>(var));
-    } else {
-        return getImpl<I+1>(s, var);
-    }
+Bools::Expr Subs::get(const Bools::Var& var) const {
+    return std::get<Bools::Subs>(t).get(var);
 }
 
-Expr Subs::get(const Var &var) const {
-    return getImpl(*this, var);
+Arrays<Arith>::Expr Subs::get(const Arrays<Arith>::Var& var) const {
+    return std::get<Arrays<Arith>::Subs>(t).get(var);
 }
 
-template<std::size_t I = 0>
-inline void uniteImpl(const Subs &fst, const Subs &snd, Subs &res) {
-    if constexpr (I < num_theories) {
-        res.get<I>() = fst.get<I>().unite(snd.get<I>());
-        uniteImpl<I+1>(fst, snd, res);
-    }
-}
-
-Subs Subs::unite(const Subs &that) const {
-    Subs res;
-    uniteImpl(*this, that, res);
-    return res;
+Arith::Expr Subs::getConst(const ArithVarPtr& var) const {
+    assert(var->dim() == 0);
+    return arrays::readConst(std::get<Arrays<Arith>::Subs>(t).get(var->var()));
 }
 
 template<std::size_t I = 0>
-inline bool changesImpl(const Subs &s, const Var &x) {
-    if constexpr (I < num_theories) {
+bool changesImpl(const Subs &s, const Var &x) {
+    if constexpr (I < Subs::variants) {
         if (x.index() == I) {
             return s.get<I>().changes(std::get<I>(x));
-        } else {
-            return changesImpl<I+1>(s, x);
         }
+        return changesImpl<I+1>(s, x);
     } else {
         return false;
     }
@@ -197,8 +205,8 @@ bool Subs::changes(const Var &x) const {
 }
 
 template<std::size_t I = 0>
-inline void eraseImpl(Subs &subs, const Var &x) {
-    if constexpr (I < num_theories) {
+void eraseImpl(Subs &subs, const Var &x) {
+    if constexpr (I < Subs::variants) {
         if (x.index() == I) {
             subs.get<I>().erase(std::get<I>(x));
         } else {
@@ -212,10 +220,10 @@ void Subs::erase(const Var &x) {
 }
 
 template<std::size_t I = 0>
-inline void eraseImpl(Subs &subs, const VarSet &xs) {
-    if constexpr (I < num_theories) {
+void eraseImpl(Subs &subs, const VarSet &xs) {
+    if constexpr (I < Subs::variants) {
         auto &s = subs.get<I>();
-        for (const auto &x: xs.template get<I>()) {
+        for (const auto &x: xs.get<I>()) {
             s.erase(x);
         }
         eraseImpl<I+1>(subs, xs);
@@ -227,8 +235,8 @@ void Subs::erase(const VarSet &xs) {
 }
 
 template<std::size_t I = 0>
-inline void printImpl(const Subs &subs, std::ostream &s, bool first = true) {
-    if constexpr (I < num_theories) {
+void printImpl(const Subs &subs, std::ostream &s, bool first = true) {
+    if constexpr (I < Subs::variants) {
         const auto &m {subs.get<I>()};
         if (!m.empty()) {
             if (first) {
@@ -238,7 +246,7 @@ inline void printImpl(const Subs &subs, std::ostream &s, bool first = true) {
             }
             s << m;
         }
-        if constexpr (I + 1 < num_theories) {
+        if constexpr (I + 1 < Subs::variants) {
             printImpl<I+1>(subs, s, first);
         }
     }
@@ -253,14 +261,13 @@ size_t Subs::hash() const {
 }
 
 template<std::size_t I = 0>
-inline bool containsImpl(const Subs &s, const Var &var) {
-    if constexpr (I < num_theories) {
+bool containsImpl(const Subs &s, const Var &var) {
+    if constexpr (I < Subs::variants) {
         if (var.index() == I) {
             const auto &subs = s.get<I>();
             return subs.contains(std::get<I>(var));
-        } else {
-            return containsImpl<I+1>(s, var);
         }
+        return containsImpl<I+1>(s, var);
     } else {
         return false;
     }
@@ -286,150 +293,124 @@ bool Subs::isPoly() const {
     return std::apply([](const auto&... x){return (true && ... && x.isPoly());}, t);
 }
 
-template<std::size_t I = 0>
-inline Bools::Expr subsImpl(const Subs &s, const Lit &lit) {
-    if constexpr (I < num_theories) {
-        if (lit.index() == I) {
-            using T = typename std::tuple_element_t<I, Theories>;
-            if constexpr (std::same_as<T, Bools>) {
-                return s.template get<T>().subs(std::get<I>(lit));
-            } else {
-                return bools::mkLit(std::get<I>(lit)->subs(s.template get<T>()));
-            }
-        } else {
-            return subsImpl<I+1>(s, lit);
-        }
-    } else {
-        throw std::logic_error("unknown theory");
-    }
-}
-
-Bools::Expr Subs::operator()(const Lit &lit) const {
-    return subsImpl<0>(*this, lit);
-}
-
-Bools::Expr Subs::operator()(const Bools::Expr e) const {
-    return e->map([&](const auto &lit) {
-        return (*this)(lit);
+bool Subs::isIdempotent() const {
+    return theory::all_of(t, [&](const auto& subs) {
+        return std::ranges::all_of(subs, [&](const auto& p) {
+            return Expr(p.second) == Expr((*this)(p.second));
+        });
     });
 }
 
-Expr Subs::operator()(const Expr &expr) const {
-    return std::visit(
-        Overload{
-            [&](const Arith::Expr expr) {
-                return Expr{get<Arith>()(expr)};
-            },
-            [&](const Bools::Expr expr) {
-                return Expr{(*this)(expr)};
-            }
-        }, expr);
+Bools::Expr Subs::operator()(const Lit& lit) const {
+    return theory::apply(
+        lit,
+        [&](const Bools::Lit& lit) {
+            return lit->subs(*this);
+        },
+        [&](const auto& lit) -> Bools::Expr {
+            return bools::mkLit(lit->subs(*this));
+        });
 }
 
-/**
- * that.concat(this)
- */
-BoolSubs Subs::tac(const BoolSubs &that) const {
-    BoolSubs res;
-    for (const auto &p: that) {
-        res.put(p.first, (*this)(p.second));
-    }
-    return res;
-}
-
-template<std::size_t I = 0>
-inline void concatImpl(const Subs &fst, const Subs &snd, Subs &res) {
-    if constexpr (I < num_theories) {
-        if constexpr (std::same_as<std::tuple_element_t<I, Theories>, Bools>) {
-            res.get<I>() = snd.tac(fst.get<I>());
-        } else {
-            res.get<I>() = fst.get<I>().concat(snd.get<I>());
+Expr Subs::operator()(const Expr& expr) const {
+    return theory::apply(
+        expr,
+        [&](const Bools::Expr& expr) -> Expr {
+            return expr->subs(*this);
+        },
+        [&](const auto& expr) -> Expr {
+            return expr->subs(*this);
         }
-        concatImpl<I+1>(fst, snd, res);
-    }
+    );
 }
 
 Subs Subs::concat(const Subs &that) const {
     Subs res;
-    concatImpl(*this, that, res);
+    theory::iter(t, [&]<typename T>(const T& t) {
+        std::get<T>(res.t) = t.concat(that);
+    });
     return res;
 }
 
 BoolSubs concat(const BoolSubs &fst, const Renaming &snd) {
     BoolSubs res;
     for (const auto &[k,v]: fst) {
-        res.put(k, snd(v));
+        res.put(k, v->renameVars(snd));
     }
     return res;
-}
-
-template<std::size_t I = 0>
-inline void concatImpl(const Subs &fst, const Renaming &snd, Subs &res) {
-    if constexpr (I < num_theories) {
-        if constexpr (std::same_as<std::tuple_element_t<I, Theories>, Bools>) {
-            res.get<I>() = concat(fst.get<I>(), snd);
-        } else {
-            res.get<I>() = fst.get<I>().concat(snd.get<I>());
-        }
-        concatImpl<I+1>(fst, snd, res);
-    }
 }
 
 Subs Subs::concat(const Renaming &that) const {
     Subs res;
-    concatImpl(*this, that, res);
+    theory::iter(
+        t,
+        [&](const ArraySubs<Arith>& t) {
+            std::get<ArraySubs<Arith>>(res.t) = t.concat(that);
+        },
+        [&](const BoolSubs& t) {
+            std::get<BoolSubs>(res.t) = ::concat(t, that);
+        });
     return res;
-}
-
-template<std::size_t I = 0>
-inline void composeImpl(const Subs &fst, const Subs &snd, Subs &res) {
-    if constexpr (I < num_theories) {
-        if constexpr (std::same_as<std::tuple_element_t<I, Theories>, Bools>) {
-            res.get<I>() = snd.tac(fst.get<I>()).unite(snd.get<I>());
-        } else {
-            res.get<I>() = fst.get<I>().compose(snd.get<I>());
-        }
-        composeImpl<I+1>(fst, snd, res);
-    }
 }
 
 Subs Subs::compose(const Subs &that) const {
     Subs res;
-    composeImpl(*this, that, res);
+    theory::iter(
+        t,
+        [&](const ArraySubs<Arith>& t) {
+            std::get<ArraySubs<Arith>>(res.t) = t.compose(that.get<Arrays<Arith>>());
+        },
+        [&](const BoolSubs& t) {
+            std::get<BoolSubs>(res.t) = t.concat(that).unite(that.get<Bools>());
+        });
     return res;
 }
 
-template<std::size_t I = 0>
-inline void collectDomainImpl(const Subs &subs, VarSet &res) {
-    if constexpr (I < num_theories) {
-        subs.get<I>().collectDomain(res.get<I>());
-        collectDomainImpl<I+1>(subs, res);
+Subs Subs::unite(const Subs& that) const {
+    Subs res = *this;
+    for (const auto& p : that) {
+        theory::apply(
+            p,
+            [&](const auto& p) {
+                res.put(p.first, p.second);
+            });
     }
+    return res;
 }
 
-void Subs::collectDomain(VarSet &res) const {
-    collectDomainImpl<0>(*this, res);
-}
-
-template<std::size_t I = 0>
-inline void collectCoDomainVarsImpl(const Subs &subs, VarSet &res) {
-    if constexpr (I < num_theories) {
-        if constexpr (theory::is<I, Bools>()) {
-            subs.get<I>().collectCoDomainVars(res);
-        } else {
-            subs.get<I>().collectCoDomainVars(res.get<I>());
+void Subs::collectCoDomainVars(VarSet& res) const {
+    theory::iter(
+        t,
+        [&](const Arrays<Arith>::Subs& t) {
+            t.collectCoDomainVars(res);
+        },
+        [&](const BoolSubs& t) {
+            t.collectCoDomainVars(res);
         }
-        collectCoDomainVarsImpl<I+1>(subs, res);
-    }
-}
-
-void Subs::collectCoDomainVars(VarSet &res) const {
-    collectCoDomainVarsImpl<0>(*this, res);
+    );
 }
 
 VarSet Subs::coDomainVars() const {
     VarSet res;
     collectCoDomainVars(res);
+    return res;
+}
+
+void Subs::collectCoDomainCells(CellSet& res) const {
+    theory::iter(
+        t,
+        [&](const Arrays<Arith>::Subs& t) {
+            t.collectCoDomainCells(res);
+        },
+        [&](const BoolSubs& t) {
+            t.collectCoDomainCells(res);
+        }
+    );
+}
+
+CellSet Subs::coDomainCells() const {
+    CellSet res;
+    collectCoDomainCells(res);
     return res;
 }
 
@@ -442,24 +423,22 @@ VarSet Subs::vars() const {
 void Subs::collectVars(VarSet &vars) const {
     for (const auto &[x,y]: *this) {
         vars.insert(x);
-        theory::collectVars(y, vars);
+        theory::apply(y, [&](const auto& y) {y->collectVars(vars);});
     }
 }
 
 Subs Subs::Empty {};
 
 Var Subs::first(const Pair &p) {
-    return std::visit(
-        [](const auto &p){
-            return Var(p.first);
-        }, p);
+    return theory::apply(p, [](const auto &p) {
+        return Var(p.first);
+    });
 }
 
-Expr Subs::second(const Pair &p) {
-    return std::visit(
-        [](const auto &p) {
-            return Expr(p.second);
-        }, p);
+std::variant<Arrays<Arith>::Expr, Bools::Expr> Subs::second(const Pair &p) {
+    return theory::apply(p, [](const auto &p) {
+        return std::variant<Arrays<Arith>::Expr, Bools::Expr>(p.second);
+    });
 }
 
 std::ostream& operator<<(std::ostream &s, const Subs &subs) {

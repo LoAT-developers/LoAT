@@ -64,8 +64,6 @@ public:
         // The SMT solver backend is chosen once and affects all results.
         enum SmtSolver
         {
-            Z3,
-            CVC5,
             Swine,
             Yices,
             Heuristic

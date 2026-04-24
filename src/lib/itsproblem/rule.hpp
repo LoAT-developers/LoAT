@@ -4,14 +4,15 @@
 
 #include "theory.hpp"
 #include "subs.hpp"
-#include "renaming.hpp"
 
 class Rule;
 
 using RulePtr = cpp::not_null<std::shared_ptr<const Rule>>;
 
 class Rule {
-private:
+
+    friend class ConsHash<Rule, Bools::Expr, Subs>;
+
     Bools::Expr guard;
     Subs update;
     unsigned id;
@@ -26,54 +27,65 @@ private:
         size_t operator()(const std::tuple<Bools::Expr, Subs> &args) const noexcept;
     };
 
-    static ConsHash<Rule, Rule, CacheHash, CacheEqual, Bools::Expr, Subs> cache;
+    static ConsHash<Rule, Bools::Expr, Subs> cache;
 
 public:
 
-    Rule(const Bools::Expr guard, const Subs &update);
+    Rule(Bools::Expr  guard, Subs update);
 
     ~Rule();
 
-    static RulePtr mk(const Bools::Expr guard, const Subs up);
+    CellSet cells() const;
 
-    const Bools::Expr getGuard() const;
+    static RulePtr mk(const Bools::Expr& guard, const Subs& up);
 
-    template <ITheory Th>
-    const typename Th::Subs& getUpdate() const {
-        return update.get<Th>();
-    }
+    Bools::Expr getGuard() const;
 
     const Subs& getUpdate() const;
 
-    RulePtr subs(const Subs &subs) const;
+    template <ITheory Th>
+    const Th::Subs& getUpdate() const {
+        return update.get<Th>();
+    }
+
+    RulePtr subs(const Subs&) const;
 
     RulePtr renameVars(const Renaming &subs) const;
 
-    RulePtr withGuard(const Bools::Expr guard) const;
+    RulePtr withGuard(const Bools::Expr& guard) const;
 
     RulePtr withUpdate(const Subs &up) const;
 
     VarSet vars() const;
 
     void collectVars(VarSet &vars) const;
+    void collectCells(CellSet &cells) const;
 
     RulePtr chain(const RulePtr &that) const;
 
     bool isPoly() const;
 
+    bool isLinear() const;
+
     unsigned getId() const;
 
     bool isDeterministic() const;
 
+    bool hasNonTrivialNondeterminism() const;
+
     RulePtr renameTmpVars() const;
 
+    bool isHavoced(const Var&) const;
+
     size_t hash() const;
+
+    RulePtr syntacticImplicant(ModelPtr) const;
 
 };
 
 std::ostream& operator<<(std::ostream &s, const Rule &rule);
 
-using Implicant = std::pair<RulePtr, Bools::Expr>;
+using Implicant = std::pair<RulePtr, RulePtr>;
 
 std::ostream& operator<<(std::ostream &s, const RulePtr &idx);
 std::ostream& operator<<(std::ostream &s, const Implicant &imp);

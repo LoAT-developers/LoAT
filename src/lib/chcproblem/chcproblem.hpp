@@ -13,6 +13,9 @@ class FunApp;
 using FunAppPtr = cpp::not_null<std::shared_ptr<const FunApp>>;
 
 class FunApp {
+
+    friend class ConsHash<FunApp, std::string, std::vector<Expr>>;
+
     std::string pred;
     std::vector<Expr> args;
 
@@ -22,11 +25,11 @@ class FunApp {
     struct CacheHash {
         size_t operator()(const std::tuple<std::string, std::vector<Expr>> &args) const noexcept;
     };
-    static ConsHash<FunApp, FunApp, CacheHash, CacheEqual, std::string, std::vector<Expr>> cache;
+    static ConsHash<FunApp, std::string, std::vector<Expr>> cache;
 
 public:
 
-    FunApp(const std::string &pred, const std::vector<Expr> &args);
+    FunApp(std::string pred, const std::vector<Expr> &args);
     ~FunApp();
 
     static FunAppPtr mk(const std::string &pred, const std::vector<Expr> &args);
@@ -35,20 +38,12 @@ public:
     const std::string& get_pred() const;
     const std::vector<Expr>& get_args() const;
 
-    friend std::ostream& operator<<(std::ostream &s, const FunAppPtr);
+    friend std::ostream& operator<<(std::ostream &s, const FunAppPtr&);
     FunAppPtr subs(const Subs &subs) const;
     FunAppPtr rename_vars(const Renaming &) const;
 
-    template <ITheory T>
-    unsigned max_arity() const {
-        unsigned res{0};
-        for (const auto &x : args) {
-            if (std::holds_alternative<typename T::Expr>(x)) {
-                ++res;
-            }
-        }
-        return res;
-    }
+    size_t max_arity(const theory::Type& type) const;
+    size_t max_dim(theory::BaseType) const;
 };
 
 class Clause;
@@ -57,15 +52,15 @@ using ClausePtr = cpp::not_null<std::shared_ptr<const Clause>>;
 
 class Clause {
 
-private:
+    friend class ConsHash<Clause, std::vector<FunAppPtr>, Bools::Expr, std::optional<FunAppPtr>>;
 
-    std::optional<FunAppPtr> premise {};
+    std::vector<FunAppPtr> premise {};
     Bools::Expr constraint;
     std::optional<FunAppPtr> conclusion {};
 
-    friend std::ostream& operator<<(std::ostream &s, const ClausePtr f);
+    friend std::ostream& operator<<(std::ostream &s, const ClausePtr& c);
 
-    using Args = std::tuple<std::optional<FunAppPtr>, Bools::Expr, std::optional<FunAppPtr>>;
+    using Args = std::tuple<std::vector<FunAppPtr>, Bools::Expr, std::optional<FunAppPtr>>;
 
     struct CacheEqual {
         bool operator()(const Args &args1, const Args &args2) const noexcept;
@@ -73,19 +68,19 @@ private:
     struct CacheHash {
         size_t operator()(const Args &args) const noexcept;
     };
-    static ConsHash<Clause, Clause, CacheHash, CacheEqual, std::optional<FunAppPtr>, Bools::Expr, std::optional<FunAppPtr>> cache;
+    static ConsHash<Clause, std::vector<FunAppPtr>, Bools::Expr, std::optional<FunAppPtr>> cache;
 
 public:
 
-    Clause(const std::optional<FunAppPtr> premise, const Bools::Expr constraint, const std::optional<FunAppPtr> conclusion);
+    Clause(const std::vector<FunAppPtr>& premise, Bools::Expr  constraint, const std::optional<FunAppPtr>& conclusion);
     ~Clause();
 
-    static ClausePtr mk(const std::optional<FunAppPtr> premise, const Bools::Expr constraint, const std::optional<FunAppPtr> conclusion);
+    static ClausePtr mk(const std::vector<FunAppPtr>& premise, const Bools::Expr& constraint, const std::optional<FunAppPtr>& conclusion);
 
     bool is_fact() const;
     bool is_query() const;
-    bool is_left_linear() const;
-    std::optional<FunAppPtr> get_premise() const;
+    bool is_linear() const;
+    std::vector<FunAppPtr> get_premise() const;
     std::optional<FunAppPtr> get_conclusion() const;
     Bools::Expr get_constraint() const;
     VarSet vars() const;
@@ -93,41 +88,33 @@ public:
     ClausePtr rename_vars(const Renaming &) const;
     sexpresso::Sexp to_smtlib() const;
 
-    template <ITheory T>
-    unsigned max_arity() const {
-        const auto p_arity = premise ? (*premise)->max_arity<T>() : 0;
-        const auto c_arity = conclusion ? (*conclusion)->max_arity<T>() : 0;
-        return std::max(p_arity, c_arity);
-    }
+    size_t max_arity(const theory::Type& type) const;
+    size_t max_dim(theory::BaseType) const;
 };
+
+class CHCProblem;
+
+using CHCPtr = std::shared_ptr<CHCProblem>;
 
 class CHCProblem {
 
     linked_hash_set<ClausePtr> clauses;
-    friend std::ostream& operator<<(std::ostream &s, const CHCProblem&);
+    friend std::ostream& operator<<(std::ostream &s, const CHCPtr&);
+
+public:
 
     CHCProblem(const CHCProblem&) = delete;
     CHCProblem& operator=(const CHCProblem&) = delete;
 
-public:
-
     CHCProblem() = default;
 
-    void add_clause(const ClausePtr c);
-    void remove_clause(const ClausePtr c);
+    void add_clause(const ClausePtr& c);
+    void remove_clause(const ClausePtr& c);
     const linked_hash_set<ClausePtr> &get_clauses() const;
     sexpresso::Sexp to_smtlib() const;
-    CHCProblem reverse() const;
     linked_hash_map<std::string, std::vector<theory::Type>> get_signature() const;
+    bool is_linear() const;
 
-    template <ITheory T>
-    unsigned max_arity() const {
-        unsigned res{0};
-        for (const auto &c : clauses) {
-            res = std::max(res, c->max_arity<T>());
-        }
-        return res;
-    }
+    size_t max_arity(const theory::Type& type) const;
+    size_t max_dim(theory::BaseType) const;
 };
-
-using CHCPtr = std::shared_ptr<CHCProblem>;

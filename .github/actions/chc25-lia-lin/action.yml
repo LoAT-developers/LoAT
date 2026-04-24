@@ -1,0 +1,21 @@
+name: 'CHC Comp 25 LIA Lin benchmarks'
+
+inputs:
+  pat:
+    description: 'personal access token'
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+
+    - uses: actions/checkout@v6
+      with:
+        repository: LoAT-developers/chc-comp25-lia-lin
+        path: chc-comp25-lia-lin
+        token: ${{ inputs.pat }}
+
+    - run: |
+        mkdir benchmarks
+        mv chc-comp25-lia-lin/*.smt2 benchmarks
+      shell: bash

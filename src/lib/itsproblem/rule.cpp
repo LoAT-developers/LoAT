@@ -1,10 +1,14 @@
 #include "rule.hpp"
 
-ConsHash<Rule, Rule, Rule::CacheHash, Rule::CacheEqual, Bools::Expr, Subs> Rule::cache;
+#include <utility>
+
+#include "model.hpp"
+
+ConsHash<Rule, Bools::Expr, Subs> Rule::cache;
 
 unsigned Rule::next_id {0};
 
-Rule::Rule(const Bools::Expr guard, const Subs &update): guard(guard), update(update), id(next_id++) {}
+Rule::Rule(Bools::Expr  guard, Subs update): guard(std::move(guard)), update(std::move(update)), id(next_id++) {}
 
 size_t Rule::CacheHash::operator()(const std::tuple<Bools::Expr, Subs> &args) const noexcept {
     size_t seed {42};
@@ -21,7 +25,14 @@ Rule::~Rule() {
     cache.erase(guard, update);
 }
 
-RulePtr Rule::mk(const Bools::Expr guard, const Subs up) {
+CellSet Rule::cells() const {
+    CellSet res;
+    guard->collectCells(res);
+    update.collectCoDomainCells(res);
+    return res;
+}
+
+RulePtr Rule::mk(const Bools::Expr& guard, const Subs& up) {
     return cache.from_cache(guard, up);
 }
 
@@ -30,33 +41,44 @@ void Rule::collectVars(VarSet &vars) const {
     update.collectVars(vars);
 }
 
+void Rule::collectCells(CellSet& cells) const {
+    guard->collectCells(cells);
+    for (const auto& [k,v]: update) {
+        theory::apply(
+            v,
+            [&](const auto& v) {
+                v->collectCells(cells);
+            });
+    }
+}
+
 VarSet Rule::vars() const {
     VarSet res;
     collectVars(res);
     return res;
 }
 
-RulePtr Rule::subs(const Subs &subs) const {
-    return mk(subs(guard), update.concat(subs));
+RulePtr Rule::subs(const Subs& subs) const {
+    return mk(guard->subs(subs), update.concat(subs));
 }
 
 RulePtr Rule::renameVars(const Renaming &subs) const {
-    return mk(subs(guard), update.concat(subs));
+    return mk(guard->renameVars(subs), update.concat(subs));
 }
 
-RulePtr Rule::withGuard(const Bools::Expr guard) const {
+RulePtr Rule::withGuard(const Bools::Expr& guard) const {
     return mk(guard, update);
 }
 
-RulePtr Rule::withUpdate(const Subs &update) const {
-    return mk(guard, update);
+RulePtr Rule::withUpdate(const Subs &up) const {
+    return mk(guard, up);
 }
 
 RulePtr Rule::chain(const RulePtr &that) const {
-    return mk(guard && update(that->getGuard()), that->getUpdate().compose(update));
+    return mk(guard && that->getGuard()->subs(update), that->getUpdate().compose(update));
 }
 
-const Bools::Expr Rule::getGuard() const {
+Bools::Expr Rule::getGuard() const {
     return guard;
 }
 
@@ -71,22 +93,19 @@ unsigned Rule::getId() const {
 std::ostream& operator<<(std::ostream &s, const Rule &rule) {
     s << rule.getId() << ": ";
     s << rule.getGuard();
-    s << " /\\ ";
-    bool first = true;
-    for (const auto &[x,v] : rule.getUpdate()) {
-        if (first) {
-            first = false;
-        } else {
-            s << ", ";
-        }
-        s << x << "'";
-        s << " = " << v;
+    if (rule.getUpdate().empty()) {
+        return s;
     }
-    return s;
+    s << " /\\ ";
+    return s << rule.getUpdate();
 }
 
 bool Rule::isPoly() const {
     return guard->isPoly() && update.isPoly();
+}
+
+bool Rule::isLinear() const {
+    return guard->isLinear() && update.isLinear();
 }
 
 std::ostream& operator<<(std::ostream &s, const RulePtr &idx) {
@@ -95,9 +114,9 @@ std::ostream& operator<<(std::ostream &s, const RulePtr &idx) {
 
 std::ostream& operator<<(std::ostream &s, const Implicant &imp) {
     s << imp.first->getId() << ": ";
-    const auto &up {imp.first->getUpdate()};
-    if (imp.second != top()) {
-        s << imp.second;
+    const auto &up {imp.second->getUpdate()};
+    if (imp.second->getGuard() != top()) {
+        s << imp.second->getGuard();
         if (!up.empty()) {
             s << " /\\ " << up;
         }
@@ -110,8 +129,47 @@ std::ostream& operator<<(std::ostream &s, const Implicant &imp) {
 }
 
 bool Rule::isDeterministic() const {
-    const auto vs {vars()};
-    return !std::any_of(vs.begin(), vs.end(), theory::isTempVar);
+    return !std::ranges::any_of(vars(), theory::isTempVar);
+}
+
+bool Rule::hasNonTrivialNondeterminism() const {
+    const auto gvars = guard->vars();
+    // temporary variables in the guard are considered to be non-trivial
+    if (std::ranges::any_of(gvars, theory::isTempVar)) {
+        return true;
+    }
+    for (const auto &[k,v]: update) {
+        if (theory::apply(v, [&](const auto v) {
+            return std::ranges::any_of(v->vars(), theory::isTempVar);
+        })) {
+            // variables that are overwritten with non-deterministic values must not occur in the guard...
+            if (gvars.contains(k)) {
+                return true;
+            }
+            // ...or in the updates of other variables
+            for (const auto &p: update) {
+                if (theory::apply(p, [&](const auto &p) {
+                    const auto &[k2,v2] = p;
+                    return Var(k) != Var(k2) && v2->vars().contains(k);
+                })) {
+                    return true;
+                }
+            }
+        }
+        if (theory::apply(v, [&](const Arrays<Arith>::Expr& v) {
+            // for arrays, the right-hand side of the assignment must not have non-trivial non-determinism
+            return v->hasNonTrivialNondeterminism();
+        }, [&](const Bools::Expr& v) {
+            // for booleans, just deterministic assignments and assignments of the form b := tmp are allowed
+            if (std::ranges::any_of(v->vars(), theory::isTempVar)) {
+                return !v->isVar() || !v->isVar().value()->isTempVar() || v->isVar().value()->dim() > 0;
+            }
+            return true;
+        })) {
+            return true;
+        }
+    }
+    return false;
 }
 
 size_t Rule::hash() const {
@@ -121,6 +179,25 @@ size_t Rule::hash() const {
     return hash;
 }
 
+RulePtr Rule::syntacticImplicant(ModelPtr m) const {
+    LitSet lits;
+    const auto sat = m->syntacticImplicant(guard, lits);
+    assert(sat);
+    Subs u;
+    for (const auto& p: update) {
+        theory::apply(
+            p,
+            [&](const std::pair<Bools::Var, Bools::Expr>& p) {
+                u.put(p);
+            },
+            [&](const auto& p) {
+                const auto& [k,v] = p;
+                u.put(k, v->syntacticImplicant(m, lits));
+            });
+    }
+    return mk(bools::mkAnd(lits), u);
+}
+
 size_t hash_value(const Rule &r) {
     return r.hash();
 }
@@ -128,9 +205,32 @@ size_t hash_value(const Rule &r) {
 RulePtr Rule::renameTmpVars() const {
     Renaming s;
     for (const auto &x: vars()) {
-        if (theory::isTempVar(x)) {
-            s.insert(x, theory::next(x));
-        }
+        theory::apply(
+            x,
+            [&](const auto& x) {
+                using T = decltype(theory::theory(x));
+                if (x->isTempVar()) {
+                    s.insert(x, T::next(x->dim()));
+                }
+            });
     }
     return renameVars(s);
+}
+
+bool Rule::isHavoced(const Var& x) const {
+    return theory::apply(
+        x,
+        [&](const auto& x) {
+            const auto updated = update.get(x);
+            if (const auto y = updated->isVar()) {
+                return (*y)->isTempVar() && !guard->vars().contains(*y) && std::ranges::all_of(
+                    update, [&](const auto& p) {
+                        return Subs::first(p) == Var(x) || theory::apply(Subs::second(p), [&](const auto& p) {
+                            return !p->vars().contains(*y);
+                        });
+                    });
+            }
+            return false;
+        }
+    );
 }

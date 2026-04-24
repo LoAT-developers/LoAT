@@ -8,11 +8,10 @@ namespace LimitSmtEncoding {
 
 struct ComplexityWitness {
     Complexity cpx;
-    ArithSubs subs;
-    Arith::Var param;
+    std::optional<ModelPtr> subs;
+    ArithVarPtr param;
 };
 
-ComplexityWitness applyEncoding(const Bools::Expr exp, const Arith::Expr cost, Complexity currentRes);
+ComplexityWitness applyEncoding(const Bools::Expr& expr, const Arith::Expr& cost, const Complexity& currentRes);
 
 }
-

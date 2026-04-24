@@ -3,35 +3,44 @@
 #include "exprconversioncontext.hpp"
 #include "theory.hpp"
 
-#include <sstream>
-#include <numeric>
-
 template<class Expr, class Formula, class ExprVec, class FormulaVec>
 class ExprConverter {
+
 public:
 
-    static Formula convert(const Bools::Expr e, ExprConversionContext<Expr, Formula, ExprVec, FormulaVec> &ctx) {
-        ExprConverter<Expr, Formula, ExprVec, FormulaVec> converter(ctx);
-        return converter.convertBoolEx(e);
+    static Formula convert(const Bools::Expr& e, ExprConversionContext<Expr, Formula, ExprVec, FormulaVec> &ctx) {
+        ExprConverter converter(ctx);
+        const auto res {converter.convertBoolEx(e)};
+        return res;
     }
 
-    static Expr convert(const Arith::Expr e, ExprConversionContext<Expr, Formula, ExprVec, FormulaVec> &ctx) {
-        ExprConverter<Expr, Formula, ExprVec, FormulaVec> converter(ctx);
-        return converter.convertEx(e);
+    static Expr convert(const Arith::Expr& e, ExprConversionContext<Expr, Formula, ExprVec, FormulaVec> &ctx) {
+        ExprConverter converter(ctx);
+        const auto res {converter.convertEx(e)};
+        return res;
     }
 
+    static Expr convert(const ArrayReadPtr<Arith>& e, ExprConversionContext<Expr, Formula, ExprVec, FormulaVec> &ctx) {
+        ExprConverter converter(ctx);
+        const auto res {converter.convertArrayRead(e)};
+        return res;
+    }
+
+    static Expr convert(const Arrays<Arith>::Expr& e, ExprConversionContext<Expr, Formula, ExprVec, FormulaVec> &ctx) {
+        ExprConverter converter(ctx);
+        const auto res {converter.convertArray(e)};
+        return res;
+    }
 
 protected:
-    ExprConverter(ExprConversionContext<Expr, Formula, ExprVec, FormulaVec> &context): context(context) {}
 
-    Formula convertBoolEx(const Bools::Expr e) {
+    explicit ExprConverter(ExprConversionContext<Expr, Formula, ExprVec, FormulaVec> &context): context(context) {}
+
+    Formula convertBoolEx(const Bools::Expr& e) {
         if (e->getTheoryLit()) {
             return std::visit(
                 Overload {
-                    [&](const Arith::Lit &lit) {
-                        return convertRelational(lit);
-                    },
-                    [&](const Bools::Lit &lit) {
+                    [&](const auto &lit) {
                         return convertLit(lit);
                     }
                 }, *e->getTheoryLit());
@@ -42,42 +51,40 @@ protected:
         }
         if (e->isAnd()) {
             return context.bAnd(vec);
-        } else {
-            assert(e->isOr());
-            return context.bOr(vec);
         }
+        assert(e->isOr());
+        return context.bOr(vec);
     }
 
-    Expr convertEx(const Arith::Expr e){
+    Expr convertEx(const Arith::Expr& e){
         return e->apply<Expr>(
             [&](const ArithConstPtr &r) {
                 if (const auto i{r->intValue()}) {
                     return context.getInt(*i);
-                } else {
-                    return context.getReal(*r->numerator()->intValue(), *r->denominator()->intValue());
                 }
+                return context.getReal(*r->numerator()->intValue(), *r->denominator()->intValue());
             },
-            [&](const Arith::Var x) {
-                return context.getVariable(x);
+            [&](const ArrayReadPtr<Arith>& x) {
+                return convertArrayRead(x);
             },
-            [&](const ArithAddPtr a) {
+            [&](const ArithAddPtr& a) {
                 auto vec {context.exprVec()};
                 for (const auto &c: a->getArgs()) {
                     vec.push_back(convertEx(c));
                 }
                 return context.plus(vec);
             },
-            [&](const ArithMultPtr m) {
+            [&](const ArithMultPtr& m) {
                 auto vec {context.exprVec()};
                 for (const auto &c: m->getArgs()) {
                     vec.push_back(convertEx(c));
                 }
                 return context.times(vec);
             },
-            [&](const ArithModPtr m) {
+            [&](const ArithModPtr& m) {
                 return context.mod(convertEx(m->getLhs()), convertEx(m->getRhs()));
             },
-            [&](const ArithExpPtr e) {
+            [&](const ArithExpPtr& e) {
                 const auto base {e->getBase()};
                 const auto exp {e->getExponent()};
                 if (const auto int_exp {exp->isInt()}) {
@@ -95,14 +102,16 @@ protected:
             });
     }
 
-    Formula convertRelational(const Arith::Lit &rel) {
+    Formula convertLit(const Arith::Lit &rel) {
         const auto lhs {convertEx(rel->lhs())};
         const auto rhs {context.getInt(0)};
         if (rel->isGt()) {
             return context.gt(lhs, rhs);
-        } else if (rel->isEq()) {
+        }
+        if (rel->isEq()) {
             return context.eq(lhs, rhs);
-        } else if (rel->isNeq()) {
+        }
+        if (rel->isNeq()) {
             return context.neq(lhs, rhs);
         }
         throw std::invalid_argument("unknown relation");
@@ -111,6 +120,80 @@ protected:
     Formula convertLit(const Bools::Lit &lit) {
         auto var {context.getVariable(lit->getBoolVar())};
         return lit->isNegated() ? context.negate(var) : var;
+    }
+
+    Expr convertArrayRead(const ArrayReadPtr<Arith> &read) {
+        const auto arr {read->arr()};
+        const auto converted_arr {convertArray(arr)};
+        const auto indices {read->indices()};
+        if (indices.empty()) {
+            return converted_arr;
+        }
+        auto converted_indices {context.exprVec()};
+        for (const auto &i: indices) {
+            converted_indices.push_back(convertEx(i));
+        }
+        return context.arrayRead(converted_arr, converted_indices);
+    }
+
+    Expr convertArrayWrite(const ArrayWritePtr<Arith> &write) {
+        if (write->dim() == 0) {
+            return convertEx(write->val());
+        }
+        const auto arr {write->arr()};
+        const auto converted_arr {convertArray(arr)};
+        auto converted_indices {context.exprVec()};
+        if (const auto indices {write->indices()}) {
+            linked_hash_map<ArithVarPtr, Arith::Expr> subs;
+            const auto dim = indices->size();
+            assert(dim > 0);
+            for (size_t i = 0; i < dim; ++i) {
+                const auto idx = indices->at(i);
+                subs.put(arrays::array_idx(i), idx);
+                converted_indices.push_back(convertEx(idx));
+            }
+            const auto converted_value {convertEx(write->val()->subs(subs))};
+            return context.arrayWrite(converted_arr, converted_indices, converted_value);
+        }
+        std::vector<Arith::Expr> indices;
+        for (size_t i = 0; i < arr->dim(); ++i) {
+            const auto idx = arrays::array_idx(i);
+            indices.emplace_back(idx);
+            converted_indices.push_back(convertArray(idx->var()));
+        }
+        const auto converted_cond = convertBoolEx(write->cond());
+        const auto converted_value {convertEx(write->val())};
+        const auto else_case = convertEx(arrays::mkArrayRead(arr, indices));
+        const auto body = context.ite(converted_cond, converted_value, else_case);
+        return context.lambda(converted_indices, body);
+    }
+
+    Expr convertArray(const ArrayPtr<Arith> &arr) {
+        if (const auto var {arr->isVar()}) {
+            return context.getVariable(*var);
+        }
+        if (const auto write {arr->isArrayWrite()}) {
+            return convertArrayWrite(*write);
+        }
+        throw std::invalid_argument("unknown kind of array expression");
+    }
+
+    Formula convertLit(const Arrays<Arith>::Lit &lit) {
+        if (const auto eq {lit->isArrayEq()}) {
+            const auto lhs {(*eq)->lhs()};
+            const auto converted_lhs {convertArray(lhs)};
+            const auto rhs {(*eq)->rhs()};
+            const auto converted_rhs {convertArray(rhs)};
+            return context.eq(converted_lhs, converted_rhs);
+        }
+        if (const auto neq {lit->isArrayNeq()}) {
+            const auto lhs {(*neq)->lhs()};
+            const auto converted_lhs {convertArray(lhs)};
+            const auto rhs {(*neq)->rhs()};
+            const auto converted_rhs {convertArray(rhs)};
+            return context.neq(converted_lhs, converted_rhs);
+        }
+        throw std::invalid_argument("unknown kind of array literal");
     }
 
 private:

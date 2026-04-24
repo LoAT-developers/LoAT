@@ -27,7 +27,7 @@ namespace Config {
 
         enum Mode { Complexity, Termination, RelativeTermination, Safety };
         enum Engine { ADCL, BMC, ABMC, TRL, KIND, ADCLSAT };
-        enum SmtSolver { Z3, CVC5, Swine, Yices, Heuristic };
+        enum SmtSolver { Swine, Yices, Heuristic };
         enum Direction {Forward, Backward, Interleaved};
         extern Mode mode;
         extern std::vector<Mode> modes;
@@ -38,6 +38,8 @@ namespace Config {
         extern bool logAccel;
         extern bool logPreproc;
         extern bool model;
+        extern bool abstraction_refinement;
+        extern bool fail_early;
 
         std::string modeName(const Mode mode);
 
@@ -69,6 +71,7 @@ namespace Config {
 
     namespace Accel {
         extern bool non_linear;
+        extern bool arrays;
     }
 
     bool validate();

@@ -1,26 +1,11 @@
 #include "safetycex.hpp"
 
-SafetyCex::SafetyCex(const SafetyProblem &sp): sp(sp) {}
+#include <utility>
 
-bool SafetyCex::is_valid_step(const Model &m) const {
-    if (states.size() != transitions.size()) {
-        return false;
-    }
-    if (transitions.empty()) {
-        return m.eval<Bools>(sp.init());
-    } else {
-        const auto &last {states.back()};
-        for (const auto &x: sp.pre_vars()) {
-            if (theory::isProgVar(x) && (!m.contains(x) || last.get(theory::postVar(x)) != m.get(x))) {
-                return false;
-            }
-        }
-        return true;
-    }
-}
+SafetyCex::SafetyCex(SafetyProblem sp): sp(std::move(sp)) {}
 
-bool SafetyCex::try_step(const Model &m, const Bools::Expr trans) {
-    if (!m.eval<Bools>(trans) || !is_valid_step(m)) {
+bool SafetyCex::try_step(const ModelPtr &m, const Bools::Expr& trans) {
+    if (!m->eval(trans)) {
         return false;
     }
     states.push_back(m);
@@ -28,12 +13,12 @@ bool SafetyCex::try_step(const Model &m, const Bools::Expr trans) {
     return true;
 }
 
-void SafetyCex::set_final_state(const Model &m) {
+void SafetyCex::set_final_state(const ModelPtr &m) {
     const auto vars {sp.err()->vars()};
     assert(std::all_of(vars.begin(), vars.end(), [&](const auto &x) {
         return vars.contains(x);
     }));
-    assert(m.eval<Bools>(sp.err()));
+    assert(m->eval(sp.err()));
     states.push_back(m);
 }
 
@@ -45,6 +30,14 @@ std::ostream& operator<<(std::ostream &s, const SafetyCex &cex) {
             ++id;
         }
     }
+    VarSet prog_vars;
+    for (const auto& b: {cex.sp.init(), cex.sp.err()}) {
+        for (const auto& x: b->vars()) {
+            if (theory::isProgVar(x)) {
+                prog_vars.insert(x);
+            }
+        }
+    }
     s << "init: " << cex.sp.init();
     s << "\n\nerr: " << cex.sp.err();
     s << "\n\nunsat core:" << std::endl;
@@ -54,21 +47,16 @@ std::ostream& operator<<(std::ostream &s, const SafetyCex &cex) {
     s << "\ncounterexample:" << std::endl;
     for (size_t i = 0; i < cex.transitions.size(); ++i) {
         const auto &trans {cex.transitions.at(i)};
-        const auto vars {trans->vars()};
-        const auto projection {cex.states.at(i).project([&](const auto &x) {
-                return theory::isProgVar(x) || vars.contains(x);
-            })
-        };
-        s << "\t" << projection << "\n\t-" << transitions.at(trans) << "->\n";
+        s << "\t" << cex.states.at(i)->toString(trans->vars()) << "\n\t-" << transitions.at(trans) << "->\n";
     }
     return s << "\terr";
 }
 
-std::pair<const Model&, Bools::Expr> SafetyCex::get_step(const size_t i) const {
+std::pair<const ModelPtr&, Bools::Expr> SafetyCex::get_step(const size_t i) const {
     return {states.at(i), transitions.at(i)};
 }
 
-const Model& SafetyCex::get_state(const size_t i) const {
+const ModelPtr& SafetyCex::get_state(const size_t i) const {
     return states.at(i);
 }
 

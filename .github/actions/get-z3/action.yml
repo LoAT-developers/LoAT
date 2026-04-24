@@ -5,14 +5,14 @@ runs:
     - uses: robinraju/release-downloader@v1
       with:
         repository: 'Z3Prover/z3'
-        tag: z3-4.13.0
-        fileName: z3-4.13.0-x64-glibc-2.31.zip
+        tag: z3-4.16.0
+        fileName: z3-4.16.0-x64-glibc-2.39.zip
         out-file-path: 'z3'
         extract: true
 
     - run: |
-        mv ./z3/z3-4.13.0-x64-glibc-2.31/bin/z3 /usr/local/bin/solver
-        VERSION='4.13.0-x64-glibc-2.31'
+        mv ./z3/z3-4.16.0-x64-glibc-2.39/bin/z3 /usr/local/bin/solver
+        VERSION='4.16.0-x64-glibc-2.39'
         echo "VERSION=${VERSION}" >> $GITHUB_ENV
       shell: bash
 

@@ -6,17 +6,14 @@
 
 class Reverse {
 
-private:
-
     CHCPtr orig;
     std::unordered_map<ClausePtr, ClausePtr> rev_map;
 
 public:
-
-    Reverse(const CHCPtr);
+    explicit Reverse(CHCPtr );
 
     CHCPtr reverse();
     CHCCex transform_cex(const CHCCex&);
-    CHCModel transform_model(const CHCModel&) const;
+    static CHCModel transform_model(const CHCModel&) ;
 
 };

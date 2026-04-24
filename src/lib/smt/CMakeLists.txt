@@ -7,24 +7,20 @@ project(loat_smt CXX)
 add_library(${PROJECT_NAME} OBJECT
   smt.hpp
   smt.cpp
-  z3.hpp
-  z3.cpp
-  z3context.cpp
-  z3context.hpp
   yices.hpp
   yices.cpp
   yicescontext.cpp
   yicescontext.hpp
-  cvc5.hpp
-  cvc5.cpp
-  cvc5context.hpp
-  cvc5context.cpp
   swine.hpp
   swine.cpp
   swinecontext.hpp
   swinecontext.cpp
   smtfactory.hpp
   smtfactory.cpp
+  swinemodel.hpp
+  swinemodel.cpp
+  yicesmodel.hpp
+  yicesmodel.cpp
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE

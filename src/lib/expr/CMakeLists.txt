@@ -8,14 +8,14 @@ add_library(${PROJECT_NAME} OBJECT
   itheory.hpp
   subs.hpp
   subs.cpp
+  boolvar.hpp
+  boolvar.cpp
   boollit.hpp
   boollit.cpp
   arithexpr.cpp
   arithexpr.hpp
   arithlit.cpp
   arithlit.hpp
-  conjunction.hpp
-  conjunction.cpp
   boolexpr.hpp
   boolexpr.cpp
   booltheorylit.cpp
@@ -28,8 +28,6 @@ add_library(${PROJECT_NAME} OBJECT
   boolsubs.cpp
   theory.hpp
   theory.cpp
-  arithsubs.hpp
-  arithsubs.cpp
   arithconstant.cpp
   exp.cpp
   mult.cpp
@@ -41,8 +39,15 @@ add_library(${PROJECT_NAME} OBJECT
   exprconversioncontext.hpp
   renaming.hpp
   renaming.cpp
-  var.hpp
   exprfwd.hpp
+  arrayexpr.hpp
+  arrayexpr.cpp
+  arraylit.hpp
+  arraylit.cpp
+  arraysubs.hpp
+  arraysubs.cpp
+  arrays.hpp
+  arrays.cpp
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE

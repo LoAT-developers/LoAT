@@ -1,0 +1,28 @@
+#pragma once
+
+#include "model.hpp"
+#include "swinecontext.hpp"
+#include "exprconverter.hpp"
+
+class SwineModel final : public Model {
+
+    using Converter = ExprConverter<z3::expr, z3::expr, z3::expr_vector, z3::expr_vector>;
+
+public:
+
+    SwineModel(const SwineContext&, const z3::model&, const Subs&);
+
+    bool evalImpl(const Lit&) override;
+    Bools::Const evalImpl(const Bools::Expr&) override;
+    ModelPtr withSubs(const Subs&) const override;
+
+protected:
+
+    Bools::Const getImpl(const Bools::Var&) override;
+    Rational evalToRationalImpl(const Arith::Expr&) override;
+    std::string toString(const Expr&) override;
+
+private:
+    SwineContext m_ctx;
+    z3::model m_model;
+};

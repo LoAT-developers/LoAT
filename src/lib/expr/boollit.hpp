@@ -1,17 +1,14 @@
 #pragma once
 
-#include "var.hpp"
-#include "linkedhashset.hpp"
+#include "boolvar.hpp"
 #include "linkedhashmap.hpp"
 #include "notnull.hpp"
 
 #include <boost/bimap.hpp>
 #include <boost/bimap/unordered_set_of.hpp>
 
-class Empty{};
+#include "exprfwd.hpp"
 
-using BoolVar = TVar<theory::Type::Bool, Empty>;
-using BoolVarPtr = BoolVar::ptr;
 using bool_var_map = boost::bimap<boost::bimaps::unordered_set_of<BoolVarPtr>, boost::bimaps::unordered_set_of<BoolVarPtr>>;
 
 class BoolLit;
@@ -19,12 +16,13 @@ class BoolLit;
 using BoolLitPtr = cpp::not_null<std::shared_ptr<const BoolLit>>;
 
 namespace bools {
-    BoolLitPtr mk(const BoolVarPtr var, bool negated = false);
+    BoolLitPtr mk(const BoolVarPtr& var, bool negated = false);
 }
 
 class BoolLit: public std::enable_shared_from_this<BoolLit> {
 
-    friend BoolLitPtr bools::mk(const BoolVarPtr var, bool negated);
+    friend BoolLitPtr bools::mk(const BoolVarPtr& var, bool negated);
+    friend class ConsHash<BoolLit, BoolVarPtr, bool>;
 
     BoolVarPtr var;
     bool negated;
@@ -35,35 +33,31 @@ class BoolLit: public std::enable_shared_from_this<BoolLit> {
     struct CacheHash {
         size_t operator()(const std::tuple<BoolVarPtr, bool> &args) const noexcept;
     };
-    static ConsHash<BoolLit, BoolLit, CacheHash, CacheEqual, BoolVarPtr, bool> cache;
+    static ConsHash<BoolLit, BoolVarPtr, bool> cache;
 
 public:
 
-    BoolLit(const BoolVarPtr var, bool negated);
+    BoolLit(BoolVarPtr  var, bool negated);
     ~BoolLit();
     bool isNegated() const;
-    bool isPoly() const;
-    bool isLinear() const;
+    static bool isPoly();
+    static bool isLinear();
     BoolVarPtr getBoolVar() const;
     void collectVars(linked_hash_set<BoolVarPtr> &res) const;
-    bool isTriviallyTrue() const;
-    bool isTriviallyFalse() const;
+    static bool isTriviallyTrue();
+    static bool isTriviallyFalse();
     std::size_t hash() const;
     bool eval(const linked_hash_map<BoolVarPtr, bool> &model) const;
     sexpresso::Sexp to_smtlib() const;
-    BoolLitPtr renameVars(const bool_var_map &map) const;
+    BoolLitPtr renameVars(const Renaming &map) const;
+    BoolExprPtr subs(const Subs &subs) const;
+    void syntacticImplicant(ModelPtr, LitSet&) const;
 
 };
 
-namespace bools {
-
-BoolVarPtr mkVar(const int idx);
-
-}
-
 BoolLitPtr operator!(const BoolLitPtr &l);
 
-std::ostream& operator<<(std::ostream &s, const BoolLitPtr &e);
+std::ostream& operator<<(std::ostream &s, const BoolLitPtr &l);
 
 template<>
 struct std::hash<BoolLit> {

@@ -5,15 +5,19 @@
 #include <gmp.h>
 #include <yices.h>
 
-class YicesError : public std::exception {
+class YicesError final : public std::exception {
 public:
     YicesError();
 };
 
-class YicesContext : public ExprConversionContext<term_t, term_t, std::vector<term_t>, std::vector<term_t>> {
+namespace yices {
+    void check_err();
+}
+
+class YicesContext final : public ExprConversionContext<term_t, term_t, std::vector<term_t>, std::vector<term_t>> {
 
 public:
-    ~YicesContext() override;
+    ~YicesContext() override= default;
     term_t getInt(const Int &val) override;
     term_t getReal(const Int &num, const Int &denom) override;
     term_t pow(const term_t &base, const term_t &exp) override;
@@ -33,16 +37,19 @@ public:
     term_t negate(const term_t &x) override;
     std::vector<term_t> exprVec() override;
     std::vector<term_t> formulaVec() override;
+    term_t arrayRead(const term_t& arr, const std::vector<term_t>& indices) override;
+    term_t arrayWrite(const term_t& arr, const std::vector<term_t>& indices, const term_t &value) override;
+    term_t ite(const term_t& cond, const term_t& then_case, const term_t& else_case) override;
+    term_t lambda(const std::vector<term_t>& args, const term_t& body) override;
 
     void printStderr(const term_t &e) const override;
 
 protected:
-    term_t buildVar(const Arith::Var &var) override;
     term_t buildVar(const Bools::Var &var) override;
+    term_t buildVar(const Arrays<Arith>::Var &var) override;
 
 private:
-
-    Int numerator(const term_t &e) const;
-    Int denominator(const term_t &e) const;
+    static Int numerator(const term_t &e);
+    static Int denominator(const term_t &e);
 
 };

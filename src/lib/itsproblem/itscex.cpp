@@ -1,19 +1,19 @@
 #include "itscex.hpp"
 #include "formulapreprocessing.hpp"
-#include "vector.hpp"
 #include "smtfactory.hpp"
 
-#include <assert.h>
+#include <ranges>
 #include <stack>
+#include <utility>
 
-ITSCex::ITSCex(ITSPtr its): its(its) {}
+ITSCex::ITSCex(ITSPtr its): its(std::move(its)) {}
 
 std::vector<std::pair<RulePtr, ProofStepKind>> ITSCex::get_used_rules(const std::vector<RulePtr> &transitions) const {
     linked_hash_set<RulePtr> done;
     std::stack<RulePtr> todo;
     std::vector<std::pair<RulePtr, ProofStepKind>> derived;
-    for (auto it = transitions.rbegin(); it != transitions.rend(); ++it) {
-        todo.push(*it);
+    for (const auto & transition : std::ranges::reverse_view(transitions)) {
+        todo.push(transition);
     }
     while (!todo.empty()) {
         const auto t{todo.top()};
@@ -59,19 +59,19 @@ std::vector<std::pair<RulePtr, ProofStepKind>> ITSCex::get_used_rules(const std:
     return derived;
 }
 
-void ITSCex::add_recurrent_set(const RulePtr loop, const RulePtr res) {
+void ITSCex::add_recurrent_set(const RulePtr& loop, const RulePtr& res) {
     recurrent_set.emplace(res, loop);
 }
 
-void ITSCex::add_accel(const RulePtr loop, const RulePtr res) {
+void ITSCex::add_accel(const RulePtr& loop, const RulePtr& res) {
     accel.emplace(res, loop);
 }
 
-void ITSCex::add_resolvent(const std::vector<RulePtr> &rules, const RulePtr res) {
+void ITSCex::add_resolvent(const std::vector<RulePtr> &rules, const RulePtr& res) {
     resolvents.emplace(res, rules);
 }
 
-void ITSCex::add_implicant(const RulePtr rule, const RulePtr imp) {
+void ITSCex::add_implicant(const RulePtr& rule, const RulePtr& imp) {
     implicants.emplace(imp, rule);
 }
 

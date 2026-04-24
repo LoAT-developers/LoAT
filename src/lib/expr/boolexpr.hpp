@@ -7,20 +7,46 @@
 #include "linkedhashset.hpp"
 #include "bools.hpp"
 #include "arith.hpp"
+#include "arrays.hpp"
+#include "exprfwd.hpp"
+#include "variantmap.hpp"
 
-#include <type_traits>
 #include <memory>
-#include <boost/functional/hash.hpp>
 
-
-class BoolTheoryLit;
-class BoolJunction;
 class BoolExpr;
-class Renaming;
+
+class TheTheory {
+
+public:
+
+    using Theories = std::tuple<Arith, Arrays<Arith>, Bools>;
+    static const Theories theories;
+    using Lit = std::variant<Arith::Lit, Arrays<Arith>::Lit, Bools::Lit>;
+    using Expr = std::variant<Arith::Expr, Arrays<Arith>::Expr, Bools::Expr>;
+    using Renaming = std::tuple<Arrays<Arith>::Renaming, Bools::Renaming>;
+    using Pair = std::variant<std::pair<Arrays<Arith>::Var, Arrays<Arith>::Expr>, std::pair<Bools::Var, Bools::Expr>>;
+    using VarPair = std::variant<std::pair<Arrays<Arith>::Var, Arrays<Arith>::Var>, std::pair<Bools::Var, Bools::Var>>;
+    using Subs = std::tuple<Arrays<Arith>::Subs, Bools::Subs>;
+
+};
+
+template <ITheory T1, ITheory T2>
+struct depends_on {
+    static constexpr bool value = std::same_as<T1, T2> || std::same_as<Arrays<T1>, T2> || std::same_as<T1, Bools>;
+};
+
+using Lit = TheTheory::Lit;
+using VarSet = VariantSet<Arrays<Arith>::Var, Bools::Var>;
+using Cell = std::variant<ArrayReadPtr<Arith>, Bools::Var>;
+using CellSet = VariantSet<ArrayReadPtr<Arith>, Bools::Var>;
+using LitSet = VariantSet<Arith::Lit, Arrays<Arith>::Lit, Bools::Lit>;
 
 using BoolExprSet = linked_hash_set<Bools::Expr>;
 
 enum ConcatOperator { ConcatAnd, ConcatOr };
+
+class BoolTheoryLit;
+class BoolJunction;
 
 class BoolExpr: public std::enable_shared_from_this<BoolExpr> {
 
@@ -28,88 +54,98 @@ class BoolExpr: public std::enable_shared_from_this<BoolExpr> {
     friend class BoolJunction;
     friend class Renaming;
 
-protected:
-
-    using TheTheory = Theory<Arith, Bools>;
-    using Var = typename TheTheory::Var;
-    using Lit = typename TheTheory::Lit;
-    using Model = typename TheTheory::Model;
-    using VarSet = VariantSet<Arith::Var, Bools::Var>;
-    using LitSet = VariantSet<Arith::Lit, Bools::Lit>;
-
-private:
-
-    static const Bools::Expr from_cache(const BoolExprSet &children, ConcatOperator op);
-
-    template <class Lits>
-    static const Bools::Expr buildFromLits(const Lits &lits, ConcatOperator op);
+    static Bools::Expr from_cache(const BoolExprSet &children, ConcatOperator op);
 
     template <class Children>
-    static const Bools::Expr build(const Children &lits, ConcatOperator op);
+    static Bools::Expr build(const Children& lits, ConcatOperator op);
 
 public:
 
-    static const Bools::Expr top();
-    static const Bools::Expr bot();
-
-    template <class Lits>
-    static const Bools::Expr mkAndFromLits(const Lits &lits);
+    static Bools::Expr top();
+    static Bools::Expr bot();
 
     template <class Children>
-    static const Bools::Expr mkAnd(const Children &lits);
+    static Bools::Expr mkAnd(const Children& lits);
 
     template <class Children>
-    static const Bools::Expr mkOr(const Children &lits);
+    static Bools::Expr mkOr(const Children& lits);
 
-    static const Bools::Expr mkLit(const Lit &lit);
+    static Bools::Expr mkLit(const Lit& lit);
 
     virtual bool isTheoryLit() const = 0;
     virtual const Lit* getTheoryLit() const = 0;
     virtual bool isAnd() const = 0;
     virtual bool isOr() const = 0;
     virtual BoolExprSet getChildren() const = 0;
-    virtual const Bools::Expr negation() const = 0;
+    virtual Bools::Expr negation() const = 0;
     virtual bool forall(const std::function<bool(const Lit&)> &pred) const = 0;
     virtual LitSet universallyValidLits() const = 0;
     virtual bool isConjunction() const = 0;
+    virtual bool isStructualImplicant() const = 0;
     virtual void collectLits(LitSet &res) const = 0;
     virtual size_t size() const = 0;
 
-    void getBounds(const Arith::Var n, linked_hash_set<Bound> &res) const;
-    linked_hash_set<Bound> getBounds(const Arith::Var n) const;
-    void getDivisibility(const Arith::Var n, linked_hash_set<Divisibility> &res) const;
-    linked_hash_set<Divisibility> getDivisibility(const Arith::Var n) const;
-    std::optional<Arith::Expr> getEquality(const Arith::Var n) const;
-    void propagateEqualities(Arith::Subs &subs, const std::function<bool(const Var &)> &allow, std::unordered_set<Arith::Var> &blocked) const;
-    Arith::Subs propagateEqualities(const std::function<bool(const Var &)> &allow) const;
-    Bools::Expr toInfinity(const Arith::Var n) const;
-    Bools::Expr toMinusInfinity(const Arith::Var n) const;
+    bool getBounds(const ArithVarPtr& n, linked_hash_set<Bound> &res) const;
+    linked_hash_set<Bound> getBounds(const ArithVarPtr& n) const;
+    void getDivisibility(const ArithVarPtr& n, linked_hash_set<Divisibility> &res) const;
+    linked_hash_set<Divisibility> getDivisibility(const ArithVarPtr& n) const;
+    std::optional<Arith::Expr> getEquality(const ArithVarPtr& n) const;
+    void propagateEqualities(Subs &subs, const std::function<bool(const Var &)> &allow, VarSet &blocked) const;
+    Subs propagateEqualities(const std::function<bool(const Var &)> &allow) const;
+    Bools::Expr toInfinity(const ArithVarPtr& n) const;
+    Bools::Expr toMinusInfinity(const ArithVarPtr& n) const;
     void iter(const std::function<void(const Lit&)> &f) const;
     Bools::Expr map(const std::function<Bools::Expr(const Lit&)> &f, std::unordered_map<Bools::Expr, Bools::Expr> &cache) const;
     Bools::Expr map(const std::function<Bools::Expr(const Lit&)> &f) const;
     sexpresso::Sexp to_smtlib() const;
     BoolExprSet get_disjuncts() const;
     std::optional<Bools::Var> isVar() const;
+    Bools::Expr subs(const Variant<ArithVarPtr, Bools::Var>::Map<Arith::Expr, Bools::Expr>&) const;
+    Bools::Expr subs(const Subs&) const;
+    Bools::Expr renameVars(const Renaming&) const;
+    Bools::Expr eval(const ModelPtr&, const ArithVarPtr &keep) const;
+    Bools::Expr toPtr() const;
 
-    void collectVars(VarSet &vars) const;
+    void collectVars(VarSet&) const;
 
     template <ITheory T>
     void collectVars(linked_hash_set<typename T::Var> &vars) const {
         VarSet res;
-        res.template get<typename T::Var>() = vars;
+        res.get<typename T::Var>() = vars;
         collectVars(res);
     }
 
     VarSet vars() const;
-    virtual ~BoolExpr();
+    CellSet cells() const;
+    void collectCells(CellSet&) const;
+    virtual ~BoolExpr() = default;
     LitSet lits() const;
     bool isLinear() const;
     bool isPoly() const;
 
+    template <class T>
+    T apply(
+        const std::function<T()> &conjunction,
+        const std::function<T()> &disjunction,
+        const std::function<T(Lit)> &lit) const {
+        if (isAnd()) {
+            return conjunction();
+        }
+        if (isOr()) {
+            return disjunction();
+        }
+        if (const auto& l{getTheoryLit()}) {
+            return lit(*l);
+        }
+        throw std::invalid_argument("unknown expression " + toString(toPtr()));
+    }
+
 };
 
 
-class BoolTheoryLit: public BoolExpr {
+class BoolTheoryLit final : public BoolExpr {
+
+    friend class ConsHash<BoolTheoryLit, Lit>;
 
     const Lit lit;
 
@@ -121,28 +157,30 @@ class BoolTheoryLit: public BoolExpr {
         size_t operator()(const std::tuple<Lit> &args) const noexcept;
     };
 
-    static ConsHash<BoolExpr, BoolTheoryLit, CacheHash, CacheEqual, Lit> cache;
+    static ConsHash<BoolTheoryLit, Lit> cache;
 
 public:
-
-    BoolTheoryLit(const Lit &lit);
+    explicit BoolTheoryLit(Lit lit);
     static Bools::Expr from_cache(const Lit &lit);
     bool isAnd() const override;
     bool isOr() const override;
     bool isTheoryLit() const override;
     const Lit* getTheoryLit() const override;
     BoolExprSet getChildren() const override;
-    const Bools::Expr negation() const override;
+    Bools::Expr negation() const override;
     bool forall(const std::function<bool(const Lit&)> &pred) const override;
     ~BoolTheoryLit() override;
     bool isConjunction() const override;
+    bool isStructualImplicant() const override;
     LitSet universallyValidLits() const override;
     void collectLits(LitSet &res) const override;
     size_t size() const override;
 
 };
 
-class BoolJunction: public BoolExpr {
+class BoolJunction final : public BoolExpr {
+
+    friend class ConsHash<BoolJunction, BoolExprSet, ConcatOperator>;
 
     const BoolExprSet children;
     const ConcatOperator op;
@@ -155,31 +193,32 @@ class BoolJunction: public BoolExpr {
         size_t operator()(const std::tuple<BoolExprSet, ConcatOperator> &args) const noexcept;
     };
 
-    static ConsHash<BoolExpr, BoolJunction, CacheHash, CacheEqual, BoolExprSet, ConcatOperator> cache;
+    static ConsHash<BoolJunction, BoolExprSet, ConcatOperator> cache;
 
 public:
 
     static Bools::Expr from_cache(const BoolExprSet &children, ConcatOperator op);
-    BoolJunction(const BoolExprSet &children, ConcatOperator op);
+    BoolJunction(BoolExprSet children, ConcatOperator op);
     bool isAnd() const override;
     bool isOr() const override;
     bool isTheoryLit() const override;
     const Lit* getTheoryLit() const override;
     BoolExprSet getChildren() const override;
-    const Bools::Expr negation() const override;
+    Bools::Expr negation() const override;
     bool forall(const std::function<bool(const Lit&)> &pred) const override;
     ~BoolJunction() override;
     bool isConjunction() const override;
+    bool isStructualImplicant() const override;
     LitSet universallyValidLits() const override;
     void collectLits(LitSet &res) const override;
     size_t size() const override;
 
 };
 
-const Bools::Expr operator&&(const Bools::Expr a, const Bools::Expr b);
+Bools::Expr operator&&(const Bools::Expr& a, const Bools::Expr& b);
 
-const Bools::Expr operator||(const Bools::Expr a, const Bools::Expr b);
+Bools::Expr operator||(const Bools::Expr& a, const Bools::Expr& b);
 
-const Bools::Expr operator!(const Bools::Expr a);
+Bools::Expr operator!(const Bools::Expr& a);
 
-std::ostream& operator<<(std::ostream &s, const Bools::Expr e);
+std::ostream& operator<<(std::ostream &s, const Bools::Expr &e);

@@ -16,12 +16,12 @@ protected:
 
 public:
 
-    ITSCex(ITSPtr its);
+    explicit ITSCex(ITSPtr its);
 
-    void add_accel(const RulePtr loop, const RulePtr res);
-    void add_recurrent_set(const RulePtr loop, const RulePtr res);
-    void add_resolvent(const std::vector<RulePtr> &rules, const RulePtr res);
-    void add_implicant(const RulePtr rule, const RulePtr imp);
+    void add_accel(const RulePtr& loop, const RulePtr& res);
+    void add_recurrent_set(const RulePtr& loop, const RulePtr& res);
+    void add_resolvent(const std::vector<RulePtr> &rules, const RulePtr& res);
+    void add_implicant(const RulePtr& rule, const RulePtr& imp);
     const linked_hash_map<RulePtr, RulePtr> &get_accel() const;
     const linked_hash_map<RulePtr, RulePtr> &get_implicants() const;
     const linked_hash_map<RulePtr, std::vector<RulePtr>> &get_resolvents() const;
