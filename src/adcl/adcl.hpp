@@ -149,8 +149,6 @@ class ADCL {
 
     ITSPtr chcs;
 
-    DependencyGraph<RulePtr> dependency_graph {};
-
     SmtPtr solver {SmtFactory::solver()};
 
     const bool drop;

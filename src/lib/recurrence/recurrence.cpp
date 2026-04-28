@@ -210,7 +210,7 @@ bool Recurrence::solve(const Bools::Var &lhs, const Bools::Expr& rhs) {
         return false;
     }
     const auto &vars{updated->cells()};
-    if (vars.contains(lhs) && vars.size() != vars.get<Bools::Var>().size()) {
+    if (vars.contains(lhs) && vars.size() > vars.get<Bools::Var>().size()) {
         return false;
     }
     unsigned prefix{1};

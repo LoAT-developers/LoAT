@@ -141,7 +141,10 @@ bool refine_dependency_graph(const ITSPtr& its) {
         return false;
     } else {
         if (Config::Analysis::doLogPreproc()) {
-            std::cout << "removed the following edges from the dependency graph: " << removed << std::endl;
+            std::cout << "removed the following edges from the dependency graph:" << std::endl;
+            for (const auto &[s,d]: removed) {
+                std::cout << "(" << s->getId() << ", " << d->getId() << ")" << std::endl;
+            }
         }
         return true;
     }

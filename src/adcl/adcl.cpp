@@ -103,7 +103,7 @@ Step::Step(RulePtr transition, RulePtr sat, Renaming var_renaming,
     resolvent(std::move(resolvent)) {}
 
 std::ostream& operator<<(std::ostream &s, const Step &step) {
-    return s << step.clause_idx << "[" << step.implicant << "]";
+    return s << step.clause_idx << "[" << *step.implicant << "]";
 }
 
 std::optional<Range> ADCL::has_looping_infix(const int start) const {
@@ -112,10 +112,9 @@ std::optional<Range> ADCL::has_looping_infix(const int start) const {
     }
     for (int end = start; end < trace.size(); end++) {
         const auto last_clause = trace.at(end).clause_idx;
-        std::vector<long> sequence;
         for (int pos = start; pos >= 0; --pos) {
-            if (const Step &step = trace[pos]; dependency_graph.hasEdge(last_clause, step.clause_idx)) {
-                if (auto upos = static_cast<unsigned>(pos); upos < trace.size() - 1 || is_orig_clause(step.clause_idx)) {
+            if (const Step &step = trace[pos]; chcs->areAdjacent(last_clause, step.clause_idx)) {
+                if (auto upos = static_cast<unsigned>(pos); pos < end || is_orig_clause(step.clause_idx)) {
                     return Range::from_interval(upos, end);
                 }
             }
@@ -200,9 +199,6 @@ void ADCL::backtrack() {
 }
 
 void ADCL::add_to_trace(const Step &step) {
-    if (!trace.empty()) {
-        dependency_graph.addEdge(trace.back().clause_idx, step.clause_idx);
-    }
     trace.emplace_back(step);
     blocked_clauses.emplace_back();
 }
@@ -482,7 +478,7 @@ std::unique_ptr<LearningState> ADCL::learn_clause(const RulePtr& rule, const Mod
         Config::Accel::arrays,
         n,
         chcs->getCost(simp)};
-    const auto [status, accel, nonterm, prefix, period] {LoopAcceleration::accelerate(simp, model, config)};
+    const auto [status, accel, nonterm, prefix, period] {LoopAcceleration::accelerate(simp, config)};
     if (status == acceleration::PseudoLoop) {
         return std::make_unique<Unroll>();
     }
