@@ -34,33 +34,6 @@ ADCLSat::ADCLSat(const ITSPtr& its, const Config::TRPConfig &config): TRPUtil(it
     }
 }
 
-std::optional<Range> ADCLSat::has_looping_infix() {
-    for (unsigned i = 0; i < trace.size(); ++i) {
-        for (unsigned start = 0; start + i < trace.size(); ++start) {
-            if (dependency_graph.hasEdge(trace[start + i].implicant, trace[start].implicant) && (i > 0 || trace[start].id <= last_orig_clause)) {
-                if (i == 0) {
-                    if (const auto loop = trace[start].implicant; SmtFactory::check(loop->renameVars(get_subs(0,1)) && loop->renameVars(get_subs(1,1))) == SmtResult::Unsat) {
-                        continue;
-                    }
-                }
-                return {Range::from_interval(start, start + i)};
-            }
-        }
-    }
-    return {};
-}
-
-void ADCLSat::add_blocking_clause(const Range &range, const Int &id, const Bools::Expr loop) {
-    const auto s{get_subs(range.start(), range.length())};
-    auto &map{blocked_per_step.emplace(range.end(), std::map<Int, BoolExprSet>()).first->second};
-    auto it{map.emplace(id, BoolExprSet()).first};
-    if (range.length() == 1) {
-        it->second.insert((!loop || bools::mkLit(arith::mkGeq(trace_var, arith::mkConst(id))))->renameVars(s));
-    } else {
-        it->second.insert(!loop->renameVars(s));
-    }
-}
-
 void ADCLSat::handle_loop(const Range& range) {
     const auto old_model = *model;
     if (Config::Analysis::abstraction_refinement) {

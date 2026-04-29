@@ -49,6 +49,7 @@ protected:
 
     TRPUtil(const ITSPtr &its, const Config::TRPConfig &config);
 
+    std::optional<Range> has_looping_infix();
     std::pair<Bools::Expr, ModelPtr> compress(const Range &range);
     const Renaming& get_subs(unsigned start, unsigned steps);
     Bools::Expr encode_transition(const Bools::Expr &t, const Int &id) const;
@@ -59,7 +60,7 @@ protected:
     bool build_cex();
     void add_projection(const Int& id, const Bools::Expr& projection);
     void add_blocking_clauses(unsigned depth);
-    virtual void add_blocking_clause(const Range &range, const Int &id, Bools::Expr loop) = 0;
+    void add_blocking_clause(const Range &range, const Int &id, Bools::Expr loop);
     bool add_blocking_clauses(const Range &range, const ModelPtr& model);
     std::optional<Int> refine_abstraction(const Range&, bool fix_trace);
     std::optional<Int> refine_partially(const Range&);

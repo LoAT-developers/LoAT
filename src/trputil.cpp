@@ -86,6 +86,28 @@ TRPUtil::TRPUtil(
     }
 }
 
+std::optional<Range> TRPUtil::has_looping_infix() {
+    for (unsigned i = 0; i < trace.size(); ++i) {
+        for (unsigned start = 0; start + i < trace.size(); ++start) {
+            if (Config::Analysis::termination() &&
+                i > 0 &&
+                (*model)->get(safety_var->renameVars(get_subs(start, 1))) >= 0 &&
+                (*model)->get(safety_var->renameVars(get_subs(start + i, 1))) < 0) {
+                continue;
+                }
+            if (dependency_graph.hasEdge(trace[start + i].implicant, trace[start].implicant) && (i > 0 || trace[start].id <= last_orig_clause)) {
+                if (i == 0) {
+                    if (const auto loop {trace[start].implicant}; SmtFactory::check(loop->renameVars(get_subs(0,1)) && loop->renameVars(get_subs(1,1))) == SmtResult::Unsat) {
+                        continue;
+                    }
+                }
+                return {Range::from_interval(start, start + i)};
+            }
+        }
+    }
+    return {};
+}
+
 const Renaming &TRPUtil::get_subs(const unsigned start, const unsigned steps) {
     if (subs.empty()) {
         subs.push_back({Renaming()});
@@ -402,6 +424,37 @@ bool TRPUtil::build_cex() {
 
 void TRPUtil::add_projection(const Int& id, const Bools::Expr& projection) {
     projections.emplace(id, !projection || bools::mkLit(arith::mkGeq(trace_var, arith::mkConst(id))));
+}
+
+void TRPUtil::add_blocking_clause(const Range &range, const Int &id, const Bools::Expr loop) {
+    const auto s{get_subs(range.start(), range.length())};
+    auto &map{blocked_per_step.emplace(range.end(), std::map<Int, BoolExprSet>()).first->second};
+    auto it{map.emplace(id, BoolExprSet()).first};
+    if (Config::Analysis::termination()) {
+        std::vector<Bools::Expr> disjuncts;
+        disjuncts.emplace_back(!loop->renameVars(s));
+        if (range.length() == 1) {
+            disjuncts.emplace_back(
+                bools::mkLit(
+                    arith::mkGeq(
+                        trace_var->renameVars(s),
+                        arith::mkConst(id))));
+        }
+        if ((*model)->get(safety_var->renameVars(get_subs(range.start(), 1))) >= 0) {
+            const auto last_s {get_subs(range.end(), 1)};
+            const auto no_safety_loop{bools::mkLit(arith::mkLt(safety_var->renameVars(last_s), arith::zero()))};
+            disjuncts.emplace_back(no_safety_loop);
+        } else {
+            const auto first_s {get_subs(range.start(), 1)};
+            const auto no_term_loop{bools::mkLit(arith::mkGeq(safety_var->renameVars(first_s), arith::zero()))};
+            disjuncts.emplace_back(no_term_loop);
+        }
+        it->second.insert(bools::mkOr(disjuncts));
+    } else if (range.length() == 1) {
+        it->second.insert((!loop || bools::mkLit(arith::mkGeq(trace_var, arith::mkConst(id))))->renameVars(s));
+    } else {
+        it->second.insert(!loop->renameVars(s));
+    }
 }
 
 void TRPUtil::add_blocking_clauses(unsigned depth) {

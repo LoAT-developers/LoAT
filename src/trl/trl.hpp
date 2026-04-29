@@ -13,9 +13,6 @@ class TRL final : public TRPUtil {
     Bools::Expr step {bot()};
     unsigned depth {0};
 
-    void add_blocking_clause(const Range &range, const Int &id, Bools::Expr loop) override;
-    std::optional<Range> has_looping_infix();
-
     bool handle_loop(const Range &range);
     void build_trace();
     void pop();
