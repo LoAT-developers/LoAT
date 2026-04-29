@@ -12,14 +12,14 @@ class ConsHash {
 
     std::unordered_map<
         std::tuple<const Args...>,
-        std::weak_ptr<const T>,
+        std::shared_ptr<const T>,
         typename T::CacheHash,
         typename T::CacheEqual> cache{};
 
 public:
 
     void erase(const Args&... args) {
-        cache.erase(std::make_tuple(args...));
+        // cache.erase(std::make_tuple(args...));
     }
 
     bool contains(const Args&... args) const {
@@ -27,23 +27,23 @@ public:
     }
 
     cpp::not_null<std::shared_ptr<const T>> from_cache(const Args&&... args) {
-        const auto [it,b] {cache.emplace(std::make_tuple(args...), std::weak_ptr<const T>())};
+        const auto [it,b] {cache.emplace(std::make_tuple(args...), std::shared_ptr<const T>())};
         if (b) {
             const auto res {std::make_shared<T>(args...)};
             it->second = res;
             return cpp::assume_not_null(res);
         }
-        return cpp::assume_not_null(it->second.lock());
+        return cpp::assume_not_null(it->second);
     }
 
     cpp::not_null<std::shared_ptr<const T>> from_cache(const Args&... args) {
-        const auto [it,b] {cache.emplace(std::make_tuple(args...), std::weak_ptr<const T>())};
+        const auto [it,b] {cache.emplace(std::make_tuple(args...), std::shared_ptr<const T>())};
         if (b) {
             const auto res {std::make_shared<T>(args...)};
             it->second = res;
             return cpp::assume_not_null(res);
         }
-        return cpp::assume_not_null(it->second.lock());
+        return cpp::assume_not_null(it->second);
     }
 
 };
