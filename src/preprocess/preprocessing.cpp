@@ -281,29 +281,28 @@ SmtResult Preprocessor::preprocess() {
         success = true;
         return *sat_res;
     }
+    if (Config::Analysis::doLogPreproc()) {
+        std::cout << "checking for unsat clauses..." << std::endl;
+    }
+    sat_res = check_bot(its);
+    if (Config::Analysis::doLogPreproc()) {
+        std::cout << "finished checking for unsat clauses" << std::endl;
+    }
+    if (sat_res && sat_res != SmtResult::Unknown) {
+        success = true;
+        return *sat_res;
+    }
     success |= static_cast<bool>(sat_res);
     if (Config::Analysis::doLogPreproc()) {
         std::cout << "preprocessing rules..." << std::endl;
     }
-    bool changed;
-    do {
-        changed = false;
-        sat_res = rule_preproc.run();
-        if (sat_res) {
-            if (sat_res != SmtResult::Unknown) {
-                return *sat_res;
-            }
-            changed = true;
-            success = true;
+    sat_res = rule_preproc.run();
+    if (sat_res) {
+        if (sat_res != SmtResult::Unknown) {
+            return *sat_res;
         }
-        // if (Config::Analysis::doLogPreproc()) {
-        //     std::cout << "removing irrelevant variables" << std::endl;
-        // }
-        // if (remove_irrelevant_vars(its)) {
-        //     changed = true;
-        //     success = true;
-        // }
-    } while (changed);
+        success = true;
+    }
     if (Config::Analysis::doLogPreproc()) {
         std::cout << "finished preprocessing rules" << std::endl;
     }
