@@ -23,6 +23,8 @@
 #include <iostream>
 #include <swine/version.h>
 
+#include <z3.h>
+
 // Variables for command line flags
 std::string filename;
 
@@ -66,6 +68,9 @@ void print_version() {
     std::cout << "       build arch: " << std::string(yices_build_arch) << std::endl;
     std::cout << "       build date: " << std::string(yices_build_date) << std::endl;
     std::cout << "SwInE: " << swine::Version::GIT_SHA << std::endl;
+    unsigned major, minor, build_number, revision_number;
+    Z3_get_version(&major, &minor, &build_number, &revision_number);
+    std::cout << "Z3:    " << major << "." << minor << "." << build_number << "." << revision_number << std::endl;
 }
 
 void parseFlags(const int argc, char *argv[]) {
