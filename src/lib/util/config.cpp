@@ -28,6 +28,7 @@ namespace Config {
         bool log = false;
         bool logPreproc = false;
         bool logAccel = false;
+        bool profile = false;
         bool model = false;
         bool abstraction_refinement = false;
         bool fail_early = false;

@@ -16,6 +16,8 @@ add_library(${PROJECT_NAME} OBJECT
     dependencygraph.hpp
     range.hpp
     range.cpp
+    profile.hpp
+    profile.cpp
 )
 
 target_include_directories(${PROJECT_NAME} INTERFACE ".")

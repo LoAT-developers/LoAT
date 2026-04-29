@@ -37,6 +37,7 @@ namespace Config {
         extern bool log;
         extern bool logAccel;
         extern bool logPreproc;
+        extern bool profile;
         extern bool model;
         extern bool abstraction_refinement;
         extern bool fail_early;

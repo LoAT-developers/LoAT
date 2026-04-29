@@ -17,9 +17,9 @@
 #include "adclsat.hpp"
 #include "ariparser.hpp"
 #include "inline.hpp"
+#include "profile.hpp"
 
 #include <boost/algorithm/string.hpp>
-#include <chrono>
 #include <iostream>
 #include <swine/version.h>
 
@@ -33,6 +33,7 @@ void printHelp(const char *arg0) {
     std::cout << "  --mode <complexity|termination|relative_termination|safety>     Analysis mode" << std::endl;
     std::cout << "  --engine <adcl|bmc|abmc|trl|kind>                               Analysis engine" << std::endl;
     std::cout << "  --log                                                           Enable logging" << std::endl;
+    std::cout << "  --profile                                                       Enable profiling" << std::endl;
     std::cout << "  --proof                                                         Print model/counterexample/recurrent set/..." << std::endl;
     std::cout << "  --abmc::blocking_clauses <true|false>                           ABMC: En- or disable blocking clauses" << std::endl;
     std::cout << "  --abstraction_refinement <true|false>                           En- or disable abstraction refinement" << std::endl;
@@ -89,6 +90,8 @@ void parseFlags(const int argc, char *argv[]) {
         } else if (strcmp("--log", argv[arg]) == 0) {
             Config::Analysis::log = true;
             Config::Analysis::logAccel = true;
+        } else if (strcmp("--profile", argv[arg]) == 0) {
+            Config::Analysis::profile = true;
         } else if (strcmp("--proof", argv[arg]) == 0) {
             Config::Analysis::model = true;
         } else if (strcmp("--mode", argv[arg]) == 0) {
@@ -293,11 +296,12 @@ int main(int argc, char *argv[]) {
     std::optional<SafetyProblem> sp{};
     std::optional<CHCToITS> chc2its{};
     std::optional<Reverse> reverse{};
-    const auto start{std::chrono::steady_clock::now()};
+    const Profile profile{"parsing"};
     switch (*Config::Input::format) {
-        case Config::Input::Ari:
+        case Config::Input::Ari: {
             its = ARIParser::loadFromFile(filename);
             break;
+        }
         case Config::Input::Horn: {
             chcs = SexpressoParser::loadFromFile(filename);
             if (Config::Analysis::log) {
@@ -327,10 +331,7 @@ int main(int argc, char *argv[]) {
             std::cout << "Error: unknown format" << std::endl;
             exit(1);
     }
-    const auto end{std::chrono::steady_clock::now()};
-    if (Config::Analysis::log) {
-        std::cout << "parsing took " << std::chrono::duration_cast<std::chrono::seconds>(end - start).count() << " seconds" << std::endl;
-    }
+    profile.end();
     if (Config::Analysis::log) {
         std::cout << "Initial ITS\n" << *its << std::endl;
     }

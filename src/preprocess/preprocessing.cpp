@@ -1,4 +1,3 @@
-#include "pair.hpp"
 #include "dependencygraph.hpp"
 #include "preprocessing.hpp"
 #include "config.hpp"
@@ -6,6 +5,7 @@
 #include "rulepreprocessing.hpp"
 #include "smtfactory.hpp"
 #include "theory.hpp"
+#include "profile.hpp"
 
 #include <unordered_set>
 #include <stack>
@@ -246,6 +246,7 @@ bool remove_irrelevant_vars(const ITSPtr& its) {
 }
 
 SmtResult Preprocessor::preprocess() {
+    const Profile profile_preproc {"preprocessing"};
     if (Config::Analysis::doLogPreproc()) {
         std::cout << "starting preprocesing..." << std::endl;
     }
@@ -266,7 +267,10 @@ SmtResult Preprocessor::preprocess() {
     if (Config::Analysis::doLogPreproc()) {
         std::cout << "chaining linear paths..." << std::endl;
     }
+
+    const Profile profile_chaining {"chaining"};
     success |= chain.chainLinearPaths();
+    profile_chaining.end();
     if (Config::Analysis::doLogPreproc()) {
         std::cout << "finished chaining linear paths" << std::endl;
     }
@@ -325,11 +329,14 @@ SmtResult Preprocessor::preprocess() {
             if (Config::Analysis::doLogPreproc()) {
                 std::cout << "refining the dependency graph..." << std::endl;
             }
+            const Profile profile_dg {"DG refinement"};
             success |= refine_dependency_graph(its);
+            profile_dg.end();
             if (Config::Analysis::doLogPreproc()) {
                 std::cout << "finished refining the dependency graph" << std::endl;
             }
         }
     }
+    profile_preproc.end();
     return SmtResult::Unknown;
 }
