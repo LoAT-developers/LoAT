@@ -149,7 +149,7 @@ class ADCL {
 
     ITSPtr chcs;
 
-    SmtPtr solver {SmtFactory::solver()};
+    SmtPtr solver;
 
     const bool drop;
 

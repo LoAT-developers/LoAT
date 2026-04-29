@@ -87,6 +87,7 @@ std::optional<ProvedUnsat> ProvedUnsat::unsat() {
 
 ADCL::ADCL(const ITSPtr& chcs, const std::function<void(const ITSCpxCex&)> &print_cpx_cex):
     chcs(chcs),
+    solver(SmtFactory::modelBuildingSolver(chcs->hasArrays() ? Logic::QF_AEA : Logic::QF_EA)),
     drop(true),
     cex(chcs),
     cpx_cex(chcs),
@@ -570,9 +571,9 @@ std::unique_ptr<LearningState> ADCL::handle_loop(const Range& range) {
         if (Config::Analysis::log) std::cout << "loop must be unrolled" << std::endl;
         return std::make_unique<Unroll>();
     }
-    if (!check_consistency()) {
-        return std::make_unique<Restart>();
-    }
+    // if (!check_consistency()) {
+    //     return std::make_unique<Restart>();
+    // }
     if (Config::Analysis::log) {
         std::cout << "learning clause for the following language:" << std::endl;
         std::cout << closure << std::endl;
@@ -730,7 +731,7 @@ SmtResult ADCL::analyze() {
                 }
             }
         }
-        if (luby_count >= next_restart || (state && state->restart()) || !check_consistency()) {
+        if (luby_count >= next_restart || (state && state->restart())) {
             if (Config::Analysis::log) std::cout << "restarting after " << luby_count << " iterations" << std::endl;
             // restart
             while (!trace.empty()) {
