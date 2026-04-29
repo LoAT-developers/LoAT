@@ -27,7 +27,9 @@ std::optional<RulePtr> eliminateIdentities(const RulePtr &rule) {
                 }
             },
             [&](const std::pair<Arrays<Arith>::Var, Arrays<Arith>::Expr>& p) {
-                if (p.first == p.second) {
+                if (p.first->dim() == 0 && arrays::readConst(p.first) == arrays::readConst(p.second)) {
+                    remove.insert(p.first);
+                } else if (p.first == p.second) {
                     remove.insert(p.first);
                 }
             });

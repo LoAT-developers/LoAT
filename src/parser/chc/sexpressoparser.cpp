@@ -10,7 +10,7 @@ CHCPtr SexpressoParser::loadFromFile(const std::string &filename) {
     return parser.chcs;
 }
 
-FunAppPtr parsePred(sexpresso::Sexp &exp, SMTLibParsingState &state) {
+FunAppPtr parsePred(const sexpresso::Sexp &exp, SMTLibParsingState &state) {
     std::vector<Expr> args;
     if (exp.isString()) {
         return FunApp::mk(exp.str(), args);
@@ -21,7 +21,7 @@ FunAppPtr parsePred(sexpresso::Sexp &exp, SMTLibParsingState &state) {
     return FunApp::mk(exp[0].str(), args);
 }
 
-std::vector<FunAppPtr> parseTopLevelBoolExpr(sexpresso::Sexp &exp, SMTLibParsingState &state) {
+std::vector<FunAppPtr> parseTopLevelBoolExpr(const sexpresso::Sexp &exp, SMTLibParsingState &state) {
     if (exp.isString()) {
         // get_type returns a value iff the given name has been declared as a variable, or if there is a binding for it
         if (const auto name {exp.str()}; name == "true" || name == "false" || state.get_type(name)) {

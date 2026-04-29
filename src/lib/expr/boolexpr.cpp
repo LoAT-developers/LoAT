@@ -58,7 +58,7 @@ Bools::Expr BoolExpr::build(const Children& lits, const ConcatOperator op) {
             }
             children.erase(top());
         }
-        if (op == ConcatOr && children.contains(top())) {
+        if (op == ConcatOr) {
             if (children.contains(top())) {
                 return top();
             }
@@ -70,11 +70,11 @@ Bools::Expr BoolExpr::build(const Children& lits, const ConcatOperator op) {
         case 1:
             return *children.begin();
         default:
-            for (const auto &x: children) {
-                if (x->isTheoryLit() && children.contains(!x)) {
-                    return op == ConcatAnd ? bot() : top();
-                }
-            }
+            // for (const auto &x: children) {
+            //     if (x->isTheoryLit() && children.contains(!x)) {
+            //         return op == ConcatAnd ? bot() : top();
+            //     }
+            // }
             return from_cache(children, op);
         }
     } else {

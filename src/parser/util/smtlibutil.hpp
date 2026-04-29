@@ -59,8 +59,8 @@ public:
 
 };
 
-Expr parseExpr(sexpresso::Sexp &exp, SMTLibParsingState &state);
+Expr parseExpr(const sexpresso::Sexp &exp, SMTLibParsingState &state);
 
-Bools::Expr parseBoolExpr(sexpresso::Sexp &exp, SMTLibParsingState &state);
+Bools::Expr parseBoolExpr(const sexpresso::Sexp &exp, SMTLibParsingState &state);
 
-Arith::Expr parseArithExpr(sexpresso::Sexp &exp, SMTLibParsingState &state);
+Arith::Expr parseArithExpr(const sexpresso::Sexp &exp, SMTLibParsingState &state);

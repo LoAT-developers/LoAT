@@ -204,7 +204,7 @@ bool isInt(const std::string &s) {
     return !s.empty() && (s[0] == '-' || std::isdigit(s[0])) && std::all_of(std::next(s.begin()), s.end(), isdigit);
 }
 
-Arrays<Arith>::Expr parseArray(sexpresso::Sexp &exp, SMTLibParsingState &state) {
+Arrays<Arith>::Expr parseArray(const sexpresso::Sexp &exp, SMTLibParsingState &state) {
     if (exp.isString()) {
         const auto name{exp.str()};
         if (const auto binding = state.get_array_binding(name)) {
@@ -231,7 +231,7 @@ Arrays<Arith>::Expr parseArray(sexpresso::Sexp &exp, SMTLibParsingState &state) 
     throw std::invalid_argument("unknown array: " + exp.toString());
 }
 
-Arith::Expr parseArithExpr(sexpresso::Sexp &exp, SMTLibParsingState &state) {
+Arith::Expr parseArithExpr(const sexpresso::Sexp &exp, SMTLibParsingState &state) {
     if (exp.isString()) {
         if (const auto name {exp.str()}; isInt(name)) {
             return arith::mkConst(Int(name));
@@ -364,7 +364,7 @@ theory::Type getType(const sexpresso::Sexp &exp, const SMTLibParsingState &state
     return theory::Type::Int;
 }
 
-Expr parseExpr(sexpresso::Sexp& exp, SMTLibParsingState& state) {
+Expr parseExpr(const sexpresso::Sexp& exp, SMTLibParsingState& state) {
     switch (const auto [base, dim]{getType(exp, state)}; base) {
     case theory::BaseType::Bool: return parseBoolExpr(exp, state);
     case theory::BaseType::Int: {
@@ -377,7 +377,7 @@ Expr parseExpr(sexpresso::Sexp& exp, SMTLibParsingState& state) {
     assert(false);
 }
 
-Bools::Expr parseBoolExpr(sexpresso::Sexp &exp, SMTLibParsingState &state) {
+Bools::Expr parseBoolExpr(const sexpresso::Sexp &exp, SMTLibParsingState &state) {
     if (exp.isString()) {
         const auto name {exp.str()};
         if (name == "true") {
@@ -401,10 +401,11 @@ Bools::Expr parseBoolExpr(sexpresso::Sexp &exp, SMTLibParsingState &state) {
     }
     if (f == "let") {
         state.push();
-        auto declarations {exp[1]};
+        const auto& declarations {exp[1]};
         std::unordered_map<std::string, Expr> newBindings;
-        for (unsigned i = 0; i < declarations.childCount(); ++i) {
-            auto decl {declarations[i]};
+        const auto size = declarations.childCount();
+        for (unsigned i = 0; i < size; ++i) {
+            const auto& decl {declarations[i]};
             const auto declName {decl[0].str()};
             state.add_binding(declName, parseExpr(decl[1], state));
         }
@@ -425,22 +426,26 @@ Bools::Expr parseBoolExpr(sexpresso::Sexp &exp, SMTLibParsingState &state) {
             return res;
         }
         if (f == "and") {
+            const auto size = exp.childCount();
             std::vector<Bools::Expr> args;
-            for (unsigned i = 1; i < exp.childCount(); ++i) {
-                args.push_back(parseBoolExpr(exp[i], state));
+            args.reserve(size);
+            for (unsigned i = 1; i < size; ++i) {
+                args.emplace_back(parseBoolExpr(exp[i], state));
             }
             return bools::mkAnd(args);
         }
         if (f == "or") {
             std::vector<Bools::Expr> args;
-            for (unsigned i = 1; i < exp.childCount(); ++i) {
+            const auto size = exp.childCount();
+            for (unsigned i = 1; i < size; ++i) {
                 args.push_back(parseBoolExpr(exp[i], state));
             }
             return bools::mkOr(args);
         }
         if (f == "=>") {
-            Bools::Expr res = parseBoolExpr(exp[exp.childCount() - 1], state);
-            for (unsigned i = exp.childCount() - 2; i > 0; --i) {
+            const auto size = exp.childCount();
+            Bools::Expr res = parseBoolExpr(exp[size - 1], state);
+            for (unsigned i = size - 2; i > 0; --i) {
                 res = !parseBoolExpr(exp[i], state) || res;
             }
             return res;
@@ -450,7 +455,8 @@ Bools::Expr parseBoolExpr(sexpresso::Sexp &exp, SMTLibParsingState &state) {
         }
         if (f == "<" || f == "<=" || f == ">" || f == ">=") {
             std::vector<Arith::Expr> args;
-            for (unsigned i = 1; i < exp.childCount(); ++i) {
+            const auto size = exp.childCount();
+            for (unsigned i = 1; i < size; ++i) {
                 args.push_back(parseArithExpr(exp[i], state));
             }
             LitSet lits;
@@ -472,7 +478,8 @@ Bools::Expr parseBoolExpr(sexpresso::Sexp &exp, SMTLibParsingState &state) {
             std::vector<Bools::Expr> lits;
             const auto build_lits = [&]<class T>(const auto& parse) {
                 std::vector<typename T::Expr> args;
-                for (unsigned i = 1; i < exp.childCount(); ++i) {
+                const auto size = exp.childCount();
+                for (unsigned i = 1; i < size; ++i) {
                     args.emplace_back(parse(exp[i], state));
                 }
                 if (f == "=") {
