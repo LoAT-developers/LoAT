@@ -110,13 +110,12 @@ std::optional<Range> ADCL::has_looping_infix(const int start) const {
     if (trace.empty()) {
         return {};
     }
-    for (int end = start; end < trace.size(); end++) {
-        const auto last_clause = trace.at(end).clause_idx;
-        for (int pos = start; pos >= 0; --pos) {
-            if (const Step &step = trace[pos]; chcs->areAdjacent(last_clause, step.clause_idx)) {
-                if (auto upos = static_cast<unsigned>(pos); pos < end || is_orig_clause(step.clause_idx)) {
-                    return Range::from_interval(upos, end);
-                }
+    const int end = trace.size() - 1;
+    const auto last_clause = trace.at(end).clause_idx;
+    for (int pos = start; pos >= 0; --pos) {
+        if (const Step &step = trace[pos]; chcs->areAdjacent(last_clause, step.clause_idx)) {
+            if (auto upos = static_cast<unsigned>(pos); pos < end || is_orig_clause(step.clause_idx)) {
+                return Range::from_interval(upos, end);
             }
         }
     }
