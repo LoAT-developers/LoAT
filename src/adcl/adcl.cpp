@@ -758,7 +758,7 @@ SmtResult ADCL::analyze() {
             if (const auto xlin {x->isLinear()}; xlin != y->isLinear()) {
                 return xlin;
             }
-            return x->getId() < y->getId();
+            return x->getId() > y->getId();
         });
         bool all_failed {true};
         for (const auto &idx: to_try) {
