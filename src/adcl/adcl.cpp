@@ -731,14 +731,14 @@ SmtResult ADCL::analyze() {
                 }
             }
         }
-        // if (luby_count >= next_restart || (state && state->restart())) {
-        //     if (Config::Analysis::log) std::cout << "restarting after " << luby_count << " iterations" << std::endl;
-        //     // restart
-        //     while (!trace.empty()) {
-        //         pop();
-        //     }
-        //     luby_next();
-        // }
+        if (luby_count >= next_restart || (state && state->restart())) {
+            if (Config::Analysis::log) std::cout << "restarting after " << luby_count << " iterations" << std::endl;
+            // restart
+            while (!trace.empty()) {
+                pop();
+            }
+            luby_next();
+        }
         auto try_set = trace.empty() ? chcs->getInitialTransitions() : chcs->getSuccessors(trace.back().clause_idx);
         for (auto it = try_set.begin(); it != try_set.end();) {
             if (is_learned_clause(*it) && locked.contains(*redundancy->get_language(*it))) {
