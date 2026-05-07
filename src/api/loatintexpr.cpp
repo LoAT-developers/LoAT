@@ -12,7 +12,7 @@
 // Hash function for expression pointers
 std::size_t hash_value(const LoatIntExprPtr &x)
 {
-    return std::hash<std::shared_ptr<const LoatIntExpr>>{}(x.as_nullable());
+    return std::hash<const LoatIntExpr*>{}(x.as_nullable());
 }
 
 // Constructor for base expression with specificInt kind
@@ -30,7 +30,7 @@ LoatIntExpression::Kind LoatIntExpr::getKind() const
 // Convert this expression to shared pointer
 LoatIntExprPtr LoatIntExpr::toPtr() const
 {
-    return cpp::assume_not_null(shared_from_this());
+    return cpp::assume_not_null(this);
 }
 
 // Overload operators +,-,*,^
@@ -76,7 +76,7 @@ std::ostream &operator<<(std::ostream &s, const LoatIntExprPtr& e)
     case LoatIntExpression::Kind::Plus:
     {
         s << "(";
-        const auto add = std::static_pointer_cast<const LoatIntAdd>(e.as_nullable());
+        const auto add = static_cast<const LoatIntAdd*>(e.as_nullable());
         bool first = true;
         for (const auto &arg : add->getArgs())
         {
@@ -90,7 +90,7 @@ std::ostream &operator<<(std::ostream &s, const LoatIntExprPtr& e)
     case LoatIntExpression::Kind::Times:
     {
         s << "(";
-        const auto mult = std::static_pointer_cast<const LoatIntMult>(e.as_nullable());
+        const auto mult = static_cast<const LoatIntMult*>(e.as_nullable());
         bool first = true;
         for (const auto &arg : mult->getArgs())
         {
@@ -103,22 +103,22 @@ std::ostream &operator<<(std::ostream &s, const LoatIntExprPtr& e)
     }
     case LoatIntExpression::Kind::Mod:
     {
-        const auto mod = std::static_pointer_cast<const LoatIntMod>(e.as_nullable());
+        const auto mod = static_cast<const LoatIntMod*>(e.as_nullable());
         return s << "(" << mod->getLhs() << " % " << mod->getRhs() << ")";
     }
     case LoatIntExpression::Kind::Exp:
     {
-        const auto exp = std::static_pointer_cast<const LoatIntExp>(e.as_nullable());
+        const auto exp = static_cast<const LoatIntExp*>(e.as_nullable());
         return s << "(" << exp->getBase() << " ^ " << exp->getExponent() << ")";
     }
     case LoatIntExpression::Kind::Constant:
     {
-        const auto c = std::static_pointer_cast<const LoatIntConst>(e.as_nullable());
+        const auto c = static_cast<const LoatIntConst*>(e.as_nullable());
         return s << c->getValue();
     }
     case LoatIntExpression::Kind::Variable:
     {
-        const auto v = std::static_pointer_cast<const LoatIntVar>(e.as_nullable());
+        const auto v = static_cast<const LoatIntVar*>(e.as_nullable());
         return s << v->getName() << (v->isPost() ? "'" : "");
     }
     default:
@@ -130,11 +130,6 @@ std::ostream &operator<<(std::ostream &s, const LoatIntExprPtr& e)
 ConsHash<LoatIntAdd, LoatIntExprSet> LoatIntAdd::cache;
 
 LoatIntAdd::LoatIntAdd(LoatIntExprSet args) : LoatIntExpr(LoatIntExpression::Kind::Plus), m_args(std::move(args)) {}
-
-LoatIntAdd::~LoatIntAdd()
-{
-    cache.erase(m_args);
-}
 
 bool LoatIntAdd::CacheEqual::operator()(const std::tuple<LoatIntExprSet> &args1, const std::tuple<LoatIntExprSet> &args2) const noexcept
 {
@@ -178,11 +173,6 @@ ConsHash<LoatIntConst, Rational> LoatIntConst::cache;
 
 LoatIntConst::LoatIntConst(Rational t) : LoatIntExpr(LoatIntExpression::Kind::Constant), m_value(std::move(t)) {}
 
-LoatIntConst::~LoatIntConst()
-{
-    cache.erase(m_value);
-}
-
 const Rational &LoatIntConst::operator*() const
 {
     return m_value;
@@ -219,11 +209,6 @@ ConsHash<LoatIntExp, LoatIntExprPtr, LoatIntExprPtr> LoatIntExp::cache;
 LoatIntExp::LoatIntExp(LoatIntExprPtr base, LoatIntExprPtr exponent)
     : LoatIntExpr(LoatIntExpression::Kind::Exp), m_base(std::move(base)), m_exponent(std::move(exponent)) {}
 
-LoatIntExp::~LoatIntExp()
-{
-    cache.erase(m_base, m_exponent);
-}
-
 LoatIntExprPtr LoatIntExp::getBase() const
 {
     return m_base;
@@ -259,11 +244,6 @@ ConsHash<LoatIntMod, LoatIntExprPtr, LoatIntExprPtr> LoatIntMod::cache;
 LoatIntMod::LoatIntMod(LoatIntExprPtr lhs, LoatIntExprPtr rhs)
     : LoatIntExpr(LoatIntExpression::Kind::Mod), m_lhs(std::move(lhs)), m_rhs(std::move(rhs)) {}
 
-LoatIntMod::~LoatIntMod()
-{
-    cache.erase(m_lhs, m_rhs);
-}
-
 LoatIntExprPtr LoatIntMod::getLhs() const {
     return m_lhs;
 }
@@ -297,11 +277,6 @@ LoatIntExprPtr LoatIntExpression::mkMod(const LoatIntExprPtr& x, const LoatIntEx
 ConsHash<LoatIntMult, LoatIntExprSet> LoatIntMult::cache;
 
 LoatIntMult::LoatIntMult(LoatIntExprSet args) : LoatIntExpr(LoatIntExpression::Kind::Times), m_args(std::move(args)) {}
-
-LoatIntMult::~LoatIntMult()
-{
-    cache.erase(m_args);
-}
 
 const LoatIntExprSet &LoatIntMult::getArgs() const
 {
@@ -339,11 +314,6 @@ LoatIntExprPtr LoatIntExpression::mkTimes(const LoatIntExprPtr& a, const LoatInt
 ConsHash<LoatIntVar, std::string, bool> LoatIntVar::cache;
 
 LoatIntVar::LoatIntVar(std::string name, const bool isPost) : LoatIntExpr(LoatIntExpression::Kind::Variable), m_name(std::move(name)), m_isPost(isPost) {}
-
-LoatIntVar::~LoatIntVar()
-{
-    cache.erase(m_name, m_isPost);
-}
 
 std::string LoatIntVar::getName() const
 {

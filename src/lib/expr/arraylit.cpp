@@ -7,7 +7,7 @@
 
 template <class T>
 void ArrayEq<T>::syntacticImplicant(const ModelPtr& m, LitSet& res) const {
-    if (const auto self = cpp::assume_not_null(this->shared_from_this()); m->eval(self)) {
+    if (const auto self = cpp::assume_not_null(this); m->eval(self)) {
         res.insert(arrays::mkEq(m_lhs->syntacticImplicant(m, res), m_rhs->syntacticImplicant(m, res)));
     }
 }
@@ -35,11 +35,6 @@ size_t ArrayEq<T>::CacheHash::operator()(const std::tuple<ArrayPtr<T>, ArrayPtr<
     auto seed{hash_value(std::get<0>(args))};
     boost::hash_combine(seed, std::get<1>(args));
     return seed;
-}
-
-template <class T>
-ArrayEq<T>::~ArrayEq() {
-    cache.erase(m_lhs, m_rhs);
 }
 
 template <class T>
@@ -110,7 +105,7 @@ bool ArrayEq<T>::isTriviallyFalse() const {
 
 template <class T>
 std::optional<ArrayEqPtr<T>> ArrayEq<T>::isArrayEq() const {
-    return cpp::assume_not_null(std::static_pointer_cast<const ArrayEq>(static_cast<const ArrayLit<T>*>(this)->shared_from_this()));
+    return cpp::assume_not_null(this);
 }
 
 template <class T>
@@ -151,11 +146,6 @@ size_t ArrayNeq<T>::CacheHash::operator()(const std::tuple<ArrayPtr<T>, ArrayPtr
     auto seed{hash_value(std::get<0>(args))};
     boost::hash_combine(seed, std::get<1>(args));
     return seed;
-}
-
-template <class T>
-ArrayNeq<T>::~ArrayNeq() {
-    cache.erase(m_lhs, m_rhs);
 }
 
 template <class T>
@@ -236,7 +226,7 @@ std::optional<ArrayEqPtr<T>> ArrayNeq<T>::isArrayEq() const {
 
 template <class T>
 std::optional<ArrayNeqPtr<T>> ArrayNeq<T>::isArrayNeq() const {
-    return cpp::assume_not_null(std::static_pointer_cast<const ArrayNeq>(static_cast<const ArrayLit<T>*>(this)->shared_from_this()));
+    return cpp::assume_not_null(this);
 }
 
 template <class T>

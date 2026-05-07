@@ -25,7 +25,7 @@ template <class T> class linked_hash_set;
 template <class S, class T> class linked_hash_map;
 
 template <class T>
-using ptr = cpp::not_null<std::shared_ptr<const T>>;
+using ptr = cpp::not_null<const T*>;
 
 namespace theory {
 

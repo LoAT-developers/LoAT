@@ -6,10 +6,6 @@ ConsHash<ArithMod, ArithExprPtr, ArithExprPtr> ArithMod::cache;
 
 ArithMod::ArithMod(ArithExprPtr lhs, ArithExprPtr rhs): ArithExpr(arith::Kind::Mod), lhs(std::move(lhs)), rhs(std::move(rhs)) {}
 
-ArithMod::~ArithMod() {
-    cache.erase(lhs, rhs);
-}
-
 bool ArithMod::CacheEqual::operator()(const std::tuple<ArithExprPtr, ArithExprPtr> &args1, const std::tuple<ArithExprPtr, ArithExprPtr> &args2) const noexcept {
     return args1 == args2;
 }

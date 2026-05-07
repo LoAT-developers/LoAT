@@ -48,7 +48,7 @@ enum ConcatOperator { ConcatAnd, ConcatOr };
 class BoolTheoryLit;
 class BoolJunction;
 
-class BoolExpr: public std::enable_shared_from_this<BoolExpr> {
+class BoolExpr {
 
     friend class BoolTheoryLit;
     friend class BoolJunction;
@@ -169,7 +169,6 @@ public:
     BoolExprSet getChildren() const override;
     Bools::Expr negation() const override;
     bool forall(const std::function<bool(const Lit&)> &pred) const override;
-    ~BoolTheoryLit() override;
     bool isConjunction() const override;
     bool isStructualImplicant() const override;
     LitSet universallyValidLits() const override;
@@ -206,7 +205,6 @@ public:
     BoolExprSet getChildren() const override;
     Bools::Expr negation() const override;
     bool forall(const std::function<bool(const Lit&)> &pred) const override;
-    ~BoolJunction() override;
     bool isConjunction() const override;
     bool isStructualImplicant() const override;
     LitSet universallyValidLits() const override;

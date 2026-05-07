@@ -27,10 +27,6 @@ struct Divisibility {
 
 std::size_t hash_value(const Divisibility&);
 
-class ArithLit;
-
-using ArithLitPtr = cpp::not_null<std::shared_ptr<const ArithLit>>;
-
 namespace arith {
 
 ArithLitPtr mkEq(const ArithExprPtr& x, const ArithExprPtr& y);
@@ -42,7 +38,7 @@ ArithLitPtr mkLt(const ArithExprPtr& x, const ArithExprPtr& y);
 
 }
 
-class ArithLit final: public std::enable_shared_from_this<ArithLit> {
+class ArithLit final {
 
     enum class Kind {Gt, Eq, Neq};
 
@@ -71,7 +67,6 @@ class ArithLit final: public std::enable_shared_from_this<ArithLit> {
 public:
 
     ArithLit(ArithExprPtr  lhs, Kind kind);
-    ~ArithLit();
 
     ArithExprPtr lhs() const;
     bool isPoly() const;

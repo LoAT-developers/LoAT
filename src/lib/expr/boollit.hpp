@@ -11,15 +11,11 @@
 
 using bool_var_map = boost::bimap<boost::bimaps::unordered_set_of<BoolVarPtr>, boost::bimaps::unordered_set_of<BoolVarPtr>>;
 
-class BoolLit;
-
-using BoolLitPtr = cpp::not_null<std::shared_ptr<const BoolLit>>;
-
 namespace bools {
     BoolLitPtr mk(const BoolVarPtr& var, bool negated = false);
 }
 
-class BoolLit: public std::enable_shared_from_this<BoolLit> {
+class BoolLit {
 
     friend BoolLitPtr bools::mk(const BoolVarPtr& var, bool negated);
     friend class ConsHash<BoolLit, BoolVarPtr, bool>;
@@ -38,7 +34,6 @@ class BoolLit: public std::enable_shared_from_this<BoolLit> {
 public:
 
     BoolLit(BoolVarPtr  var, bool negated);
-    ~BoolLit();
     bool isNegated() const;
     static bool isPoly();
     static bool isLinear();

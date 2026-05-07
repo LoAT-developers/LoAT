@@ -6,10 +6,6 @@ ConsHash<ArithConst, Rational> ArithConst::cache;
 
 ArithConst::ArithConst(Rational t): ArithExpr(arith::Kind::Constant), t(std::move(t)) {}
 
-ArithConst::~ArithConst() {
-    cache.erase(t);
-}
-
 bool ArithConst::CacheEqual::operator()(const std::tuple<Rational> &args1, const std::tuple<Rational> &args2) const noexcept {
     return args1 == args2;
 }

@@ -11,7 +11,7 @@
 
 class LoatBoolExpr;
 
-using LoatBoolExprPtr = cpp::not_null<std::shared_ptr<const LoatBoolExpr>>;
+using LoatBoolExprPtr = ptr<LoatBoolExpr>;
 using LoatBoolExprSet = linked_hash_set<LoatBoolExprPtr>;
 using LoatBoolExprVec = std::vector<LoatBoolExprPtr>;
 
@@ -59,7 +59,7 @@ namespace LoatBoolExpression
 /**
  * Base class for all expression types.
  */
-class LoatBoolExpr : public std::enable_shared_from_this<LoatBoolExpr>
+class LoatBoolExpr
 {
     LoatBoolExpression::Kind m_kind;
 
@@ -100,7 +100,6 @@ class LoatBoolVar final : public LoatBoolExpr
 
 public:
     explicit LoatBoolVar(std::string name, bool isPost);
-    ~LoatBoolVar() override;
     std::string getName() const;
     bool isPost() const;
 };
@@ -127,7 +126,6 @@ class LoatBoolOr final : public LoatBoolExpr
 
 public:
     explicit LoatBoolOr(LoatBoolExprVec args);
-    ~LoatBoolOr() override;
     const LoatBoolExprVec &getArgs() const;
 };
 
@@ -155,7 +153,6 @@ class LoatBoolAnd final : public LoatBoolExpr
 
 public:
     explicit LoatBoolAnd(LoatBoolExprVec args);
-    ~LoatBoolAnd() override;
     const LoatBoolExprVec &getArgs() const;
 };
 
@@ -183,7 +180,6 @@ class LoatBoolNot final : public LoatBoolExpr
 
 public:
     explicit LoatBoolNot(LoatBoolExprPtr arg);
-    ~LoatBoolNot() override;
     const LoatBoolExprPtr &getArg() const;
 };
 
@@ -214,7 +210,6 @@ class LoatBoolCmp final : public LoatBoolExpr
 
 public:
     LoatBoolCmp(LoatIntExprPtr  lhs, LoatBoolExpression::CmpOp op, LoatIntExprPtr  rhs);
-    ~LoatBoolCmp() override;
 
     const LoatIntExprPtr &getLhs() const;
     const LoatIntExprPtr &getRhs() const;

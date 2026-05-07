@@ -6,10 +6,6 @@ ConsHash<ArithExp, ArithExprPtr, ArithExprPtr> ArithExp::cache;
 
 ArithExp::ArithExp(ArithExprPtr base, ArithExprPtr exponent): ArithExpr(arith::Kind::Exp), base(std::move(base)), exponent(std::move(exponent)) {}
 
-ArithExp::~ArithExp() {
-    cache.erase(base, exponent);
-}
-
 bool ArithExp::CacheEqual::operator()(const std::tuple<ArithExprPtr, ArithExprPtr> &args1, const std::tuple<ArithExprPtr, ArithExprPtr> &args2) const noexcept {
     return args1 == args2;
 }

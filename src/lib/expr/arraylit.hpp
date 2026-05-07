@@ -23,7 +23,7 @@ namespace arrays {
 }
 
 template <class T>
-class ArrayLit: public std::enable_shared_from_this<ArrayLit<T>> {
+class ArrayLit {
 
 public:
 
@@ -71,8 +71,6 @@ class ArrayEq final: public ArrayLit<T> {
     static ConsHash<ArrayEq, ArrayPtr<T>, ArrayPtr<T>> cache;
 
 public:
-
-    ~ArrayEq() override;
 
     ArrayEq(const ArrayPtr<T>& p_lhs, const ArrayPtr<T>& p_rhs);
 
@@ -127,8 +125,6 @@ class ArrayNeq final: public ArrayLit<T> {
     static ConsHash<ArrayNeq, ArrayPtr<T>, ArrayPtr<T>> cache;
 
 public:
-
-    ~ArrayNeq() override;
 
     ArrayNeq(const ArrayPtr<T>& p_lhs, const ArrayPtr<T>& p_rhs);
 

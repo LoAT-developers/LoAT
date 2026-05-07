@@ -47,10 +47,6 @@ bool BoolTheoryLit::forall(const std::function<bool(const Lit&)> &pred) const {
     return pred(lit);
 }
 
-BoolTheoryLit::~BoolTheoryLit() {
-    cache.erase(lit);
-}
-
 bool BoolTheoryLit::isConjunction() const {
     return true;
 }

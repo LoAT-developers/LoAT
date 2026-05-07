@@ -43,7 +43,7 @@ namespace arrays {
 }
 
 template <class T>
-class Array: public std::enable_shared_from_this<Array<T>> {
+class Array {
 
     public:
 
@@ -97,7 +97,6 @@ class ArrayVar final: public Array<T> {
 public:
 
     explicit ArrayVar(int p_idx, unsigned p_dim);
-    ~ArrayVar() override;
 
     static Self next(unsigned p_dim);
 
@@ -182,7 +181,6 @@ class ArrayWrite final: public Array<T> {
 public:
 
     ArrayWrite(const ArrayPtr<T>& p_arr, Bools::Expr  p_cond, const T::Expr &p_val);
-    ~ArrayWrite() override;
 
     ArrayPtr<T> arr() const;
 

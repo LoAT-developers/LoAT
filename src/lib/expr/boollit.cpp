@@ -30,10 +30,6 @@ BoolLitPtr bools::mk(const BoolVarPtr& var, const bool negated) {
 
 BoolLit::BoolLit(BoolVarPtr var, const bool negated): var(std::move(var)), negated(negated) {}
 
-BoolLit::~BoolLit() {
-    cache.erase(var, negated);
-}
-
 bool BoolLit::isNegated() const {
     return negated;
 }
@@ -109,5 +105,5 @@ BoolExprPtr BoolLit::subs(const Subs& subs) const {
 }
 
 void BoolLit::syntacticImplicant(ModelPtr m, LitSet& res) const {
-    res.insert(cpp::assume_not_null(shared_from_this()));
+    res.insert(cpp::assume_not_null(this));
 }

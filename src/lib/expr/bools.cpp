@@ -27,7 +27,7 @@ Bools::Expr Bools::mkEq(const Expr &lhs, const Expr &rhs) {
 }
 
 std::size_t hash_value(const Bools::Expr &x) {
-    return std::hash<std::shared_ptr<const BoolExpr>>{}(x.as_nullable());
+    return std::hash<const BoolExpr*>{}(x.as_nullable());
 }
 
 namespace bools {

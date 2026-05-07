@@ -13,12 +13,12 @@ class ArithAdd;
 class ArithMult;
 class ArithMod;
 
-using ArithExprPtr = cpp::not_null<std::shared_ptr<const ArithExpr>>;
-using ArithConstPtr = cpp::not_null<std::shared_ptr<const ArithConst>>;
-using ArithAddPtr = cpp::not_null<std::shared_ptr<const ArithAdd>>;
-using ArithMultPtr = cpp::not_null<std::shared_ptr<const ArithMult>>;
-using ArithModPtr = cpp::not_null<std::shared_ptr<const ArithMod>>;
-using ArithExpPtr = cpp::not_null<std::shared_ptr<const ArithExp>>;
+using ArithExprPtr = ptr<ArithExpr>;
+using ArithConstPtr = ptr<ArithConst>;
+using ArithAddPtr = ptr<ArithAdd>;
+using ArithMultPtr = ptr<ArithMult>;
+using ArithModPtr = ptr<ArithMod>;
+using ArithExpPtr = ptr<ArithExp>;
 using ArithExprSet = linked_hash_set<ArithExprPtr>;
 using ArithExprVec = std::vector<ArithExprPtr>;
 
@@ -45,7 +45,7 @@ enum class Kind {
 
 }
 
-class ArithExpr: public std::enable_shared_from_this<ArithExpr> {
+class ArithExpr {
 
     friend class ArithExp;
     friend ArithExprPtr arith::mkPlusImpl(ArithExprVec &&args);
@@ -232,7 +232,6 @@ class ArithConst: public ArithExpr {
 
 public:
     explicit ArithConst(Rational t);
-    ~ArithConst();
 
 private:
     Rational t;
@@ -282,7 +281,6 @@ private:
 
 public:
     explicit ArithAdd(ArithExprSet args);
-    ~ArithAdd();
 
 };
 
@@ -312,7 +310,6 @@ private:
 
 public:
     explicit ArithMult(ArithExprSet args);
-    ~ArithMult();
 
 };
 
@@ -341,7 +338,6 @@ private:
 
 public:
     ArithMod(ArithExprPtr, ArithExprPtr);
-    ~ArithMod();
 
 };
 
@@ -357,7 +353,6 @@ class ArithExp: public ArithExpr {
 
 public:
     ArithExp(ArithExprPtr  base, ArithExprPtr exponent);
-    ~ArithExp();
 
 private:
     struct CacheEqual {

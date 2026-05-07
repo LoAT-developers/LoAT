@@ -66,10 +66,6 @@ ConsHash<FunApp, std::string, std::vector<Expr>> FunApp::cache;
 
 FunApp::FunApp(std::string pred, const std::vector<Expr> &args): pred(std::move(pred)), args(args) {}
 
-FunApp::~FunApp() {
-    cache.erase(pred, args);
-}
-
 FunAppPtr FunApp::mk(const std::string &pred, const std::vector<Expr> &args) {
     return cache.from_cache(pred, args);
 }
@@ -150,10 +146,6 @@ size_t Clause::CacheHash::operator()(const Args &args) const noexcept {
 ConsHash<Clause, std::vector<FunAppPtr>, Bools::Expr, std::optional<FunAppPtr>> Clause::cache;
 
 Clause::Clause(const std::vector<FunAppPtr>& premise, Bools::Expr  constraint, const std::optional<FunAppPtr>& conclusion): premise(premise), constraint(std::move(constraint)), conclusion(conclusion) {}
-
-Clause::~Clause() {
-    cache.erase(premise, constraint, conclusion);
-}
 
 ClausePtr Clause::mk(const std::vector<FunAppPtr>& premise, const Bools::Expr& constraint, const std::optional<FunAppPtr>& conclusion) {
     return cache.from_cache(premise, constraint, conclusion);
