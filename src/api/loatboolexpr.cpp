@@ -15,17 +15,22 @@ LoatBoolExpression::Kind LoatBoolExpr::getKind() const
 }
 LoatBoolExprPtr LoatBoolExpr::toPtr() const
 {
-    return cpp::assume_not_null(this);
+    return cpp::assume_not_null(shared_from_this());
 }
 
 // ==============================
 // LoatBoolVar
 // ==============================
 
-ConsHash<LoatBoolVar, std::string, bool> LoatBoolVar::cache;
+ConsHashFree<LoatBoolVar, std::string, bool> LoatBoolVar::cache;
 
 LoatBoolVar::LoatBoolVar(std::string name, const bool isPost)
     : LoatBoolExpr(LoatBoolExpression::Kind::Variable), m_name(std::move(name)), m_isPost(isPost) {}
+
+LoatBoolVar::~LoatBoolVar()
+{
+    cache.erase(m_name, m_isPost);
+}
 
 std::string LoatBoolVar::getName() const { return m_name; }
 
@@ -63,10 +68,15 @@ LoatBoolExprPtr LoatBoolExpression::mkPostVar(const std::string &name)
 // LoatBoolAnd
 // ==============================
 
-ConsHash<LoatBoolAnd, LoatBoolExprVec> LoatBoolAnd::cache;
+ConsHashFree<LoatBoolAnd, LoatBoolExprVec> LoatBoolAnd::cache;
 
 LoatBoolAnd::LoatBoolAnd(LoatBoolExprVec args)
     : LoatBoolExpr(LoatBoolExpression::Kind::And), m_args(std::move(args)) {}
+
+LoatBoolAnd::~LoatBoolAnd()
+{
+    cache.erase(m_args);
+}
 
 const LoatBoolExprVec &LoatBoolAnd::getArgs() const { return m_args; }
 
@@ -92,10 +102,15 @@ LoatBoolExprPtr LoatBoolExpression::mkAnd(const LoatBoolExprVec &&args)
 // LoatBoolOr
 // ==============================
 
-ConsHash<LoatBoolOr, LoatBoolExprVec> LoatBoolOr::cache;
+ConsHashFree<LoatBoolOr, LoatBoolExprVec> LoatBoolOr::cache;
 
 LoatBoolOr::LoatBoolOr(LoatBoolExprVec args)
     : LoatBoolExpr(LoatBoolExpression::Kind::Or), m_args(std::move(args)) {}
+
+LoatBoolOr::~LoatBoolOr()
+{
+    cache.erase(m_args);
+}
 
 const LoatBoolExprVec &LoatBoolOr::getArgs() const { return m_args; }
 
@@ -121,10 +136,15 @@ LoatBoolExprPtr LoatBoolExpression::mkOr(const LoatBoolExprVec &&args)
 // LoatBoolNot
 // ==============================
 
-ConsHash<LoatBoolNot, LoatBoolExprPtr> LoatBoolNot::cache;
+ConsHashFree<LoatBoolNot, LoatBoolExprPtr> LoatBoolNot::cache;
 
 LoatBoolNot::LoatBoolNot(LoatBoolExprPtr arg)
     : LoatBoolExpr(LoatBoolExpression::Kind::Not), m_arg(std::move(arg)) {}
+
+LoatBoolNot::~LoatBoolNot()
+{
+    cache.erase(m_arg);
+}
 
 const LoatBoolExprPtr &LoatBoolNot::getArg() const { return m_arg; }
 
@@ -197,9 +217,13 @@ size_t LoatBoolCmp::CacheHash::operator()(const std::tuple<LoatIntExprPtr, LoatB
     return hash;
 }
 
-ConsHash<LoatBoolCmp, LoatIntExprPtr, LoatBoolExpression::CmpOp, LoatIntExprPtr> LoatBoolCmp::cache;
+ConsHashFree<LoatBoolCmp, LoatIntExprPtr, LoatBoolExpression::CmpOp, LoatIntExprPtr> LoatBoolCmp::cache;
 LoatBoolCmp::LoatBoolCmp(LoatIntExprPtr lhs, const LoatBoolExpression::CmpOp op, LoatIntExprPtr  rhs)
     : LoatBoolExpr(LoatBoolExpression::Kind::Compare), m_lhs(std::move(lhs)), m_rhs(std::move(rhs)), m_op(op) {}
+LoatBoolCmp::~LoatBoolCmp()
+{
+    cache.erase(m_lhs, m_op, m_rhs);
+}
 const LoatIntExprPtr &LoatBoolCmp::getLhs() const { return m_lhs; }
 const LoatIntExprPtr &LoatBoolCmp::getRhs() const { return m_rhs; }
 LoatBoolExpression::CmpOp LoatBoolCmp::getOp() const { return m_op; }
@@ -211,12 +235,12 @@ std::ostream &operator<<(std::ostream &os, const LoatBoolExprPtr &expr)
     {
     case Kind::Variable:
     {
-        const auto v = static_cast<const LoatBoolVar*>(expr.as_nullable());
+        const auto v = std::static_pointer_cast<const LoatBoolVar>(expr.as_nullable());
         return os << v->getName() << (v->isPost() ? "'" : "");
     }
     case Kind::And:
     {
-        const auto a = static_cast<const LoatBoolAnd*>(expr.as_nullable());
+        const auto a = std::static_pointer_cast<const LoatBoolAnd>(expr.as_nullable());
         os << "(";
         bool first = true;
         for (const auto &arg : a->getArgs())
@@ -230,7 +254,7 @@ std::ostream &operator<<(std::ostream &os, const LoatBoolExprPtr &expr)
     }
     case Kind::Or:
     {
-        const auto o = static_cast<const LoatBoolOr*>(expr.as_nullable());
+        const auto o = std::static_pointer_cast<const LoatBoolOr>(expr.as_nullable());
         os << "(";
         bool first = true;
         for (const auto &arg : o->getArgs())
@@ -244,12 +268,12 @@ std::ostream &operator<<(std::ostream &os, const LoatBoolExprPtr &expr)
     }
     case Kind::Not:
     {
-        const auto n = static_cast<const LoatBoolNot*>(expr.as_nullable());
+        const auto n = std::static_pointer_cast<const LoatBoolNot>(expr.as_nullable());
         return os << "(!" << n->getArg() << ")";
     }
     case Kind::Compare:
     {
-        const auto c = static_cast<const LoatBoolCmp*>(expr.as_nullable());
+        const auto c = std::static_pointer_cast<const LoatBoolCmp>(expr.as_nullable());
         os << "(" << c->getLhs() << " ";
 
         switch (c->getOp())

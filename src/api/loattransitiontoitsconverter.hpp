@@ -25,10 +25,10 @@ struct std::hash<std::pair<std::string, bool>> {
 
 class LoatTransitionToITSConverter {
     // Cache (api bool expr to internal bool Expr)
-    std::unordered_map<const LoatBoolExpr*, Bools::Expr> m_boolExprCache;
+    std::unordered_map<LoatBoolExprPtr, Bools::Expr> m_boolExprCache;
 
     // Cache (api int expr to internal int Expr)
-    std::unordered_map<const LoatIntExpr*, Arith::Expr> m_arithExprCache;
+    std::unordered_map<LoatIntExprPtr, Arith::Expr> m_arithExprCache;
 
     // Cache LoAT -> ITS (Pre- and Post-Vars)
     std::unordered_map<std::string, ArithVarPtr> m_arithVarPreMap;

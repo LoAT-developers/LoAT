@@ -4,9 +4,9 @@
 #include <string>
 
 #include "linkedhashset.hpp"
-#include "conshash.hpp"
+#include "conshashfree.hpp"
 #include "notnull.hpp"
-#include "exprfwd.hpp"
+#include "notnull_hash.hpp"
 
 class LoatIntExpr;
 
@@ -17,12 +17,12 @@ class LoatIntMult;
 class LoatIntMod;
 class LoatIntVar;
 
-using LoatIntExprPtr = ptr<LoatIntExpr>;
-using LoatIntConstPtr = ptr<LoatIntConst>;
-using LoatIntAddPtr = ptr<LoatIntAdd>;
-using LoatIntMultPtr = ptr<LoatIntMult>;
-using LoatIntModPtr = ptr<LoatIntMod>;
-using LoatIntExpPtr = ptr<LoatIntExp>;
+using LoatIntExprPtr = cpp::not_null<std::shared_ptr<const LoatIntExpr>>;
+using LoatIntConstPtr = cpp::not_null<std::shared_ptr<const LoatIntConst>>;
+using LoatIntAddPtr = cpp::not_null<std::shared_ptr<const LoatIntAdd>>;
+using LoatIntMultPtr = cpp::not_null<std::shared_ptr<const LoatIntMult>>;
+using LoatIntModPtr = cpp::not_null<std::shared_ptr<const LoatIntMod>>;
+using LoatIntExpPtr = cpp::not_null<std::shared_ptr<const LoatIntExp>>;
 using LoatIntExprSet = linked_hash_set<LoatIntExprPtr>;
 using LoatIntExprVec = std::vector<LoatIntExprPtr>;
 
@@ -59,7 +59,7 @@ namespace LoatIntExpression
 /**
  * Base class for all expression types.
  */
-class LoatIntExpr
+class LoatIntExpr : public std::enable_shared_from_this<LoatIntExpr>
 {
 protected:
     // Constructs an expression with a specific kind.
@@ -95,10 +95,11 @@ class LoatIntConst : public LoatIntExpr
     friend LoatIntExprPtr LoatIntExpression::mkConst(const Rational &r);
     friend LoatIntExprPtr LoatIntExpression::mkConst(const Rational &&r);
     friend class LoatIntExpr;
-    friend class ConsHash<LoatIntConst, Rational>;
+    friend class ConsHashFree<LoatIntConst, Rational>;
 
 public:
     explicit LoatIntConst(Rational t);
+    ~LoatIntConst();
     const Rational &operator*() const;
     const Rational &getValue() const;
 
@@ -113,7 +114,7 @@ private:
     {
         size_t operator()(const std::tuple<Rational> &args) const noexcept;
     };
-    static ConsHash<LoatIntConst, Rational> cache;
+    static ConsHashFree<LoatIntConst, Rational> cache;
 };
 
 /**
@@ -124,7 +125,7 @@ class LoatIntAdd : public LoatIntExpr
     friend LoatIntExprPtr LoatIntExpression::mkPlus(LoatIntExprPtr, LoatIntExprPtr);
     friend LoatIntExprPtr LoatIntExpression::mkPlus(LoatIntExprVec &&args);
     friend class LoatIntExpr;
-    friend class ConsHash<LoatIntAdd, LoatIntExprSet>;
+    friend class ConsHashFree<LoatIntAdd, LoatIntExprSet>;
 
 public:
     const LoatIntExprSet &getArgs() const;
@@ -140,10 +141,11 @@ private:
     {
         size_t operator()(const std::tuple<LoatIntExprSet> &args) const noexcept;
     };
-    static ConsHash<LoatIntAdd, LoatIntExprSet> cache;
+    static ConsHashFree<LoatIntAdd, LoatIntExprSet> cache;
 
 public:
     explicit LoatIntAdd(LoatIntExprSet args);
+    ~LoatIntAdd();
 };
 
 /**
@@ -154,7 +156,7 @@ class LoatIntMult : public LoatIntExpr
     friend LoatIntExprPtr LoatIntExpression::mkTimes(const LoatIntExprPtr&, const LoatIntExprPtr&);
     friend LoatIntExprPtr LoatIntExpression::mkTimes(LoatIntExprVec &&args);
     friend class LoatIntExpr;
-    friend class ConsHash<LoatIntMult, LoatIntExprSet>;
+    friend class ConsHashFree<LoatIntMult, LoatIntExprSet>;
 
 public:
     const LoatIntExprSet &getArgs() const;
@@ -172,10 +174,11 @@ private:
         size_t operator()(const std::tuple<LoatIntExprSet> &args) const noexcept;
     };
 
-    static ConsHash<LoatIntMult, LoatIntExprSet> cache;
+    static ConsHashFree<LoatIntMult, LoatIntExprSet> cache;
 
 public:
     explicit LoatIntMult(LoatIntExprSet args);
+    ~LoatIntMult();
 };
 
 /**
@@ -185,7 +188,7 @@ class LoatIntMod : public LoatIntExpr
 {
     friend LoatIntExprPtr LoatIntExpression::mkMod(const LoatIntExprPtr& x, const LoatIntExprPtr& y);
     friend class LoatIntExpr;
-    friend class ConsHash<LoatIntMod, LoatIntExprPtr, LoatIntExprPtr>;
+    friend class ConsHashFree<LoatIntMod, LoatIntExprPtr, LoatIntExprPtr>;
 
 public:
     LoatIntExprPtr getLhs() const;
@@ -206,10 +209,11 @@ private:
         size_t operator()(const std::tuple<LoatIntExprPtr, LoatIntExprPtr> &args) const noexcept;
     };
 
-    static ConsHash<LoatIntMod, LoatIntExprPtr, LoatIntExprPtr> cache;
+    static ConsHashFree<LoatIntMod, LoatIntExprPtr, LoatIntExprPtr> cache;
 
 public:
     LoatIntMod(LoatIntExprPtr  lhs, LoatIntExprPtr  rhs);
+    ~LoatIntMod();
 };
 
 /**
@@ -219,7 +223,7 @@ class LoatIntExp : public LoatIntExpr
 {
     friend LoatIntExprPtr LoatIntExpression::mkExp(const LoatIntExprPtr& base, const LoatIntExprPtr& exponent);
     friend class LoatIntExpr;
-    friend class ConsHash<LoatIntExp, LoatIntExprPtr, LoatIntExprPtr>;
+    friend class ConsHashFree<LoatIntExp, LoatIntExprPtr, LoatIntExprPtr>;
 
     LoatIntExprPtr m_base;
     LoatIntExprPtr m_exponent;
@@ -235,10 +239,11 @@ class LoatIntExp : public LoatIntExpr
         size_t operator()(const std::tuple<LoatIntExprPtr, LoatIntExprPtr> &a) const noexcept;
     };
 
-    static ConsHash<LoatIntExp, LoatIntExprPtr, LoatIntExprPtr> cache;
+    static ConsHashFree<LoatIntExp, LoatIntExprPtr, LoatIntExprPtr> cache;
 
 public:
     LoatIntExp(LoatIntExprPtr  base, LoatIntExprPtr  exponent);
+    ~LoatIntExp();
 
     LoatIntExprPtr getBase() const;
     LoatIntExprPtr getExponent() const;
@@ -253,7 +258,7 @@ class LoatIntVar : public LoatIntExpr
     friend LoatIntExprPtr LoatIntExpression::mkPreVar(const std::string &name);
     friend LoatIntExprPtr LoatIntExpression::mkPostVar(const std::string &name);
     friend class LoatIntExpr;
-    friend class ConsHash<LoatIntVar, std::string, bool>;
+    friend class ConsHashFree<LoatIntVar, std::string, bool>;
 
     std::string m_name;
     bool m_isPost;
@@ -268,10 +273,11 @@ class LoatIntVar : public LoatIntExpr
         size_t operator()(const std::tuple<std::string, bool> &a) const noexcept;
     };
 
-    static ConsHash<LoatIntVar, std::string, bool> cache;
+    static ConsHashFree<LoatIntVar, std::string, bool> cache;
 
 public:
     explicit LoatIntVar(std::string name, bool isPost);
+    ~LoatIntVar();
 
     std::string getName() const;
     bool isPost() const;

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <ranges>
+
 #include "notnull.hpp"
 
 #include <unordered_map>
@@ -14,6 +16,12 @@ class ConsHash {
         typename T::CacheEqual> cache{};
 
 public:
+
+    ~ConsHash() {
+        for (const auto v: cache | std::views::values) {
+            delete v;
+        }
+    }
 
     bool contains(const Args&... args) const {
         return cache.contains(std::make_tuple(args...));

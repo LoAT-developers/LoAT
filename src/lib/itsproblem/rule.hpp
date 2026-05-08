@@ -4,14 +4,15 @@
 
 #include "theory.hpp"
 #include "subs.hpp"
+#include "conshashfree.hpp"
 
 class Rule;
 
-using RulePtr = ptr<const Rule>;
+using RulePtr = cpp::not_null<std::shared_ptr<const Rule>>;
 
 class Rule {
 
-    friend class ConsHash<Rule, Bools::Expr, Subs>;
+    friend class ConsHashFree<Rule, Bools::Expr, Subs>;
 
     Bools::Expr guard;
     Subs update;
@@ -27,11 +28,13 @@ class Rule {
         size_t operator()(const std::tuple<Bools::Expr, Subs> &args) const noexcept;
     };
 
-    static ConsHash<Rule, Bools::Expr, Subs> cache;
+    static ConsHashFree<Rule, Bools::Expr, Subs> cache;
 
 public:
 
     Rule(Bools::Expr  guard, Subs update);
+
+    ~Rule();
 
     CellSet cells() const;
 
