@@ -13,6 +13,7 @@ private:
     CHCPtr chcs;
     linked_hash_map<ClausePtr, ClausePtr> accel;
     linked_hash_map<ClausePtr, ClausePtr> implicants;
+    linked_hash_map<ClausePtr, ClausePtr> recurrent_set;
     linked_hash_map<ClausePtr, std::vector<ClausePtr>> resolvents;
     std::vector<ClausePtr> transitions;
     std::vector<ModelPtr> states;
@@ -23,6 +24,7 @@ public:
 
     void do_step(const ModelPtr &m, const ClausePtr &c);
     void add_accel(const ClausePtr &loop, const ClausePtr &res);
+    void add_recurrent_set(const ClausePtr &loop, const ClausePtr &res);
     void add_resolvent(const std::vector<ClausePtr> &rules, const ClausePtr &res);
     void add_implicant(const ClausePtr &rule, const ClausePtr &imp);
     const linked_hash_map<ClausePtr, ClausePtr>& get_accel() const;

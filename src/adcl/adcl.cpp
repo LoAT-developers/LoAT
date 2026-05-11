@@ -521,8 +521,9 @@ std::unique_ptr<LearningState> ADCL::learn_clause(const RulePtr& rule, const Mod
     if (Config::Analysis::model) {
         std::vector<RulePtr> rules;
         for (unsigned i = range.start(); i <= range.end(); ++i) {
-            if (const auto e{trace.at(i)}; is_orig_clause(e.clause_idx) && e.implicant != e.clause_idx) {
-                const auto imp{e.implicant->renameVars(e.tmp_var_renaming)};
+            const auto e = trace.at(i);
+            const auto imp = e.implicant->renameVars(e.tmp_var_renaming);
+            if (is_orig_clause(e.clause_idx) && imp != e.clause_idx) {
                 the_cex()->add_implicant(e.clause_idx, imp);
                 rules.emplace_back(imp);
             } else {
@@ -645,6 +646,9 @@ bool ADCL::try_to_finish() {
                     set_cpx_witness(resolvent, solver->model(), arrays::nextConst<Arith>());
                 }
                 add_to_trace(Step(q, *implicant, Renaming(), Renaming(), Rule::mk(top(), Subs())));
+                if (Config::Analysis::model) {
+                    the_cex()->add_implicant(q, *implicant);
+                }
                 print_state();
                 unsat();
                 return true;

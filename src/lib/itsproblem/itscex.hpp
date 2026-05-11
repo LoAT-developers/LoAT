@@ -23,6 +23,7 @@ public:
     void add_resolvent(const std::vector<RulePtr> &rules, const RulePtr& res);
     void add_implicant(const RulePtr& rule, const RulePtr& imp);
     const linked_hash_map<RulePtr, RulePtr> &get_accel() const;
+    const linked_hash_map<RulePtr, RulePtr> &get_recurrent_set() const;
     const linked_hash_map<RulePtr, RulePtr> &get_implicants() const;
     const linked_hash_map<RulePtr, std::vector<RulePtr>> &get_resolvents() const;
     std::vector<std::pair<RulePtr, ProofStepKind>> get_used_rules(const std::vector<RulePtr> &transitions) const;

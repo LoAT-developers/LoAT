@@ -93,7 +93,7 @@ std::pair<ClausePtr, std::vector<Var>> linearize_conclusion(const ClausePtr& c) 
             });
     }
     const auto new_conclusion = FunApp::mk(conclusion->get_pred(), args);
-    const auto res = Clause::mk(c->get_premise(), bools::mkAnd(constraints), new_conclusion);
+    const auto res = Clause::mk(c->get_premise(), bools::mkAnd(constraints), arith::one(), new_conclusion);
     return std::pair{res, arg_vars};
 }
 
@@ -139,7 +139,7 @@ std::vector<ClausePtr> Inline::do_inline(const ClausePtr& c, const FunAppPtr& f)
                 auto new_premise {c->get_premise()};
                 new_premise.insert(new_premise.end(), matched_premise.begin(), matched_premise.end());
                 const auto new_constraint = c->get_constraint() && matched_clause->get_constraint();
-                auto inlined = Clause::mk(new_premise, new_constraint, c->get_conclusion());
+                auto inlined = Clause::mk(new_premise, new_constraint, arith::one(), c->get_conclusion());
                 res.emplace_back(inlined);
             }
         }

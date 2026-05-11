@@ -45,15 +45,6 @@ Arrays<Arith>::Var SMTLibParsingState::get_or_create_array_var(const std::string
     return create_array_var(name, dim, tmp);
 }
 
-Arrays<Arith>::Var SMTLibParsingState::get_or_create_arith_var(const std::string& name, const bool tmp) {
-    for (const auto& f: frames | std::views::reverse) {
-        if (const auto res = f.arith_vars.get_var(name)) {
-            return *res;
-        }
-    }
-    return create_arith_var(name, tmp);
-}
-
 Bools::Var SMTLibParsingState::get_or_create_bool_var(const std::string& name, const bool tmp) {
     for (const auto& f: frames | std::views::reverse) {
         if (const auto res = f.bool_vars.get_var(name)) {
@@ -61,6 +52,15 @@ Bools::Var SMTLibParsingState::get_or_create_bool_var(const std::string& name, c
         }
     }
     return create_bool_var(name, tmp);
+}
+
+Arrays<Arith>::Var SMTLibParsingState::get_or_create_arith_var(const std::string& name, const bool tmp) {
+    for (const auto& f: frames | std::views::reverse) {
+        if (const auto res = f.arith_vars.get_var(name)) {
+            return *res;
+        }
+    }
+    return create_arith_var(name, tmp);
 }
 
 Arrays<Arith>::Var SMTLibParsingState::create_arith_var(const std::string& name, const bool tmp) {
@@ -364,8 +364,8 @@ theory::Type getType(const sexpresso::Sexp &exp, const SMTLibParsingState &state
     return theory::Type::Int;
 }
 
-Expr parseExpr(const sexpresso::Sexp& exp, SMTLibParsingState& state) {
-    switch (const auto [base, dim]{getType(exp, state)}; base) {
+Expr parseExpr(const sexpresso::Sexp& exp, SMTLibParsingState& state, const theory::Type type) {
+    switch (const auto [base, dim]{type}; base) {
     case theory::BaseType::Bool: return parseBoolExpr(exp, state);
     case theory::BaseType::Int: {
         if (dim == 0) {
@@ -407,7 +407,7 @@ Bools::Expr parseBoolExpr(const sexpresso::Sexp &exp, SMTLibParsingState &state)
         for (unsigned i = 0; i < size; ++i) {
             const auto& decl {declarations[i]};
             const auto declName {decl[0].str()};
-            state.add_binding(declName, parseExpr(decl[1], state));
+            state.add_binding(declName, parseExpr(decl[1], state, getType(decl, state)));
         }
         auto res {parseBoolExpr(exp[2], state) && state.refinement()};
         state.pop();

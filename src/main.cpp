@@ -304,38 +304,38 @@ int main(int argc, char *argv[]) {
     const Profile profile{"parsing"};
     switch (*Config::Input::format) {
         case Config::Input::Ari: {
-            its = ARIParser::loadFromFile(filename);
+            chcs = ARIParser::loadFromFile(filename);
             break;
         }
         case Config::Input::Horn: {
             chcs = SexpressoParser::loadFromFile(filename);
-            if (Config::Analysis::log) {
-                std::cout << "CHCs:" << std::endl;
-                std::cout << *chcs << std::endl;
-            }
-            if (!(*chcs)->is_linear()) {
-                Inline lin{*chcs};
-                chcs = lin.run();
-                if (!(*chcs)->is_linear()) {
-                    if (Config::Analysis::log) {
-                        std::cout << "failed to linearize CHCs" << std::endl;
-                    }
-                    print_result(SmtResult::Unknown);
-                    exit(0);
-                }
-            }
-            if (Config::Analysis::dir == Config::Analysis::Direction::Backward) {
-                reverse = Reverse(*chcs);
-                chcs = reverse->reverse();
-            }
-            chc2its = CHCToITS(*chcs);
-            its = chc2its->transform();
             break;
         }
         default:
             std::cout << "Error: unknown format" << std::endl;
             exit(1);
     }
+    if (Config::Analysis::log) {
+        std::cout << "CHCs:" << std::endl;
+        std::cout << *chcs << std::endl;
+    }
+    if (!(*chcs)->is_linear()) {
+        Inline lin{*chcs};
+        chcs = lin.run();
+        if (!(*chcs)->is_linear()) {
+            if (Config::Analysis::log) {
+                std::cout << "failed to linearize CHCs" << std::endl;
+            }
+            print_result(SmtResult::Unknown);
+            exit(0);
+        }
+    }
+    if (Config::Analysis::dir == Config::Analysis::Direction::Backward) {
+        reverse = Reverse(*chcs);
+        chcs = reverse->reverse();
+    }
+    chc2its = CHCToITS(*chcs);
+    its = chc2its->transform();
     profile.end();
     if (Config::Analysis::log) {
         std::cout << "Initial ITS\n" << *its << std::endl;

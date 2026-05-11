@@ -144,19 +144,28 @@ size_t Clause::CacheHash::operator()(const Args &args) const noexcept {
     boost::hash_combine(seed, std::get<0>(args));
     boost::hash_combine(seed, std::get<1>(args));
     boost::hash_combine(seed, std::get<2>(args));
+    boost::hash_combine(seed, std::get<3>(args));
     return seed;
 }
 
-ConsHashFree<Clause, std::vector<FunAppPtr>, Bools::Expr, std::optional<FunAppPtr>> Clause::cache;
+ConsHashFree<Clause, std::vector<FunAppPtr>, Bools::Expr, Arith::Expr, std::optional<FunAppPtr>> Clause::cache;
 
-Clause::Clause(const std::vector<FunAppPtr>& premise, Bools::Expr  constraint, const std::optional<FunAppPtr>& conclusion): premise(premise), constraint(std::move(constraint)), conclusion(conclusion) {}
+Clause::Clause(
+    const std::vector<FunAppPtr>& premise,
+    const Bools::Expr& constraint,
+    const Arith::Expr& cost,
+    const std::optional<FunAppPtr>& conclusion):
+    premise(premise),
+    constraint(constraint),
+    cost(cost),
+    conclusion(conclusion) {}
 
 Clause::~Clause() {
-    cache.erase(premise, constraint, conclusion);
+    cache.erase(premise, constraint, cost, conclusion);
 }
 
-ClausePtr Clause::mk(const std::vector<FunAppPtr>& premise, const Bools::Expr& constraint, const std::optional<FunAppPtr>& conclusion) {
-    return cache.from_cache(premise, constraint, conclusion);
+ClausePtr Clause::mk(const std::vector<FunAppPtr>& premise, const Bools::Expr& constraint, const Arith::Expr& cost, const std::optional<FunAppPtr>& conclusion) {
+    return cache.from_cache(premise, constraint, cost, conclusion);
 }
 
 bool Clause::is_fact() const {
@@ -183,6 +192,10 @@ Bools::Expr Clause::get_constraint() const {
     return constraint;
 }
 
+Arith::Expr Clause::get_cost() const {
+    return cost;
+}
+
 ClausePtr Clause::subs(const Subs &subs) const {
     std::vector<FunAppPtr> prem;
     for (const auto& p: premise) {
@@ -191,7 +204,7 @@ ClausePtr Clause::subs(const Subs &subs) const {
     const auto concl {map<FunAppPtr, FunAppPtr>(conclusion, [&](const auto& c) {
         return c->subs(subs);
     })};
-    return mk(prem, constraint->subs(subs), concl);
+    return mk(prem, constraint->subs(subs), cost->subs(subs), concl);
 }
 
 ClausePtr Clause::rename_vars(const Renaming &subs) const {
@@ -202,7 +215,7 @@ ClausePtr Clause::rename_vars(const Renaming &subs) const {
     const auto concl {map<FunAppPtr, FunAppPtr>(conclusion, [&](const auto& c) {
         return c->rename_vars(subs);
     })};
-    return mk(prem, constraint->renameVars(subs), concl);
+    return mk(prem, constraint->renameVars(subs), cost->renameVars(subs), concl);
 }
 
 VarSet Clause::vars() const {
@@ -212,6 +225,7 @@ VarSet Clause::vars() const {
             theory::collectVars(x, res);
         }
     }
+    cost->collectVars(res);
     if (conclusion) {
         for (const auto &x: (*conclusion)->get_args()) {
             theory::collectVars(x, res);

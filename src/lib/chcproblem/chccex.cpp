@@ -15,6 +15,10 @@ void CHCCex::add_accel(const ClausePtr &loop, const ClausePtr &res) {
     accel.emplace(res, loop);
 }
 
+void CHCCex::add_recurrent_set(const ClausePtr &loop, const ClausePtr &res) {
+    recurrent_set.emplace(res, loop);
+}
+
 void CHCCex::add_resolvent(const std::vector<ClausePtr> &rules, const ClausePtr &res) {
     resolvents.emplace(res, rules);
 
@@ -40,6 +44,12 @@ std::vector<std::pair<ClausePtr, ProofStepKind>> CHCCex::get_used_clauses() cons
                     derived.emplace_back(t, ProofStepKind::ACCEL);
                 } else {
                     todo.push(*loop);
+                }
+            } else if (const auto orig{recurrent_set.get(t)}) {
+                if ((ready = done.contains(*orig))) {
+                    derived.emplace_back(t, ProofStepKind::RECURRENT_SET);
+                } else {
+                    todo.push(*orig);
                 }
             } else if (const auto orig{implicants.get(t)}) {
                 if ((ready = done.contains(*orig))) {
@@ -105,7 +115,8 @@ std::ostream& operator<<(std::ostream &s, const CHCCex &cex) {
                 break;
             }
             case ProofStepKind::RECURRENT_SET: {
-                throw std::logic_error("recurrent sets are not supported for CHCs");
+                s << "\t\tderived from " << indices.at(cex.recurrent_set.at(t)) << " (recurrent set)" << std::endl;
+                break;
             }
         }
         ++next;

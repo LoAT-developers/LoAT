@@ -79,6 +79,10 @@ const linked_hash_map<RulePtr, RulePtr> &ITSCex::get_accel() const {
     return accel;
 }
 
+const linked_hash_map<RulePtr, RulePtr> &ITSCex::get_recurrent_set() const {
+    return recurrent_set;
+}
+
 const linked_hash_map<RulePtr, RulePtr> &ITSCex::get_implicants() const {
     return implicants;
 }

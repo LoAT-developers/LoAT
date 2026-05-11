@@ -52,15 +52,16 @@ using ClausePtr = cpp::not_null<std::shared_ptr<const Clause>>;
 
 class Clause {
 
-    friend class ConsHashFree<Clause, std::vector<FunAppPtr>, Bools::Expr, std::optional<FunAppPtr>>;
+    friend class ConsHashFree<Clause, std::vector<FunAppPtr>, Bools::Expr, Arith::Expr, std::optional<FunAppPtr>>;
 
     std::vector<FunAppPtr> premise {};
     Bools::Expr constraint;
+    Arith::Expr cost;
     std::optional<FunAppPtr> conclusion {};
 
     friend std::ostream& operator<<(std::ostream &s, const ClausePtr& c);
 
-    using Args = std::tuple<std::vector<FunAppPtr>, Bools::Expr, std::optional<FunAppPtr>>;
+    using Args = std::tuple<std::vector<FunAppPtr>, Bools::Expr, Arith::Expr, std::optional<FunAppPtr>>;
 
     struct CacheEqual {
         bool operator()(const Args &args1, const Args &args2) const noexcept;
@@ -68,14 +69,14 @@ class Clause {
     struct CacheHash {
         size_t operator()(const Args &args) const noexcept;
     };
-    static ConsHashFree<Clause, std::vector<FunAppPtr>, Bools::Expr, std::optional<FunAppPtr>> cache;
+    static ConsHashFree<Clause, std::vector<FunAppPtr>, Bools::Expr, Arith::Expr, std::optional<FunAppPtr>> cache;
 
 public:
 
-    Clause(const std::vector<FunAppPtr>& premise, Bools::Expr  constraint, const std::optional<FunAppPtr>& conclusion);
+    Clause(const std::vector<FunAppPtr>& premise, const Bools::Expr& constraint, const Arith::Expr& cost, const std::optional<FunAppPtr>& conclusion);
     ~Clause();
 
-    static ClausePtr mk(const std::vector<FunAppPtr>& premise, const Bools::Expr& constraint, const std::optional<FunAppPtr>& conclusion);
+    static ClausePtr mk(const std::vector<FunAppPtr>& premise, const Bools::Expr& constraint, const Arith::Expr&, const std::optional<FunAppPtr>& conclusion);
 
     bool is_fact() const;
     bool is_query() const;
@@ -83,6 +84,7 @@ public:
     std::vector<FunAppPtr> get_premise() const;
     std::optional<FunAppPtr> get_conclusion() const;
     Bools::Expr get_constraint() const;
+    Arith::Expr get_cost() const;
     VarSet vars() const;
     ClausePtr subs(const Subs &subs) const;
     ClausePtr rename_vars(const Renaming &) const;

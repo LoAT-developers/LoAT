@@ -99,7 +99,7 @@ ClausePtr CHCToITS::rule_to_clause(const RulePtr& rule, const ClausePtr& prototy
         }
         conclusion = FunApp::mk((*conc)->get_pred(), args);
     }
-    return Clause::mk(premise, rule->getGuard(), conclusion);
+    return Clause::mk(premise, rule->getGuard(), its->getCost(rule), conclusion);
 }
 
 CHCCex CHCToITS::transform_cex(const ITSSafetyCex &cex) {
@@ -111,9 +111,9 @@ CHCCex CHCToITS::transform_cex(const ITSSafetyCex &cex) {
                 const auto it{clause_map.find(orig)};
                 assert(it != clause_map.end());
                 const auto orig_clause{it->second};
-                const auto imp_clause{rule_to_clause(rule, orig_clause)};
-                clause_map.emplace(rule, imp_clause);
-                res.add_implicant(orig_clause, imp_clause);
+                const auto clause{rule_to_clause(rule, orig_clause)};
+                clause_map.emplace(rule, clause);
+                res.add_implicant(orig_clause, clause);
                 break;
             }
             case ProofStepKind::ACCEL: {
@@ -121,9 +121,19 @@ CHCCex CHCToITS::transform_cex(const ITSSafetyCex &cex) {
                 const auto it{clause_map.find(orig)};
                 assert(it != clause_map.end());
                 const auto orig_clause{it->second};
-                const auto accel_clause{rule_to_clause(rule, orig_clause)};
-                clause_map.emplace(rule, accel_clause);
-                res.add_accel(orig_clause, accel_clause);
+                const auto clause{rule_to_clause(rule, orig_clause)};
+                clause_map.emplace(rule, clause);
+                res.add_accel(orig_clause, clause);
+                break;
+            }
+            case ProofStepKind::RECURRENT_SET: {
+                const auto orig {cex.get_recurrent_set().at(rule)};
+                const auto it{clause_map.find(orig)};
+                assert(it != clause_map.end());
+                const auto orig_clause{it->second};
+                const auto clause{rule_to_clause(rule, orig_clause)};
+                clause_map.emplace(rule, clause);
+                res.add_recurrent_set(orig_clause, clause);
                 break;
             }
             case ProofStepKind::RESOLVENT: {
@@ -132,7 +142,7 @@ CHCCex CHCToITS::transform_cex(const ITSSafetyCex &cex) {
                 for (const auto &o: origs) {
                     orig_clauses.emplace_back(clause_map.at(o));
                 }
-                const auto prototype {Clause::mk(orig_clauses.front()->get_premise(), top(), orig_clauses.back()->get_conclusion())};
+                const auto prototype {Clause::mk(orig_clauses.front()->get_premise(), top(), arith::one(), orig_clauses.back()->get_conclusion())};
                 const auto resolvent{rule_to_clause(rule, prototype)};
                 clause_map.emplace(rule, resolvent);
                 res.add_resolvent(orig_clauses, resolvent);
@@ -140,9 +150,6 @@ CHCCex CHCToITS::transform_cex(const ITSSafetyCex &cex) {
             }
             case ProofStepKind::ORIG: {
                 break;
-            }
-            case ProofStepKind::RECURRENT_SET: {
-                throw std::logic_error("recurrent sets are not supported for CHCs");
             }
         }
     }

@@ -59,7 +59,9 @@ public:
 
 };
 
-Expr parseExpr(const sexpresso::Sexp &exp, SMTLibParsingState &state);
+theory::Type getType(const sexpresso::Sexp &exp, const SMTLibParsingState &state);
+
+Expr parseExpr(const sexpresso::Sexp &exp, SMTLibParsingState &state, theory::Type type);
 
 Bools::Expr parseBoolExpr(const sexpresso::Sexp &exp, SMTLibParsingState &state);
 

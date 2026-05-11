@@ -10,6 +10,9 @@ ClausePtr rev(const ClausePtr& c) {
     if (!c->is_linear()) {
         throw std::invalid_argument("cannot reverse non-linear CHCs");
     }
+    if (!c->get_cost()->isRational()) {
+        throw std::invalid_argument("cannot reverse CHCs with non-trivial costs");
+    }
     const auto old_premise = c->get_premise();
     const auto old_conclusion = c->get_conclusion();
     const auto conclusion = old_premise.empty() ? std::nullopt : std::optional{old_premise.front()};
@@ -17,7 +20,7 @@ ClausePtr rev(const ClausePtr& c) {
     if (old_conclusion) {
         premise.emplace_back(*old_conclusion);
     }
-    return Clause::mk(premise, c->get_constraint(), conclusion);
+    return Clause::mk(premise, c->get_constraint(), c->get_cost(), conclusion);
 }
 
 CHCPtr Reverse::reverse() {

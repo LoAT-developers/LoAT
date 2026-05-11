@@ -1,16 +1,19 @@
 #pragma once
 
-#include "itsproblem.hpp"
+#include "chcproblem.hpp"
+
+class SMTLibParsingState;
 
 class ARIParser {
 
-    ITSPtr its {std::make_shared<ITSProblem>()};
+    CHCPtr its {std::make_shared<CHCProblem>()};
     std::unordered_map<std::string, std::vector<theory::Type>> types;
 
+    FunAppPtr parseFunApp(const sexpresso::Sexp& sexp, SMTLibParsingState& state) const;
     void run(const std::string &filename);
 
 public:
 
-    static ITSPtr loadFromFile(const std::string &filename);
+    static CHCPtr loadFromFile(const std::string &filename);
 
 };

@@ -16,7 +16,7 @@ FunAppPtr parsePred(const sexpresso::Sexp &exp, SMTLibParsingState &state) {
         return FunApp::mk(exp.str(), args);
     }
     for (unsigned i = 1; i < exp.childCount(); ++i) {
-        args.push_back(parseExpr(exp[i], state));
+        args.push_back(parseExpr(exp[i], state, getType(exp[i], state)));
     }
     return FunApp::mk(exp[0].str(), args);
 }
@@ -104,7 +104,7 @@ void SexpressoParser::run(const std::string &filename) {
             if (!conc.isString("false")) {
                 conclusion = parsePred(conc, state);
             }
-            const auto res = Clause::mk(premise, state.refinement(), conclusion);
+            const auto res = Clause::mk(premise, state.refinement(), arith::one(), conclusion);
             chcs->add_clause(res);
             state.pop();
         }

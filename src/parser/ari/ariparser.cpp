@@ -4,6 +4,17 @@
 
 #include <fstream>
 
+FunAppPtr ARIParser::parseFunApp(const sexpresso::Sexp& sexp, SMTLibParsingState& state) const {
+    const auto loc = sexp.isString() ? sexp.str() : sexp[0].str();
+    const auto type {types.at(loc)};
+    const auto child_count = sexp.childCount();
+    std::vector<Expr> args;
+    for (unsigned i = 1; i < child_count; ++i) {
+        args.emplace_back(parseExpr(sexp[i], state, type.at(i - 1)));
+    }
+    return FunApp::mk(loc, args);
+}
+
 void ARIParser::run(const std::string &filename) {
     std::ifstream ifs(filename);
     std::string content(
@@ -15,11 +26,31 @@ void ARIParser::run(const std::string &filename) {
     SMTLibParsingState state;
     for (auto &ex: sexp.arguments()) {
         if (ex[0].isString("entrypoint")) {
-            const auto entry {its->getOrAddLocation(ex[1].str())};
-            its->setInitialLocation(entry);
+            const auto pred = ex[1].str();
+            const auto type {types.at(pred)};
+            const auto child_count = type.size();
+            std::vector<Expr> args;
+            for (unsigned i = 0; i < child_count; ++i) {
+                const auto [base,dim] = type.at(i);
+                assert(dim == 0);
+                const auto name = "x_" + std::to_string(i);
+                switch (base) {
+                    case theory::BaseType::Int: {
+                        args.emplace_back(arrays::readConst(state.get_or_create_arith_var(name, false)));
+                        break;
+                    }
+                    case theory::BaseType::Bool: {
+                        args.emplace_back(Bools::varToExpr(state.get_or_create_bool_var(name, false)));
+                        break;
+                    }
+                }
+            }
+            const auto rhs = FunApp::mk(pred, args);
+            const auto c = Clause::mk({}, top(), arith::zero(), rhs);
+            its->add_clause(c);
         } else if (ex[0].isString("fun")) {
             const auto fun {ex[1].str()};
-            auto type {ex[2]};
+            const auto& type {ex[2]};
             const auto child_count {type.childCount()};
             unsigned int_arity {0};
             unsigned bool_arity {0};
@@ -39,34 +70,13 @@ void ARIParser::run(const std::string &filename) {
             max_bool_arity = std::max(max_bool_arity, bool_arity);
         } else if (ex[0].isString("rule")) {
             state.push();
-            auto lhs {ex[1]};
-            auto rhs {ex[2]};
-            const auto lhs_loc = lhs.isString() ? lhs.str() : lhs[0].str();
-            const auto rhs_loc = rhs.isString() ? rhs.str() : rhs[0].str();
-            const auto type {types.at(lhs_loc)};
-            const auto child_count {lhs.childCount()};
-            Subs update;
-            for (unsigned i = 1; i < child_count; ++i) {
-                const auto [base,dim] = type.at(i-1);
-                assert(dim == 0);
-                switch (base) {
-                    case theory::BaseType::Int: {
-                        const auto var = state.get_or_create_arith_var(lhs[i].str(), false);
-                        update.writeConst(var, parseArithExpr(rhs[i], state));
-                        break;
-                    }
-                    case theory::BaseType::Bool: {
-                        const auto var = state.get_or_create_bool_var(lhs[i].str(), false);
-                        update.put(var, parseBoolExpr(rhs[i], state));
-                        break;
-                    }
-                }
-            }
+            auto lhs = parseFunApp(ex[1], state);
+            auto rhs = parseFunApp(ex[2], state);
             std::vector<Bools::Expr> guard;
             Arith::Expr cost {arith::one()};
             for (unsigned idx = 3; idx + 1 < ex.childCount(); idx += 2) {
                 const auto key {ex[idx].str()};
-                auto val {ex[idx + 1]};
+                const auto& val {ex[idx + 1]};
                 if (key == ":var") {
                     continue;
                 } else if (key == ":guard") {
@@ -77,26 +87,14 @@ void ARIParser::run(const std::string &filename) {
                     throw std::invalid_argument("failed to parse " + ex.toString());
                 }
             }
-            const auto cost_var {its->getCostVar()};
-            if (Config::Analysis::complexity()) {
-                update.update(cost_var, cost_var + cost);
-            } else if (Config::Analysis::relative_termination()) {
-                assert(cost->isInt());
-                assert(*cost->isInt() >= 0);
-                update.update(cost_var, cost_var + cost);
-            }
-            const auto lhs_idx {its->getOrAddLocation(lhs_loc)};
-            const auto rhs_idx {its->getOrAddLocation(rhs_loc)};
-            guard.emplace_back(bools::mkLit(arith::mkEq(its->getLocVar(), arith::mkConst(lhs_idx))));
-            const auto loc_var {its->getLocVar()};
-            update.update(loc_var, arith::mkConst(rhs_idx));
-            its->addRule(Rule::mk(bools::mkAnd(guard), update), lhs_idx);
+            const auto c = Clause::mk({lhs}, bools::mkAnd(guard), cost, rhs);
+            its->add_clause(c);
             state.pop();
         }
     }
 }
 
-ITSPtr ARIParser::loadFromFile(const std::string &filename) {
+CHCPtr ARIParser::loadFromFile(const std::string &filename) {
     ARIParser parser;
     parser.run(filename);
     return parser.its;
