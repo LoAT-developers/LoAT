@@ -14,6 +14,7 @@ class YicesModel final: public Model {
 public:
 
     YicesModel(const YicesContext&, const std::shared_ptr<model_t>&, const Subs&);
+    ~YicesModel() override = default;
 
 protected:
 

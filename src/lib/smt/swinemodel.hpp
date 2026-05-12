@@ -11,6 +11,7 @@ class SwineModel final : public Model {
 public:
 
     SwineModel(const SwineContext&, const z3::model&, const Subs&);
+    ~SwineModel() override = default;
 
     bool evalImpl(const Lit&) override;
     Bools::Const evalImpl(const Bools::Expr&) override;
