@@ -640,6 +640,9 @@ ArrayPtr<Arith> arrays::mkArrayWrite(const ArrayPtr<Arith>& arr, const Bools::Ex
 
 ArrayPtr<Arith> arrays::mkArrayWrite(const ArrayPtr<Arith>& arr, const std::vector<Arith::Expr>& indices, const Arith::Expr& val) {
     assert(arr->dim() == indices.size());
+    if (arr->dim() == 0) {
+        return ArrayWrite<Arith>::cache.from_cache(ArrayVar<Arith>::dummyConst(), top(), val);
+    }
     std::vector<Arith::Lit> lits;
     for (size_t i = 0; i < indices.size(); ++i) {
         lits.emplace_back(arith::mkEq(array_idx(i), indices.at(i)));
