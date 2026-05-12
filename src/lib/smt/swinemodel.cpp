@@ -40,7 +40,7 @@ Rational SwineModel::evalToRationalImpl(const Arith::Expr &e) {
 }
 
 Bools::Const SwineModel::getImpl(const Bools::Var &var) {
-    const auto converted_var {m_ctx.getBoolSymbolMap().at(var)};
+    const auto converted_var {m_ctx.getVariable(var)};
     const auto res {m_model.eval(converted_var, true)};
     assert(res.is_bool());
     return res.is_true();

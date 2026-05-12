@@ -33,45 +33,20 @@ public:
 
     virtual void printStderr(const Expr &e) const = 0;
 
-    Formula getVariable(const Bools::Var &symbol) {
-        const auto res {boolVarMap.get(symbol)};
-        if (res) {
-            return *res;
-        }
-        const auto it {boolVarMap.emplace(symbol, buildVar(symbol)).first};
-        return it->second;
-    }
-
-    Expr getVariable(const Arrays<Arith>::Var &symbol) {
-        const auto res {intArrayVarMap.get(symbol)};
-        if (res) {
-            return *res;
-        }
-        const auto it {intArrayVarMap.emplace(symbol, buildVar(symbol)).first};
-        return it->second;
-    }
-
-    const linked_hash_map<Bools::Var, Formula> &getBoolSymbolMap() const {
-        return boolVarMap;
-    }
-
-    const linked_hash_map<Arrays<Arith>::Var, Expr> &getIntArraySymbolMap() const {
-        return intArrayVarMap;
-    }
-
     virtual ~ExprConversionContext() = default;
-
-    void reset() {
-        boolVarMap.clear();
-        intArrayVarMap.clear();
-    }
 
 protected:
 
     virtual Formula buildVar(const Bools::Var &var) = 0;
     virtual Expr buildVar(const Arrays<Arith>::Var &var) = 0;
 
-    linked_hash_map<Bools::Var, Formula> boolVarMap{};
-    linked_hash_map<Arrays<Arith>::Var, Expr> intArrayVarMap{};
-    VarSet vars;
+public:
+
+    Formula getVariable(const Bools::Var &symbol) {
+        return buildVar(symbol);
+    }
+
+    Expr getVariable(const Arrays<Arith>::Var &symbol) {
+        return buildVar(symbol);
+    }
 };

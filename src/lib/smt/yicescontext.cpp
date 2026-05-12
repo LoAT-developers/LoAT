@@ -14,20 +14,28 @@ void yices::check_err() {
 }
 
 term_t YicesContext::buildVar(const Bools::Var &var) {
-    const auto res = yices_new_uninterpreted_term(yices_bool_type());
-    yices_set_term_name(res, var->getName().c_str());
+    const auto name = var->getName();
+    auto res =yices_get_term_by_name(name.c_str());
+    if (!res) {
+        res = yices_new_uninterpreted_term(yices_bool_type());
+        yices_set_term_name(res, name.c_str());
+    }
     yices::check_err();
     return res;
 }
 
 term_t YicesContext::buildVar(const Arrays<Arith>::Var &var) {
+    const auto name = var->getName();
     const int dim {static_cast<int>(var->dim())};
     const auto type =
         dim == 0
             ? yices_int_type()
             : yices_function_type(dim, std::vector{dim, yices_int_type()}.data(), yices_int_type());
-    const auto res {yices_new_uninterpreted_term(type)};
-    yices_set_term_name(res, var->getName().c_str());
+    auto res =yices_get_term_by_name(name.c_str());
+    if (!res) {
+        res = yices_new_uninterpreted_term(type);
+        yices_set_term_name(res, name.c_str());
+    }
     yices::check_err();
     return res;
 }
