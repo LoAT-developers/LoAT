@@ -13,17 +13,19 @@ on:
   # the GitHub UI.
   workflow_dispatch:
     inputs:
-      required: true
-      type: choice
-      options:
-      - Release
-      - Debug
-      - RelWithDebInfo
+      kind:
+        required: true
+        type: choice
+        options:
+        - Release
+        - Debug
+        - RelWithDebInfo
 
   workflow_call:
     inputs:
-      type: string
-      default: Release
+      kind:
+        type: string
+        default: Release
 
 jobs:
   build-loat-binary:
