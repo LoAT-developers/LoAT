@@ -44,7 +44,7 @@ jobs:
           run: |
             mkdir -p /LoAT/build/release
             cd /LoAT/build/release
-            cmake -DCMAKE_BUILD_TYPE=${{ inputs.type }} ../../
+            cmake -DCMAKE_BUILD_TYPE=${{ inputs.kind }} ../../
             make -j2
 
       - name: Export LoAT Binary
