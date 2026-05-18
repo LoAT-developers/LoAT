@@ -308,19 +308,28 @@ Bools::Expr TRP::handle_bool(const Bools::Expr& loop_bool) {
     return bools::mkAnd(res);
 }
 
-Bools::Expr TRP::compute(const Bools::Expr& loop_non_bool, const Bools::Expr& loop_bool, const ModelPtr &model) {
+TRP::LoopKind TRP::get_loop_kind(const Bools::Expr& loop_non_bool, const Bools::Expr& loop_bool) const {
     const auto loop = loop_non_bool && loop_bool;
     auto trans_check_solver = SmtFactory::solver(Smt::chooseLogic(loop));
     trans_check_solver->add(loop->renameVars(post_to_intermediate));
     trans_check_solver->add(loop->renameVars(pre_to_intermediate));
-    assert(trans_check_solver->check() == SmtResult::Sat);
+    if (trans_check_solver->check() != SmtResult::Sat) {
+        if (Config::Analysis::log) {
+            std::cout << "not a loop: " << loop << std::endl;
+        }
+        return NoLoop;
+    }
     trans_check_solver->add(!loop);
     if (trans_check_solver->check() == SmtResult::Unsat) {
         if (Config::Analysis::log) {
             std::cout << "loop is transitive: " << loop << std::endl;
         }
-        return loop;
+        return Transitive;
     }
+    return NonTransitive;
+}
+
+Bools::Expr TRP::compute(const Bools::Expr& loop_non_bool, const Bools::Expr& loop_bool, const ModelPtr &model) {
     const auto pre = mbp(loop_non_bool, model, [](const auto &x) {
         return !theory::isProgCell(x);
     });

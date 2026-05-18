@@ -34,7 +34,7 @@ ADCLSat::ADCLSat(const ITSPtr& its, const Config::TRPConfig &config): TRPUtil(it
     }
 }
 
-void ADCLSat::handle_loop(const Range& range) {
+bool ADCLSat::handle_loop(const Range& range) {
     const auto old_model = *model;
     if (Config::Analysis::abstraction_refinement) {
         if (const auto backtrack_point = refine_abstraction(range, false)) {
@@ -46,11 +46,15 @@ void ADCLSat::handle_loop(const Range& range) {
                 solver->pop();
             }
             backtracking = false;
-            return;
+            return true;
         }
     }
-    backtracking = true;
     auto [loop_non_bool, loop_bool, model]{specialize(range, theory::isTempCell)};
+    const auto kind = trp.get_loop_kind(loop_non_bool, loop_bool);
+    if (kind == TRP::NoLoop) {
+        return false;
+    }
+    backtracking = true;
     solver->pop();
     if (add_blocking_clauses(range, model)) {
         if (Config::Analysis::abstraction_refinement) {
@@ -78,7 +82,7 @@ void ADCLSat::handle_loop(const Range& range) {
                             solver->pop();
                         }
                         backtracking = false;
-                        return;
+                        return true;
                     }
                 }
             }
@@ -92,12 +96,12 @@ void ADCLSat::handle_loop(const Range& range) {
             trace.pop_back();
             solver->pop();
         }
-        return;
+        return true;
     }
     if (Config::Analysis::log) {
         std::cout << "***** Accelerate *****" << std::endl;
     }
-    auto ti{trp.compute(loop_non_bool, loop_bool, model)};
+    auto ti = kind == TRP::Transitive ? loop_non_bool && loop_bool : trp.compute(loop_non_bool, loop_bool, model);
     Int id;
     Bools::Expr projected{top()};
     const auto n {trp.get_n()};
@@ -130,6 +134,7 @@ void ADCLSat::handle_loop(const Range& range) {
         trace.pop_back();
         solver->pop();
     }
+    return true;
 }
 
 std::optional<SmtResult> ADCLSat::do_step() {
@@ -179,12 +184,17 @@ std::optional<SmtResult> ADCLSat::do_step() {
         }
         solver->pop();
     }
-    if (const auto range{has_looping_infix()}) {
+    unsigned next_start = 0;
+    unsigned next_length = 1;
+    while (const auto range{has_looping_infix(next_start, next_length)}) {
         if (Config::Analysis::log) {
             std::cout << "found loop at [" << range->start() << ", " << range->end() << "]" << std::endl;
         }
-        handle_loop(*range);
-        return {};
+        if (handle_loop(*range)) {
+            return {};
+        }
+        next_start = range->start() + 1;
+        next_length = range->length();
     }
     const auto subs{get_subs(trace.size(), 1)};
     solver->push();

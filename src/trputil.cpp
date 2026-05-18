@@ -86,9 +86,9 @@ TRPUtil::TRPUtil(
     }
 }
 
-std::optional<Range> TRPUtil::has_looping_infix() {
-    for (unsigned i = 0; i < trace.size(); ++i) {
-        for (unsigned start = 0; start + i < trace.size(); ++start) {
+std::optional<Range> TRPUtil::has_looping_infix(unsigned next_start, const unsigned next_length) {
+    for (unsigned i = next_length - 1; i < trace.size(); ++i) {
+        for (unsigned start = next_start; start + i < trace.size(); ++start) {
             if (Config::Analysis::termination() &&
                 i > 0 &&
                 (*model)->get(safety_var->renameVars(get_subs(start, 1))) >= 0 &&
@@ -104,6 +104,7 @@ std::optional<Range> TRPUtil::has_looping_infix() {
                 return {Range::from_interval(start, start + i)};
             }
         }
+        next_start = 0;
     }
     return {};
 }

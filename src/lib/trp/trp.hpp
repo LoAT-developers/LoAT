@@ -23,7 +23,14 @@ class TRP {
 
 public:
 
+    enum LoopKind {
+        Transitive,
+        NonTransitive,
+        NoLoop,
+    };
+
     TRP(const Renaming &pre_to_post, const Config::TRPConfig &config);
+    LoopKind get_loop_kind(const Bools::Expr& loop_non_bool, const Bools::Expr& loop_bool) const;
     Bools::Expr compute(const Bools::Expr& loop_non_bool, const Bools::Expr& loop_bool, const ModelPtr &model);
     ArithVarPtr get_n() const;
     Bools::Expr mbp(const Bools::Expr &trans, const ModelPtr &model, const std::function<bool(const Cell &)> &eliminate) const;

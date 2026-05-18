@@ -49,7 +49,7 @@ protected:
 
     TRPUtil(const ITSPtr &its, const Config::TRPConfig &config);
 
-    std::optional<Range> has_looping_infix();
+    std::optional<Range> has_looping_infix(unsigned next_start, unsigned next_length);
     std::pair<Bools::Expr, ModelPtr> compress(const Range &range);
     const Renaming& get_subs(unsigned start, unsigned steps);
     Bools::Expr encode_transition(const Bools::Expr &t, const Int &id) const;
