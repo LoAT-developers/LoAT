@@ -6,9 +6,7 @@
 
 class CHCCex {
 
-friend std::ostream& operator<<(std::ostream &s, const CHCCex &);
-
-private:
+    friend std::ostream& operator<<(std::ostream &s, const CHCCex &);
 
     CHCPtr chcs;
     linked_hash_map<ClausePtr, ClausePtr> accel;
@@ -20,7 +18,7 @@ private:
 
 public:
 
-    explicit CHCCex(CHCPtr  chcs);
+    explicit CHCCex(CHCPtr chcs);
 
     void do_step(const ModelPtr &m, const ClausePtr &c);
     void add_accel(const ClausePtr &loop, const ClausePtr &res);
@@ -33,5 +31,7 @@ public:
     const std::vector<ClausePtr>& get_transitions() const;
     const std::vector<ModelPtr>& get_states() const;
     std::vector<std::pair<ClausePtr, ProofStepKind>> get_used_clauses() const;
+    linked_hash_map<ClausePtr, linked_hash_map<FunAppPtr, Bools::Expr>> get_reachability_sets() const;
+    linked_hash_map<std::string, std::pair<FunApp, Bools::Expr>> to_recurrent_set() const;
 
 };

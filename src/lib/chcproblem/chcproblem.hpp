@@ -42,8 +42,12 @@ public:
     FunAppPtr subs(const Subs &subs) const;
     FunAppPtr rename_vars(const Renaming &) const;
 
+    std::optional<Renaming> unify(const FunAppPtr& that) const;
+
     size_t max_arity(const theory::Type& type) const;
     size_t max_dim(theory::BaseType) const;
+    VarSet vars() const;
+    void collect_vars(VarSet&) const;
 };
 
 class Clause;

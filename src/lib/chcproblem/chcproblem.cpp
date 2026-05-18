@@ -98,6 +98,36 @@ FunAppPtr FunApp::rename_vars(const Renaming &subs) const {
     return mk(pred, new_args);
 }
 
+std::optional<Renaming> FunApp::unify(const FunAppPtr& that) const {
+    Renaming subs;
+    if (pred != that->pred) {
+        return std::nullopt;
+    }
+    assert(args.size() == that->args.size());
+    for (unsigned i = 0; i < args.size(); ++i) {
+        const auto x = args.at(i);
+        theory::apply(
+            x,
+            [&](const Arith::Expr &x) {
+                const auto var = x->isVar();
+                assert(var);
+                assert((*var)->dim() == 0);
+                using Th = decltype(theory::theory(x));
+                const auto other_var = std::get<Arith::Expr>(that->args.at(i))->isVar();
+                assert(other_var);
+                subs.insert((*var)->var(), (*other_var)->var());
+            },
+            [&](const auto &x) {
+                const auto var = x->isVar();
+                assert(var);
+                using Th = decltype(theory::theory(x));
+                const auto other_var = std::get<typename Th::Expr>(that->args.at(i))->isVar();
+                subs.insert(*var, *other_var);
+            });
+    }
+    return subs;
+}
+
 size_t FunApp::max_arity(const theory::Type& type) const {
     unsigned res{0};
     for (const auto &x : args) {
@@ -117,6 +147,20 @@ size_t FunApp::max_dim(const theory::BaseType type) const {
         }
     }
     return res;
+}
+
+VarSet FunApp::vars() const {
+    VarSet res;
+    collect_vars(res);
+    return res;
+}
+
+void FunApp::collect_vars(VarSet &vars) const {
+    for (const auto& x: args) {
+        theory::apply(x, [&](const auto& x) {
+            x->collectVars(vars);
+        });
+    }
 }
 
 std::ostream& operator<<(std::ostream &s, const FunAppPtr& f) {

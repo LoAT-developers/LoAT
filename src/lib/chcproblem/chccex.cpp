@@ -79,6 +79,113 @@ std::vector<std::pair<ClausePtr, ProofStepKind>> CHCCex::get_used_clauses() cons
     return derived;
 }
 
+linked_hash_map<ClausePtr, linked_hash_map<FunAppPtr, Bools::Expr>> CHCCex::get_reachability_sets() const {
+    const auto unify = [](const FunAppPtr& f1, const FunAppPtr& f2) {
+        BoolExprSet conjuncts;
+        for (unsigned j = 0; j < f1->get_args().size(); ++j) {
+            const auto last_arg = f1->get_args()[j];
+            const auto current_arg = f2->get_args()[j];
+            theory::apply(
+                last_arg,
+                [&](const Arith::Expr &last_arg) {
+                    conjuncts.insert(bools::mkLit(arith::mkEq(
+                        last_arg, std::get<Arith::Expr>(current_arg))));
+                },
+                [&](const Bools::Expr &last_arg) {
+                    conjuncts.insert(Bools::mkEq(
+                        last_arg, std::get<Bools::Expr>(current_arg)));
+                },
+                [&](const Arrays<Arith>::Expr &last_arg) {
+                    conjuncts.insert(bools::mkLit(arrays::mkEq(
+                        last_arg,
+                        std::get<Arrays<Arith>::Expr>(current_arg))));
+                });
+        }
+        return bools::mkAnd(conjuncts);
+    };
+    const auto get_renaming = [&](const FunAppPtr& f, const Bools::Expr& e) {
+        Renaming ren;
+        VarSet vars;
+        f->collect_vars(vars);
+        e->collectVars(vars);
+        for (const auto &x: vars) {
+            theory::apply(x, [&](const auto &x) {
+                Renaming::renameVar(x, ren);
+            });
+        }
+        return ren;
+    };
+    linked_hash_map<ClausePtr, linked_hash_map<FunAppPtr, Bools::Expr>> res;
+    const auto used = get_used_clauses();
+    for (const auto& [c,k]: used) {
+        switch (k) {
+            case ProofStepKind::ORIG:
+            case ProofStepKind::IMPLICANT: {
+                res.emplace(c, linked_hash_map<FunAppPtr, Bools::Expr>({std::pair(c->get_conclusion().value(), c->get_constraint())}));
+                break;
+            }
+            case ProofStepKind::RESOLVENT: {
+                const auto cs = resolvents.at(c);
+                linked_hash_map<FunAppPtr, Bools::Expr> map = res.at(cs.back());
+                assert(cs.back()->is_linear());
+                auto last_pred = cs.back()->get_premise().front();
+                const auto unif = unify(c->get_conclusion().value(), cs.back()->get_conclusion().value());
+                const auto cond = c->get_constraint() && unif;
+                for (unsigned i = cs.size() - 2; i > 0; --i) {
+                    const auto clause = cs.at(i);
+                    assert(clause->is_linear());
+                    for (auto [p,c]: res.at(clause)) {
+                        const auto ren = get_renaming(p,c);
+                        const auto unif = unify(last_pred, clause->get_conclusion().value()->rename_vars(ren));
+                        // avoid accidental overwrites
+                        const auto old_cond = map.get(p).value_or(bot());
+                        BoolExprSet conjuncts;
+                        conjuncts.emplace(unif);
+                        conjuncts.emplace(cond);
+                        conjuncts.emplace(c->renameVars(ren));
+                        map.put(p->rename_vars(ren), old_cond || bools::mkAnd(conjuncts));
+                    }
+                    last_pred = cs.at(i)->get_premise().front();
+                }
+                res.emplace(c, map);
+                break;
+            }
+            case ProofStepKind::ACCEL: {
+                const auto loop = accel.at(c);
+                const auto cond = c->get_constraint();
+                linked_hash_map<FunAppPtr, Bools::Expr> map;
+                for (const auto &[k, v]: res.at(loop)) {
+                    const auto ren = get_renaming(k, v);
+                    const auto unif = unify(c->get_conclusion().value(), loop->get_conclusion().value()->rename_vars(ren));
+                    map.emplace(k->rename_vars(ren), bools::mkAnd(std::vector({v->renameVars(ren), cond, unif})));
+                }
+                res.emplace(c, map);
+                break;
+            }
+            }
+        }
+    }
+}
+
+linked_hash_map<std::string, std::pair<FunApp, Bools::Expr>> CHCCex::to_recurrent_set() const {
+    linked_hash_map<std::string, std::pair<FunApp, Bools::Expr>> res;
+    for (const auto& t: transitions) {
+        const auto prem = t->get_premise();
+        assert(prem.size() <= 1);
+        if (prem.size() == 0) {
+            assert(t->get_conclusion());
+            const auto conc = *t->get_conclusion();
+            if (!res.contains(conc->get_pred())) {
+                res.emplace(conc->get_pred(), std::pair(conc, t->get_constraint())).first->second;
+                continue;
+            }
+            const auto &[f, b] = res.at(conc->get_pred());
+            const auto subs = f.unify(conc);
+            res.put(conc->get_pred(), std::pair(f, b || t->get_constraint()->renameVars(*subs)));
+        }
+    }
+}
+
 std::ostream& operator<<(std::ostream &s, const CHCCex &cex) {
     const auto derived{cex.get_used_clauses()};
     std::unordered_map<ClausePtr, unsigned> indices;
@@ -149,3 +256,4 @@ const std::vector<ClausePtr>& CHCCex::get_transitions() const {
 const std::vector<ModelPtr>& CHCCex::get_states() const {
     return states;
 }
+
