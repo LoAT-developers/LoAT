@@ -208,7 +208,7 @@ std::optional<SmtResult> ADCLSat::do_step() {
                 return safe ? SmtResult::Sat : SmtResult::Unknown;
             }
             backtracking = true;
-            const auto projection{trp.mbp(trace.back().implicant, (*model)->composeBackwards(get_subs(trace.size() - 1, 1)), theory::isTempCell)};
+            const auto projection = trace.back().implicant;
             solver->pop(); // current step
             solver->pop(); // blocking clauses
             solver->pop(); // backtracking
@@ -240,7 +240,7 @@ std::optional<SmtResult> ADCLSat::do_step() {
     const auto trans{rule_map.at(id)};
     const auto m{(*model)->composeBackwards(subs)};
     const auto [imp_non_bool, imp_bool] = m->structuralImplicant(trans);
-    const auto imp = imp_non_bool && imp_bool;
+    const auto imp = trp.mbp(imp_non_bool && imp_bool, m, theory::isTempCell);
     solver->add(imp->renameVars(subs));
     const auto smt_res{solver->check()};
     assert(smt_res == SmtResult::Sat);
