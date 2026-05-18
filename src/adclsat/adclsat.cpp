@@ -54,15 +54,15 @@ bool ADCLSat::handle_loop(const Range& range) {
     if (kind == TRP::NoLoop) {
         return false;
     }
+    const auto loop = loop_non_bool && loop_bool;
     backtracking = true;
     solver->pop();
     if (add_blocking_clauses(range, model)) {
         if (Config::Analysis::abstraction_refinement) {
-            if (!add_blocking_clauses(range, old_model->composeBackwards(get_subs(range.start(), range.length())))) {
+            const auto renamed_model = old_model->composeBackwards(get_subs(range.start(), range.length()));
+            if (!add_blocking_clauses(range, renamed_model)) {
                 if (last_model) {
-                    CellSet cells;
-                    loop_non_bool->collectCells(cells);
-                    loop_bool->collectCells(cells);
+                    const auto cells = loop->cells();
                     if (std::ranges::all_of(cells, [&](const auto& c) {
                         return theory::apply(c, [&](const auto& c) {
                             return (*last_model)->get(c) == model->get(c);
@@ -101,7 +101,7 @@ bool ADCLSat::handle_loop(const Range& range) {
     if (Config::Analysis::log) {
         std::cout << "***** Accelerate *****" << std::endl;
     }
-    auto ti = kind == TRP::Transitive ? loop_non_bool && loop_bool : trp.compute(loop_non_bool, loop_bool, model);
+    auto ti = kind == TRP::Transitive ? loop : trp.compute(loop_non_bool, loop_bool, model);
     Int id;
     Bools::Expr projected{top()};
     const auto n {trp.get_n()};
