@@ -382,3 +382,7 @@ Bools::Expr TRP::mbp(const Bools::Expr &trans, const ModelPtr &model, const std:
     }
     return res;
 }
+
+bool TRP::is_int_mbp() const {
+    return config.is_int_mbp();
+}

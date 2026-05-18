@@ -34,5 +34,6 @@ public:
     Bools::Expr compute(const Bools::Expr& loop_non_bool, const Bools::Expr& loop_bool, const ModelPtr &model);
     ArithVarPtr get_n() const;
     Bools::Expr mbp(const Bools::Expr &trans, const ModelPtr &model, const std::function<bool(const Cell &)> &eliminate) const;
+    bool is_int_mbp() const;
 
 };

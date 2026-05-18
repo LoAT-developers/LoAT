@@ -75,6 +75,16 @@ namespace Config {
 
     Config::TRPConfig trp;
 
+    bool TRPConfig::is_int_mbp() const {
+        switch (mbpKind) {
+            case LowerIntMbp:
+            case UpperIntMbp:
+            case IntMbp:
+                return true;
+            default: return false;
+        }
+    }
+
     namespace ABMC {
         bool blocking_clauses {true};
     }

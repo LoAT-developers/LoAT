@@ -56,6 +56,9 @@ namespace Config {
 
     struct TRPConfig {
         enum MbpKind {LowerIntMbp, UpperIntMbp, IntMbp, RealMbp, RealQe};
+
+        bool is_int_mbp() const;
+
         MbpKind mbpKind {LowerIntMbp};
         bool recurrent_cycles {false};
         bool recurrent_exps {true};

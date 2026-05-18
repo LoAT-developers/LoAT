@@ -330,6 +330,10 @@ bool TRPUtil::build_cex() {
     if (trace.empty()) {
         return SmtFactory::check(t.init() && t.err()) == SmtResult::Sat;
     }
+    // we can only construct counterexamples from the trace without recomputing all projections if we use mbp for ints
+    if (!trp.is_int_mbp()) {
+        return false;
+    }
     std::stack<Int> todo;
     for (const auto &e: trace) {
         if (e.id > last_orig_clause && !accel.contains(e.id)) {
