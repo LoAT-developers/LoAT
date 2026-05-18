@@ -332,7 +332,7 @@ Arith::Expr parseArithExpr(const sexpresso::Sexp &exp, SMTLibParsingState &state
         const auto arr = parseArray(select, state);
         return arrays::mkArrayRead(arr, idx);
     }
-    throw std::invalid_argument("unknown operator " + name);
+    throw std::invalid_argument("unknown operator " + name + " when parsing " + exp.toString());
 }
 
 theory::Type getType(const sexpresso::Sexp &exp, const SMTLibParsingState &state) {
@@ -407,7 +407,7 @@ Bools::Expr parseBoolExpr(const sexpresso::Sexp &exp, SMTLibParsingState &state)
         for (unsigned i = 0; i < size; ++i) {
             const auto& decl {declarations[i]};
             const auto declName {decl[0].str()};
-            state.add_binding(declName, parseExpr(decl[1], state, getType(decl, state)));
+            state.add_binding(declName, parseExpr(decl[1], state, getType(decl[1], state)));
         }
         auto res {parseBoolExpr(exp[2], state) && state.refinement()};
         state.pop();
