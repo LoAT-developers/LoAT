@@ -92,7 +92,14 @@ TRL::LoopStatus TRL::handle_loop(const Range &range) {
         }
         return LoopStatus::Success;
     }
-    auto ti = kind == TRP::Transitive ? loop : trp.compute(loop_non_bool, loop_bool, model);
+    auto ti = top();
+    // With abstraction refinement, we have to apply tp even to transitive loops.
+    // In this way, we obtain a set of literals such that every subset is transitive.
+    if (kind == TRP::Transitive && !Config::Analysis::abstraction_refinement) {
+        ti = loop;
+    } else {
+        ti = trp.compute(loop_non_bool, loop_bool, model);
+    }
     if (Config::Analysis::termination()) {
         ti = ti && termination_argument;
     }

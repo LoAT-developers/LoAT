@@ -101,7 +101,14 @@ bool ADCLSat::handle_loop(const Range& range) {
     if (Config::Analysis::log) {
         std::cout << "***** Accelerate *****" << std::endl;
     }
-    auto ti = kind == TRP::Transitive ? loop : trp.compute(loop_non_bool, loop_bool, model);
+    auto ti = top();
+    // With abstraction refinement, we have to apply tp even to transitive loops.
+    // In this way, we obtain a set of literals such that every subset is transitive.
+    if (kind == TRP::Transitive && !Config::Analysis::abstraction_refinement) {
+        ti = loop;
+    } else {
+        ti = trp.compute(loop_non_bool, loop_bool, model);
+    }
     Int id;
     Bools::Expr projected{top()};
     const auto n {trp.get_n()};
