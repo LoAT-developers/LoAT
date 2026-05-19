@@ -99,10 +99,9 @@ jobs:
           declare -A results
           VERSION=$(cat ${{ inputs.benchmarks }}-0/solver.version)
           echo "VERSION=${VERSION}" >> $GITHUB_ENV
-          results="./benchmarks/${{ inputs.benchmarks }}/${{ inputs.timeout }}/koat_${{ inputs.engine }}-$VERSION.json"
+          results="./benchmarks/${{ inputs.benchmarks }}/${{ inputs.timeout }}/koat-$VERSION.json"
           echo -e "{" > $results
           echo -e "\t\"benchmarks\": \"${{ inputs.benchmarks }}\"," >> $results
-          echo -e "\t\"engine\": \"${{ inputs.engine }}\"," >> $results
           echo -e "\t\"branch\": \"${{ github.ref_name }}\"," >> $results
           echo -e "\t\"version\": \"$VERSION\"," >> $results
           echo -e "\t\"timeout\": \"${{ inputs.timeout }}\"," >> $results
@@ -122,4 +121,4 @@ jobs:
            author_email: florian.frohn@cs.rwth-aachen.de
            fetch: false
            pull: '--rebase --autostash'
-           message: 'benchmark results; koat ${{ inputs.engine }}; benchmarks: ${{ inputs.benchmarks }}'
+           message: 'benchmark results; koat; benchmarks: ${{ inputs.benchmarks }}'
