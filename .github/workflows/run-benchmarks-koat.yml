@@ -1,0 +1,126 @@
+name: Run KoAT
+
+# Run this action when triggered manually through GitHub UI.
+on:
+  workflow_dispatch:
+    inputs:
+      timeout:
+        required: true
+        type: number
+        default: 30
+      mode:
+        required: true
+        type: choice
+        default: termination
+        options:
+        - termination
+        - complexity
+      benchmarks:
+        required: true
+        type: choice
+        default: tpdb-ari-termination
+        options:
+        - tpdb-ari-termination
+        - tpdb-ari-complexity
+
+permissions:
+  # deployments permission to deploy GitHub pages website
+  deployments: write
+  # contents permission to update benchmark contents in gh-pages branch
+  contents: write
+
+jobs:
+
+  run-benchmark:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        ci_index: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19]
+        ci_total: [20]
+
+    steps:
+
+      - name: Checkout LoAT Repository
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            .github/actions
+            scripts
+          path: actions
+
+      - if: ${{ inputs.benchmarks == 'tpdb-ari-termination' }}
+        uses: ./actions/.github/actions/tpdb-ari-termination
+
+      - if: ${{ inputs.benchmarks == 'tpdb-ari-complexity' }}
+        uses: ./actions/.github/actions/tpdb-ari-complexity
+
+      - uses: ./actions/.github/actions/get-koat
+
+      - name: Run Benchmark
+        run: |
+          if [ ${{ inputs.mode }} = "termination" ]; then
+            args="analyse --format=ari --termination -r termcomp -i"
+          else
+            args="analyse --format=ari -r termcomp -i"
+          fi
+          ./actions/scripts/run_benchmarks.sh $args
+        env:
+          CI_TOTAL: ${{ matrix.ci_total }}
+          CI_INDEX: ${{ matrix.ci_index }}
+          TIMEOUT: ${{ inputs.timeout }}
+          BENCHMARKS: ${{ inputs.benchmarks }}
+
+      - name: Upload Benchmark Results
+        uses: actions/upload-artifact@master
+        with:
+          name: ${{ inputs.benchmarks }}-${{ matrix.ci_index }}
+          path: |
+            benchmarks/**/*.json
+            benchmarks/*.version
+
+  finalize-benchmark-results:
+    needs: [run-benchmark]
+    if: ${{ !failure() && !cancelled() }}
+    runs-on: ubuntu-latest
+    steps:
+
+      - name: Checkout LoAT Repository
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: benchmarks
+
+      - run: mkdir -p benchmarks/${{ inputs.benchmarks }}/${{ inputs.timeout }}
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: ${{ inputs.benchmarks }}*
+
+      - name: Merge Benchmark Results
+        run: |
+          declare -A results
+          VERSION=$(cat ${{ inputs.benchmarks }}-0/solver.version)
+          echo "VERSION=${VERSION}" >> $GITHUB_ENV
+          results="./benchmarks/${{ inputs.benchmarks }}/${{ inputs.timeout }}/koat_${{ inputs.engine }}-$VERSION.json"
+          echo -e "{" > $results
+          echo -e "\t\"benchmarks\": \"${{ inputs.benchmarks }}\"," >> $results
+          echo -e "\t\"engine\": \"${{ inputs.engine }}\"," >> $results
+          echo -e "\t\"branch\": \"${{ github.ref_name }}\"," >> $results
+          echo -e "\t\"version\": \"$VERSION\"," >> $results
+          echo -e "\t\"timeout\": \"${{ inputs.timeout }}\"," >> $results
+          echo -e "\t\"results\": [" >> $results
+          filenames=$(find ${{ inputs.benchmarks }}* -name *.json)
+          for filename in $filenames; do
+            json=$(cat $filename)
+            echo -e "\t\t$json," >> $results
+          done
+          echo -e "\t]" >> $results
+          echo -e "}" >> $results
+
+      -  uses: EndBug/add-and-commit@v9
+         with:
+           add: 'benchmarks'
+           author_name: Florian Frohn
+           author_email: florian.frohn@cs.rwth-aachen.de
+           fetch: false
+           pull: '--rebase --autostash'
+           message: 'benchmark results; koat ${{ inputs.engine }}; benchmarks: ${{ inputs.benchmarks }}'
