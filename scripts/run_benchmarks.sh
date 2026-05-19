@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # first and only argument: args for the solver
-export args=$1
+export args="$@"
 
 # function to run a single benchmark
 function benchmark() {
@@ -12,7 +12,7 @@ function benchmark() {
     cmd="solver ${args} ${filename}"
     echo $cmd
     set +e
-    output=$(timeout ${TIMEOUT} solver ${args} ${filename})
+    output=$(timeout ${TIMEOUT} solver ${args} "${filename}")
 
     exit_status=$?
     set -e
