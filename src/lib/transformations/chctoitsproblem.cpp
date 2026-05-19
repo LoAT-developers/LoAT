@@ -272,6 +272,7 @@ ITSPtr CHCToITS::transform() {
         const auto rhs_loc = c->get_conclusion() ? its->getOrAddLocation((*c->get_conclusion())->get_pred()) : its->getSink();
         const auto loc_var {its->getLocVar()->var()};
         up.writeConst(loc_var, arith::mkConst(rhs_loc));
+        up.update(its->getCostVar(), its->getCostVar() + c->get_cost());
         const auto rule{Rule::mk(bools::mkAnd(constraints), up)->renameVars(renaming)};
         if (Config::Analysis::model) {
             clause_map.emplace(rule, c);
