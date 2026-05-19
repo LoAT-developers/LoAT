@@ -27,11 +27,11 @@ function benchmark() {
         else
             result="timeout"
         fi
-        for res in $output; do
+        while IFS= read -r res; do
             if [[ $res == *sat || $res == YES || $res == NO || $res == WORST_CASE* ]]; then
-                result=$res
+                result="$res"
             fi
-        done
+        done <<< "$output"
     else
         result="error"
     fi
