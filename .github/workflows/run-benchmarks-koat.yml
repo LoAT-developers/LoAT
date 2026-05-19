@@ -59,9 +59,9 @@ jobs:
       - name: Run Benchmark
         run: |
           if [ ${{ inputs.mode }} = "termination" ]; then
-            args=analyse --format=ari --termination -r termcomp -i
+            args="analyse --format=ari --termination -r termcomp -i"
           else
-            args=analyse --format=ari -r termcomp -i
+            args="analyse --format=ari -r termcomp -i"
           fi
           ./actions/scripts/run_benchmarks.sh $args
         env:

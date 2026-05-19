@@ -9,8 +9,10 @@ function benchmark() {
     printf "running ${filename} ..."
     start=`date +%s.%N`
 
+    cmd="solver ${args} ${filename}"
+    echo $cmd
     set +e
-    output=$(timeout ${TIMEOUT} solver ${args} "${filename}")
+    output=$(timeout ${TIMEOUT} solver ${args} ${filename})
 
     exit_status=$?
     set -e
