@@ -338,7 +338,7 @@ void ADCL::luby_next() {
 
 void ADCL::unsat() const {
     if (Config::Analysis::complexity()) {
-        std::cout << "NO" << std::endl;
+        std::cout << "WORST_CASE(INF,?)" << std::endl;
     }
     if (Config::Analysis::log) {
         std::stringstream counterexample;

@@ -73,7 +73,7 @@ std::string Complexity::toString() const {
 std::string Complexity::toWstString() const {
     std::string res = "WORST_CASE(";
     switch (type) {
-    case CpxExponential: res += "EXP"; break;
+    case CpxExponential: res += "NON_POLY"; break;
     case CpxUnbounded: res += "INF"; break;
     case CpxUnknown: res += "Omega(0)"; break;
     case CpxPolynomial:
