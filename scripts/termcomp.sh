@@ -15,9 +15,9 @@ do
     fi
 done
 if [[ $category == Integer_Transition_Systems ]]; then
-    loat-static --format its --mode termination --proof $bench
+    loat-static --engine adcl --mode termination --proof $bench
 elif [[ $category == Complexity_ITS ]]; then
-    res=`timeout $timeout loat-static --format koat --mode complexity --proof`
+    res=`timeout $timeout loat-static --engine adcl --mode complexity --proof`
     echo "$res" | grep "WORST_CASE\|NO" | tac | head -n 1
 else
     echo "unknown category $category"
