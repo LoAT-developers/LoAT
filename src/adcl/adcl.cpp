@@ -13,6 +13,8 @@
 #include <unordered_set>
 #include <utility>
 
+#include "formulapreprocessing.hpp"
+
 namespace adcl {
 
 using ::operator<<;
@@ -484,7 +486,8 @@ std::unique_ptr<LearningState> ADCL::learn_clause(const RulePtr& rule, const Mod
     }
     LearnedClauses res{.res = {}, .prefix = prefix, .period = period};
     if (Config::Analysis::tryNonterm() && nonterm != bot()) {
-        const auto query {chcs->addQuery(nonterm, trace.at(range.start()).clause_idx)};
+        const auto simplified = Preprocess::preprocessFormula(nonterm);
+        const auto query {chcs->addQuery(simplified, trace.at(range.start()).clause_idx)};
         res.res.emplace_back(query);
         if (Config::Analysis::model) {
             the_cex()->add_recurrent_set(rule, query);

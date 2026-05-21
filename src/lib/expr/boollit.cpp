@@ -46,6 +46,10 @@ BoolVarPtr BoolLit::getBoolVar() const {
     return var;
 }
 
+VarSet BoolLit::vars() const {
+    return {var};
+}
+
 bool BoolLit::isTriviallyTrue() {
     return false;
 }

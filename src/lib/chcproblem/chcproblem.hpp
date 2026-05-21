@@ -48,6 +48,7 @@ public:
     size_t max_dim(theory::BaseType) const;
     VarSet vars() const;
     void collect_vars(VarSet&) const;
+
 };
 
 class Clause;
@@ -85,10 +86,12 @@ public:
     bool is_fact() const;
     bool is_query() const;
     bool is_linear() const;
+    bool is_left_linear() const;
     std::vector<FunAppPtr> get_premise() const;
     std::optional<FunAppPtr> get_conclusion() const;
     Bools::Expr get_constraint() const;
     Arith::Expr get_cost() const;
+    void collect_vars(VarSet&) const;
     VarSet vars() const;
     ClausePtr subs(const Subs &subs) const;
     ClausePtr rename_vars(const Renaming &) const;

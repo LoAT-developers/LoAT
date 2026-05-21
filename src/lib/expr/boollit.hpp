@@ -38,6 +38,7 @@ public:
     static bool isPoly();
     static bool isLinear();
     BoolVarPtr getBoolVar() const;
+    VarSet vars() const;
     void collectVars(linked_hash_set<BoolVarPtr> &res) const;
     static bool isTriviallyTrue();
     static bool isTriviallyFalse();

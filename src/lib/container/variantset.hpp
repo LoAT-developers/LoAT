@@ -222,8 +222,10 @@ private:
 
 public:
 
-    void insertAll(const Self &that) {
+    bool insertAll(const Self &that) {
+        const auto old_size = size();
         insertAllImpl(that);
+        return old_size != size();
     }
 
     template <class V>

@@ -164,7 +164,14 @@ void FunApp::collect_vars(VarSet &vars) const {
 }
 
 std::ostream& operator<<(std::ostream &s, const FunAppPtr& f) {
-    s << f->pred << " ::";
+    s << f->pred << "(";
+    for (unsigned i = 0; i < f->get_args().size(); ++i) {
+        if (i > 0) {
+            s << ", ";
+        }
+        s << f->get_args().at(i);
+    }
+    s << ") ::";
     for (const auto &x: f->args) {
         s << " " << theory::to_type(x);
     }
@@ -224,6 +231,19 @@ bool Clause::is_linear() const {
     return premise.size() <= 1;
 }
 
+bool Clause::is_left_linear() const {
+    return std::ranges::all_of(premise, [](const FunAppPtr &p) {
+        return std::ranges::all_of(p->get_args(), [](const Expr &a) {
+            return theory::apply(
+                a, [](const Arith::Expr &) {
+                    return false;
+                }, [](const auto &a) {
+                    return a->isVar().has_value();
+                });
+        });
+    });
+}
+
 std::vector<FunAppPtr> Clause::get_premise() const {
     return premise;
 }
@@ -238,6 +258,21 @@ Bools::Expr Clause::get_constraint() const {
 
 Arith::Expr Clause::get_cost() const {
     return cost;
+}
+
+void Clause::collect_vars(VarSet &res) const {
+    for (const auto& p: premise) {
+        for (const auto &x: p->get_args()) {
+            theory::collectVars(x, res);
+        }
+    }
+    cost->collectVars(res);
+    if (conclusion) {
+        for (const auto &x: (*conclusion)->get_args()) {
+            theory::collectVars(x, res);
+        }
+    }
+    get_constraint()->collectVars(res);
 }
 
 ClausePtr Clause::subs(const Subs &subs) const {
@@ -264,18 +299,7 @@ ClausePtr Clause::rename_vars(const Renaming &subs) const {
 
 VarSet Clause::vars() const {
     VarSet res;
-    for (const auto& p: premise) {
-        for (const auto &x: p->get_args()) {
-            theory::collectVars(x, res);
-        }
-    }
-    cost->collectVars(res);
-    if (conclusion) {
-        for (const auto &x: (*conclusion)->get_args()) {
-            theory::collectVars(x, res);
-        }
-    }
-    get_constraint()->collectVars(res);
+    collect_vars(res);
     return res;
 }
 

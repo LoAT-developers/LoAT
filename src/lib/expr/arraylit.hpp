@@ -46,6 +46,8 @@ public:
 
     virtual void syntacticImplicant(const ModelPtr&, LitSet&) const = 0;
 
+    VarSet vars() const;
+
     static bool simplifyAnd(linked_hash_set<ArrayLitPtr<T>>&);
 
 };

@@ -514,6 +514,7 @@ int main(int argc, char *argv[]) {
                 chc_cex = reverse->transform_cex(chc_cex);
             }
             std::cout << chc_cex;
+            chc_cex.to_recurrent_set();
         } else {
             std::cout << *its_cex;
         }

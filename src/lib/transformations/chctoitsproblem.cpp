@@ -99,7 +99,9 @@ ClausePtr CHCToITS::rule_to_clause(const RulePtr& rule, const ClausePtr& prototy
         }
         conclusion = FunApp::mk((*conc)->get_pred(), args);
     }
-    return Clause::mk(premise, rule->getGuard(), its->getCost(rule), conclusion);
+    Subs subs;
+    subs.writeConst(its->getLocVar()->var(), arith::mkConst(its->getLhsLoc(rule)));
+    return Clause::mk(premise, rule->getGuard(), its->getCost(rule), conclusion)->subs(subs);
 }
 
 CHCCex CHCToITS::transform_cex(const ITSSafetyCex &cex) {

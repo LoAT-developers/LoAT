@@ -17,6 +17,13 @@ void ArrayNeq<T>::syntacticImplicant(const ModelPtr& m, LitSet& res) const {
     res.insert(arrays::mkNeq(m_lhs->syntacticImplicant(m, res), m_rhs->syntacticImplicant(m, res)));
 }
 
+template<class T>
+VarSet ArrayLit<T>::vars() const {
+    VarSet res;
+    collectVars(res);
+    return res;
+}
+
 template <class T>
 bool ArrayLit<T>::simplifyAnd(linked_hash_set<ArrayLitPtr<T>>&) {
     // TODO
