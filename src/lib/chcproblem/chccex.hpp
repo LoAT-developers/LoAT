@@ -31,7 +31,7 @@ public:
     const std::vector<ClausePtr>& get_transitions() const;
     const std::vector<ModelPtr>& get_states() const;
     std::vector<std::pair<ClausePtr, ProofStepKind>> get_used_clauses() const;
-    linked_hash_map<ClausePtr, std::vector<std::pair<ClausePtr, Bools::Expr>>> get_reachability_sets() const;
+    void complete_recurrent_set(std::unordered_map<std::string, std::pair<FunAppPtr, BoolExprSet>>& rs, const ClausePtr& clause, bool with_start) const;
     std::unordered_map<std::string, std::pair<FunAppPtr, BoolExprSet>> to_recurrent_set() const;
 
 };

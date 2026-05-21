@@ -105,151 +105,88 @@ Bools::Expr unify(const FunAppPtr &f1, const FunAppPtr &f2) {
     return bools::mkAnd(conjuncts);
 }
 
-linked_hash_map<ClausePtr, std::vector<std::pair<ClausePtr, Bools::Expr>>> CHCCex::get_reachability_sets() const {
-    const auto get_renaming = [&](const ClausePtr &c, const ClausePtr &d, const Bools::Expr &e) {
-        Renaming ren;
-        VarSet vars;
-        c->collect_vars(vars);
-        d->collect_vars(vars);
-        e->collectVars(vars);
-        for (const auto &x: vars) {
-            theory::apply(x, [&](const auto &x) {
-                Renaming::renameVar(x, ren);
+Bools::Expr simplify(const FunAppPtr& p, const Bools::Expr& e) {
+    const auto keep = p->vars();
+    return Preprocess::preprocessFormula(e, [&](const auto& x) {
+        return !keep.contains(x);
+    });
+}
+
+FunAppPtr mk_template(const FunAppPtr& f) {
+    std::vector<Expr> args;
+    for (const auto &x: f->get_args()) {
+        theory::apply(
+            x, [&](const Arrays<Arith>::Expr &x) {
+                args.push_back(Arrays<Arith>::next(x->dim()));
+            },
+            [&](const Bools::Expr &) {
+                args.push_back(bools::mkLit(bools::mk(Bools::next(0))));
+            },
+            [&](const Arith::Expr &) {
+                args.push_back(arrays::nextConst<Arith>());
             });
-        }
-        return ren;
-    };
-    const auto rename = [&](const ClausePtr &c) {
-        Renaming ren;
-        VarSet vars;
-        c->collect_vars(vars);
-        for (const auto &x: vars) {
-            theory::apply(x, [&](const auto &x) {
-                Renaming::renameVar(x, ren);
-            });
-        }
-        return c->rename_vars(ren);
-    };
-    const auto simplify = [&](const ClausePtr& derived_clause, const ClausePtr& d, const BoolExprSet& conjuncts) {
-        VarSet keep;
-        derived_clause->collect_vars(keep);
-        d->collect_vars(keep);
-        return Preprocess::preprocessFormula(bools::mkAnd(conjuncts), [&](const auto& x) {
-            return !keep.contains(x);
+    }
+    return FunApp::mk(f->get_pred(), args);
+}
+
+std::pair<FunAppPtr, BoolExprSet>& init(std::unordered_map<std::string, std::pair<FunAppPtr, BoolExprSet>>& rs, const FunAppPtr& f) {
+    return rs.emplace(f->get_pred(), std::pair{mk_template(f), BoolExprSet()}).first->second;
+}
+
+ClausePtr rename_clause(const ClausePtr &c) {
+    Renaming ren;
+    VarSet vars;
+    c->collect_vars(vars);
+    for (const auto &x: vars) {
+        theory::apply(x, [&](const auto &x) {
+            Renaming::renameVar(x, ren);
         });
+    }
+    return c->rename_vars(ren);
+}
+
+void CHCCex::complete_recurrent_set(std::unordered_map<std::string, std::pair<FunAppPtr, BoolExprSet>>& rs, const ClausePtr& clause, bool with_start) const{
+
+    const auto rename = [&](const std::pair<FunAppPtr, BoolExprSet> &p) {
+        Renaming ren;
+        VarSet vars;
+        p.first->collect_vars(vars);
+        for (const auto& e: p.second) {
+            e->collectVars(vars);
+        }
+        for (const auto &x: vars) {
+            theory::apply(x, [&](const auto &x) {
+                Renaming::renameVar(x, ren);
+            });
+        }
+        BoolExprSet res;
+        for (const auto& e: p.second) {
+            res.insert(e->renameVars(ren));
+        }
+        return std::pair(p.first->rename_vars(ren), res);
     };
-    // if res[c]=[c',d,b], then c' is a variant of c, and if sigma(c') is used and in the proof and (the existential
-    // closure of) sigma(b) holds, then we consider sigma(d) to be reachable
-    linked_hash_map<ClausePtr, std::vector<std::pair<ClausePtr, Bools::Expr> > > res;
-    const auto used = get_used_clauses();
-    for (const auto &[derived_clause,k]: used) {
-        switch (k) {
-            case ProofStepKind::ORIG:
-            case ProofStepKind::IMPLICANT: {
-                res.put(derived_clause, std::vector({std::pair(derived_clause, derived_clause->get_constraint())}));
-                break;
-            }
-            case ProofStepKind::RESOLVENT: {
-                const auto cs = resolvents.at(derived_clause);
-                // compute fresh variants of all clauses that were used for resolution
-                std::vector<ClausePtr> variants;
-                for (const auto &c: cs) {
-                    assert(c->is_linear());
-                    variants.push_back(rename(c));
-                }
-                // enforce that these variants unify
-                BoolExprSet unification_conditions;
-                for (unsigned i = 0; i < variants.size() - 1; ++i) {
-                    unification_conditions.insert(unify(variants.at(i)->get_conclusion().value(),
-                                                         variants.at(i + 1)->get_premise().front()));
-                }
-                if (!derived_clause->is_fact()) {
-                    unification_conditions.insert(unify(derived_clause->get_premise().front(),
-                                                         variants.front()->get_premise().front()));
-                }
-                if (!derived_clause->is_query()) {
-                    unification_conditions.insert(unify(derived_clause->get_conclusion().value(),
-                                                         variants.back()->get_conclusion().value()));
-                }
-                // take clauses that get reachable by using elements of cs into account
-                std::vector<std::pair<ClausePtr, Bools::Expr> > vec;
-                for (unsigned i = 0; i < cs.size(); ++i) {
-                    const auto& v = variants.at(i);
-                    for (auto [d, b]: res.at(cs.at(i))) {
-                        // if c is used in the proof, then d is reachable, provided that b holds
-                        // compute fresh variants to avoid name clashes
-                        const auto ren = get_renaming(cs.at(i), d, b);
-                        const auto c = cs.at(i)->rename_vars(ren);
-                        d = d->rename_vars(ren);
-                        b = b->renameVars(ren);
-                        // collect the conditions that imply reachability of d
-                        // (A) the clauses used for resolution must unify
-                        BoolExprSet conjuncts = unification_conditions;
-                        // (B) the condition for reachability of d must hold
-                        conjuncts.insert(b);
-                        // (C) the left-hand sides of c and its variant must unify
-                        if (!c->is_fact()) {
-                            conjuncts.insert(unify(c->get_premise().front(), v->get_premise().front()));
-                        }
-                        // (D) the right-hand sides of c and its variant must unify
-                        if (!c->is_query()) {
-                            conjuncts.insert(unify(c->get_conclusion().value(), v->get_conclusion().value()));
-                        }
-                        vec.emplace_back(d, simplify(derived_clause, d, conjuncts));
-                    }
-                }
-                res.put(derived_clause, vec);
-                break;
-            }
-            case ProofStepKind::ACCEL: {
-                const auto loop = accel.at(derived_clause);
-                const auto cond = derived_clause->get_constraint();
-                std::vector<std::pair<ClausePtr, Bools::Expr> > vec;
-                for (auto [d, b]: res.at(loop)) {
-                    const auto ren = get_renaming(loop, d, b);
-                    const auto c = loop->rename_vars(ren);
-                    d = d->rename_vars(ren);
-                    b = b->renameVars(ren);
-                    BoolExprSet conjuncts;
-                    conjuncts.insert(b);
-                    conjuncts.insert(cond);
-                    conjuncts.insert(unify(c->get_premise().front(), loop->get_premise().front()));
-                    conjuncts.insert(unify(c->get_conclusion().value(), loop->get_conclusion().value()));
-                    vec.emplace_back(d, simplify(derived_clause, d, conjuncts));
-                }
-                res.put(derived_clause, vec);
-                break;
-            }
-            case ProofStepKind::RECURRENT_SET: {
-                const auto loop = recurrent_set.at(derived_clause);
-                const auto unif = unify(loop->get_premise().front(), derived_clause->get_premise().front());
-                const auto cond = derived_clause->get_constraint() && unif;
-                std::vector<std::pair<ClausePtr, Bools::Expr> > vec;
-                for (auto [d, b]: res.at(loop)) {
-                    const auto ren = get_renaming(loop, d, b);
-                    const auto c = loop->rename_vars(ren);
-                    d = d->rename_vars(ren);
-                    b = b->renameVars(ren);
-                    BoolExprSet conjuncts;
-                    conjuncts.insert(b);
-                    conjuncts.insert(cond);
-                    conjuncts.insert(unify(c->get_premise().front(), loop->get_premise().front()));
-                    conjuncts.insert(unify(c->get_conclusion().value(), loop->get_conclusion().value()));
-                    vec.emplace_back(d, simplify(derived_clause, d, conjuncts));
-                }
-                res.put(derived_clause, vec);
-                break;
-            }
-            default: throw std::logic_error("unknown proof step");
+
+    if (resolvents.contains(clause)) {
+        const auto cs = resolvents.at(clause);
+        for (const auto &c: cs | std::views::reverse) {
+            complete_recurrent_set(rs, c, c != cs.front());
+        }
+    } else if (accel.contains(clause)) {
+        complete_recurrent_set(rs, accel.at(clause), false);
+    } else if (recurrent_set.contains(clause)) {
+        complete_recurrent_set(rs, recurrent_set.at(clause), false);
+    } else if (with_start && !clause->is_fact()) {
+        const auto renamed = rename_clause(clause);
+        const auto premise = renamed->get_premise().front();
+        const auto conclusion = renamed->get_conclusion().value();
+        auto& [sig_premise, rs_premise] = init(rs, premise);
+        const auto [sig_conclusion, rs_conclusion] = rename(init(rs, conclusion));
+        const auto unif_premise = unify(premise, sig_premise);
+        const auto unif_conclusion = unify(conclusion, sig_conclusion);
+        for (const auto& b: rs_conclusion) {
+            rs_premise.insert(simplify(sig_premise, bools::mkAnd(BoolExprSet{renamed->get_constraint(), b, unif_premise, unif_conclusion})));
         }
     }
-    for (const auto& [f,vec]: res) {
-        std::cout << "reachability sets for " << f << std::endl;
-        for (const auto& [k,v]: vec) {
-            std::cout << k << ": " << v << std::endl;
-        }
-    }
-    return res;
 }
 
 std::unordered_map<std::string, std::pair<FunAppPtr, BoolExprSet>> CHCCex::to_recurrent_set() const {
@@ -274,77 +211,55 @@ std::unordered_map<std::string, std::pair<FunAppPtr, BoolExprSet>> CHCCex::to_re
         return f->subs(subs);
     };
 
-    const auto simplify = [&](const FunAppPtr& p, const Bools::Expr& e) {
-        const auto keep = p->vars();
-        return Preprocess::preprocessFormula(e, [&](const auto& x) {
-            return !keep.contains(x);
-        });
-    };
-
-    const auto mk_template = [&](const FunAppPtr& f) {
-        std::vector<Expr> args;
-        for (const auto &x: f->get_args()) {
-            theory::apply(
-                x, [&](const Arrays<Arith>::Expr &x) {
-                    args.push_back(Arrays<Arith>::next(x->dim()));
-                },
-                [&](const Bools::Expr &) {
-                    args.push_back(bools::mkLit(bools::mk(Bools::next(0))));
-                },
-                [&](const Arith::Expr &) {
-                    args.push_back(arrays::nextConst<Arith>());
-                });
-        }
-        return FunApp::mk(f->get_pred(), args);
-    };
-
     std::unordered_map<std::string, std::pair<FunAppPtr, BoolExprSet>> res;
 
-    const auto init = [&](const FunAppPtr& f) -> std::pair<FunAppPtr, BoolExprSet>& {
-        return res.emplace(f->get_pred(), std::pair{mk_template(f), BoolExprSet()}).first->second;
-    };
-
-    const auto reachability_sets = get_reachability_sets();
     for (unsigned i = 0; i < transitions.size(); ++i) {
         const auto t = transitions.at(i);
         std::cout << "processing " << t << std::endl;
         const auto from = states.at(i);
         if (recurrent_set.contains(t)) {
-            for (const auto& [d, b]: reachability_sets.at(t)) {
-                const auto premise = d->get_premise().front();
-                auto &[p, c] = init(premise);
-                std::cout << "adding " << p << " -> " << simplify(p, b && unify(p, premise)) << std::endl;
-                c.insert(simplify(p, b && unify(p, premise)));
-            }
+            const auto premise = t->get_premise().front();
+            auto &[p, c] = init(res, premise);
+            const auto to_add = simplify(p, t->get_constraint() && unify(p, premise));
+            std::cout << "adding " << p << ": " << to_add << std::endl;
+            c.insert(to_add);
         } else {
             const auto to = states.at(i+1);
             if (accel.contains(t)) {
+                const auto renamed = rename_clause(t);
+                const auto premise = renamed->get_premise().front();
+                const auto conc = renamed->get_conclusion().value();
                 const auto spec = instantiate(transitions.at(i+1)->get_premise().front(), to);
-                const auto unif = unify(t->get_conclusion().value(), spec);
-                for (const auto& [d, b]: reachability_sets.at(t)) {
-                    const auto conc = d->get_conclusion().value();
-                    auto &[p, c] = init(conc);
-                    std::cout << "spec: " << spec << std::endl;
-                    std::cout << "adding " << p << " -> " << (b && unify(p, conc) && unif) << std::endl;
-                    c.insert(b && unify(p, conc) && unif);
-                }
+                auto &[p, c] = init(res, conc);
+                const auto unif_conc = unify(conc, spec);
+                const auto unif_premise = unify(premise, p);
+                std::cout << "spec: " << spec << std::endl;
+                const auto to_add = simplify(p, unif_premise && unif_conc && renamed->get_constraint());
+                std::cout << "adding " << p << ": " << to_add << std::endl;
+                // the final value is in the recurrent set
+                c.insert(simplify(p, unify(p, spec)));
+                // all values that can reach the final value are in the recurrent set
+                c.insert(to_add);
             } else {
-                for (const auto& [d, b]: reachability_sets.at(t)) {
-                    if (!t->is_fact()) {
-                        const auto premise = d->get_premise().front();
-                        const auto premise_spec = instantiate(premise, from);
-                        auto &[p, c] = init(premise);
-                        std::cout << "adding " << p << " -> " << simplify(p, b && unify(p, premise_spec)) << std::endl;
-                        c.insert(simplify(p, b && unify(p, premise_spec)));
-                    }
-                    const auto conc = d->get_conclusion().value();
-                    const auto conc_spec = instantiate(conc, to);
-                    auto &[p, c] = init(conc);
-                    std::cout << "adding " << p << " -> " << simplify(p, b && unify(p, conc_spec)) << std::endl;
-                    c.insert(simplify(p, b && unify(p, conc_spec)));
+                if (!t->is_fact()) {
+                    const auto premise = t->get_premise().front();
+                    const auto premise_spec = instantiate(premise, from);
+                    auto &[p, c] = init(res, premise);
+                    std::cout << "premise_spec: " << premise_spec << std::endl;
+                    const auto to_add = simplify(p, unify(p, premise_spec));
+                    std::cout << "adding " << p << ": " << to_add << std::endl;
+                    c.insert(to_add);
                 }
+                const auto conc = t->get_conclusion().value();
+                const auto conc_spec = instantiate(transitions.at(i+1)->get_premise().front(), to);
+                auto &[p, c] = init(res, conc);
+                std::cout << "conc_spec: " << conc_spec << std::endl;
+                const auto to_add = simplify(p, unify(p, conc_spec));
+                std::cout << "adding " << p << ": " << to_add << std::endl;
+                c.insert(to_add);
             }
         }
+        complete_recurrent_set(res, t, false);
     }
     for (const auto &[f,b]: res | std::views::values) {
         std::cout << f << std::endl;
