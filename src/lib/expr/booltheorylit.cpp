@@ -51,6 +51,10 @@ bool BoolTheoryLit::isConjunction() const {
     return true;
 }
 
+bool BoolTheoryLit::isDisjunction() const {
+    return true;
+}
+
 bool BoolTheoryLit::isStructualImplicant() const {
     return true;
 }

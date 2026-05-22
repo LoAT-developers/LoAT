@@ -66,6 +66,12 @@ bool BoolJunction::isConjunction() const {
     });
 }
 
+bool BoolJunction::isDisjunction() const {
+    return isOr() && std::ranges::all_of(children, [](const auto &c) {
+        return c->isDisjunction();
+    });
+}
+
 bool BoolJunction::isStructualImplicant() const {
     return (isAnd() && std::ranges::all_of(children, [](const auto &c) {
         return c->isStructualImplicant();

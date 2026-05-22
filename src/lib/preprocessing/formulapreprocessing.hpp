@@ -10,5 +10,7 @@ namespace Preprocess {
 
     Bools::Expr simplifyAnd(const Bools::Expr& e);
 
+    Bools::Expr simplifyOr(const Bools::Expr& e);
+
     std::tuple<Bools::Expr, Renaming, Renaming> chain(const Bools::Expr &fst, const Bools::Expr &snd);
 }

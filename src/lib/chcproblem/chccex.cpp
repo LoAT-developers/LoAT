@@ -263,7 +263,7 @@ std::unordered_map<std::string, std::pair<FunAppPtr, BoolExprSet>> CHCCex::to_re
     }
     for (const auto &[f,b]: res | std::views::values) {
         std::cout << f << std::endl;
-        std::cout << bools::mkOr(b) << std::endl;
+        std::cout << Preprocess::simplifyOr(bools::mkOr(b)) << std::endl;
     }
     return res;
 }

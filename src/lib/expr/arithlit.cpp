@@ -401,6 +401,7 @@ bool ArithLit::simplifyAnd(linked_hash_set<ArithLitPtr> &lits) {
 bool ArithLit::simplifyOr(linked_hash_set<ArithLitPtr> &lits) {
     std::unordered_set<ArithLitPtr> remove;
     std::unordered_set<ArithLitPtr> add;
+    // a > 0 \/ a < 0 <-> a != 0
     for (const auto &rel: lits) {
         if (rel->isGt() && !remove.contains(rel)) {
             if (const auto converse {arith::mkLt(rel->lhs(), arith::zero())}; lits.contains(converse)) {
@@ -410,13 +411,47 @@ bool ArithLit::simplifyOr(linked_hash_set<ArithLitPtr> &lits) {
             }
         }
     }
+    for (auto it1 = lits.begin(); std::next(it1) != lits.end(); ++it1) {
+        for (auto it2 = std::next(it1); it2 != lits.end(); ++it2) {
+            const auto l1 = *it1;
+            const auto l2 = *it2;
+            if (l1->isGt() && l2->isGt()) {
+                const auto diff = l1->lhs() - l2->lhs();
+                if (const auto d = diff->isRational()) {
+                    if (***d > 0) {
+                        // t + c > 0 \/ t > 0 <-> t + c > 0
+                        remove.insert(l2);
+                    } else {
+                        // t > 0 \/ t + c > 0 <-> t + c > 0
+                        remove.insert(l1);
+                    }
+                }
+            } else if (l1->isGt() && l2->isEq()) {
+                const auto diff = l1->lhs() - l2->lhs();
+                if (diff->is(0)) {
+                    // t > 0 \/ t = 0 <-> t >= 0
+                    remove.insert(l1);
+                    remove.insert(l2);
+                    add.insert(arith::mkGeq(l1->lhs(), arith::zero()));
+                }
+            } else if (l2->isEq() && l1->isGt()) {
+                const auto diff = l1->lhs() - l2->lhs();
+                if (diff->is(0)) {
+                    // t = 0 \/ t >= 0 <-> t >= 0
+                    remove.insert(l1);
+                    remove.insert(l2);
+                    add.insert(arith::mkGeq(l1->lhs(), arith::zero()));
+                }
+            }
+        }
+    }
     for (const auto &r: remove) {
         lits.erase(r);
     }
     for (const auto &a: add) {
         lits.insert(a);
     }
-    return !add.empty();
+    return !add.empty() || !remove.empty();
 }
 
 void ArithLit::syntacticImplicant(const ModelPtr& m, LitSet& res) const {

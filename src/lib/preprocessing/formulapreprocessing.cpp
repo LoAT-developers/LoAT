@@ -28,6 +28,15 @@ Bools::Expr Preprocess::simplifyAnd(const Bools::Expr& e) {
     return e;
 }
 
+Bools::Expr Preprocess::simplifyOr(const Bools::Expr& e) {
+    if (e->isDisjunction()) {
+        if (auto lits{e->lits()}; ArithLit::simplifyOr(lits.get<Arith::Lit>())) {
+            return bools::mkOr(lits);
+        }
+    }
+    return e;
+}
+
 Bools::Expr Preprocess::preprocessFormula(Bools::Expr e, const std::function<bool(const Var &)> &allow) {
     for (const auto prop = propagateEquivalences(e); prop != e;) {
         e = prop;
