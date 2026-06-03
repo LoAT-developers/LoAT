@@ -7,8 +7,6 @@
 #include <boost/algorithm/string.hpp>
 #include <cassert>
 
-ITSCpxCex::ITSCpxCex(const ITSProblem& its): ITSCex(its) {}
-
 std::ostream& operator<<(std::ostream &s, const ITSCpxCex &cex) {
     if (cex.witness) {
         const auto derived {cex.get_used_rules({*cex.witness})};
@@ -62,9 +60,14 @@ std::ostream& operator<<(std::ostream &s, const ITSCpxCex &cex) {
     return s;
 }
 
+ITSCpxCex::ITSCpxCex(const linked_hash_set<RulePtr> &orig): ITSCex(orig) {}
+
 ITSCpxCex ITSCpxCex::replace_rules(const linked_hash_map<RulePtr, RulePtr> &map) const {
-    ITSCpxCex res{its};
+    ITSCpxCex res{{}};
     if (witness) {
+        for (const auto& r: orig) {
+            res.add_orig(map.get(r).value_or(r));
+        }
         for (const auto &[x, y] : implicants) {
             res.add_implicant(map.get(y).value_or(y), map.get(x).value_or(x));
         }

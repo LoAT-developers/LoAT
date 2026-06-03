@@ -127,7 +127,7 @@ SafetyProblem ITSToSafety::transform() {
 }
 
 ITSSafetyCex ITSToSafety::transform_cex(const SafetyCex &cex) const {
-    ITSSafetyCex res{*its};
+    ITSSafetyCex res(its->getAllTransitions());
     const auto init_model{cex.get_state(0)->composeBackwards(post_to_pre)};
     res.set_initial_state(init_model);
     const auto& fst {cex.get_state(0)};

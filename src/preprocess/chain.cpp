@@ -30,12 +30,12 @@ bool Chain::chainLinearPaths() {
                     its->addRule(c, first, second_idx);
                     if (Config::Analysis::model) {
                         chained.emplace(c, std::pair{first, second_idx});
-                        removed.emplace(its->getLhsLoc(first), first, its->getRhsLoc(first));
+                        removed.emplace(ITSProblem::getLhsLoc(first), first, ITSProblem::getRhsLoc(first));
                     }
                     its->removeRule(first);
                     if (its->getPredecessors(second_idx).empty()) {
                         if (Config::Analysis::model) {
-                            removed.emplace(its->getLhsLoc(second_idx), second_idx, its->getRhsLoc(second_idx));
+                            removed.emplace(ITSProblem::getLhsLoc(second_idx), second_idx, ITSProblem::getRhsLoc(second_idx));
                         }
                         its->removeRule(second_idx);
                     }

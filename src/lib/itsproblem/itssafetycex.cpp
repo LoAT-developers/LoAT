@@ -5,9 +5,10 @@
 
 #include <cassert>
 
-ITSSafetyCex::ITSSafetyCex(const ITSProblem& its): ITSCex(its) {}
-
 void ITSSafetyCex::do_step(const RulePtr& trans, const ModelPtr &next) {
+    if (!is_known(trans)) {
+        throw std::logic_error("adding unknown rule " + toString(trans->getId()) + " to cex");
+    }
     states.push_back(next);
     transitions.push_back(trans);
 }
@@ -19,14 +20,14 @@ void ITSSafetyCex::set_initial_state(const ModelPtr &m) {
 }
 
 void ITSSafetyCex::add_final_transition(const RulePtr& trans) {
-    assert(trans->getUpdate().getConst(ITSProblem::loc_var()) == arith::mkConst(its.getSink()));
+    assert(trans->getUpdate().getConst(ITSProblem::loc_var()) == arith::mkConst(ITSProblem::getSink()));
     transitions.push_back(trans);
 }
 
 std::ostream& operator<<(std::ostream &s, const ITSSafetyCex &cex) {
     const auto derived {cex.get_used_rules()};
-    s << "init: " << ITSProblem::loc_var() << " = " << cex.its.getInitialLocation();
-    s << "\n\nerr: " << ITSProblem::loc_var() << " = " << cex.its.getSink();
+    s << "init: " << ITSProblem::loc_var() << " = " << ITSProblem::getInitialLocation();
+    s << "\n\nerr: " << ITSProblem::loc_var() << " = " << ITSProblem::getSink();
     if (!derived.empty()) {
         s << "\n\nrules:" << std::endl;
         for (const auto &[t,kind]: derived) {
@@ -90,6 +91,8 @@ ModelPtr ITSSafetyCex::get_state(const size_t i) const {
     return states.at(i);
 }
 
+ITSSafetyCex::ITSSafetyCex(const linked_hash_set<RulePtr> &orig): ITSCex(orig) {}
+
 size_t ITSSafetyCex::num_transitions() const {
     return transitions.size();
 }
@@ -103,34 +106,45 @@ std::vector<std::pair<RulePtr, ProofStepKind>> ITSSafetyCex::get_used_rules() co
 }
 
 ITSSafetyCex ITSSafetyCex::replace_rules(const linked_hash_map<RulePtr, RulePtr> &map) const {
-    ITSProblem res_its = its;
-    for (const auto& [k,v]: map) {
-        res_its.replaceRule(k, v);
-    }
-    ITSSafetyCex res{res_its};
-    for (const auto &[x, y] : implicants) {
-        res.add_implicant(map.get(y).value_or(y), map.get(x).value_or(x));
-    }
-    for (const auto &[x, y] : accel) {
-        res.add_accel(map.get(y).value_or(y), map.get(x).value_or(x));
-    }
-    for (const auto &[x, ys] : resolvents) {
-        std::vector<RulePtr> transformed;
-        for (const auto &y : ys) {
-            transformed.emplace_back(map.get(y).value_or(y));
+    ITSSafetyCex res{{}};
+    const auto get = [&](const auto& r) {
+        return map.get(r).value_or(r);
+    };
+    for (const auto &[r,k]: get_used_rules()) {
+        switch (k) {
+            case ProofStepKind::IMPLICANT: {
+                res.add_implicant(get(implicants.at(r)), get(r));
+                break;
+            }
+            case ProofStepKind::RESOLVENT: {
+                const auto orig = resolvents.at(r);
+                std::vector<RulePtr> transformed;
+                for (const auto& r: orig) {
+                    transformed.emplace_back(get(r));
+                }
+                res.add_resolvent(transformed, get(r));
+                break;
+            }
+            case ProofStepKind::RECURRENT_SET: {
+                res.add_recurrent_set(get(recurrent_set.at(r)), get(r));
+                break;
+            }
+            case ProofStepKind::ACCEL: {
+                res.add_accel(get(accel.at(r)), get(r));
+                break;
+            }
+            case ProofStepKind::ORIG: {
+                res.add_orig(get(r));
+            }
         }
-        res.add_resolvent(transformed, map.get(x).value_or(x));
-    }
-    for (const auto &[x, y] : recurrent_set) {
-        res.add_recurrent_set(map.get(y).value_or(y), map.get(x).value_or(x));
     }
     res.set_initial_state(states.front());
     for (size_t i = 1; i < num_states(); ++i) {
         auto trans{transitions.at(i - 1)};
         auto state{states.at(i)};
-        res.do_step(map.get(trans).value_or(trans), state);
+        res.do_step(get(trans), state);
     }
     const auto trans{transitions.back()};
-    res.add_final_transition(map.get(trans).value_or(trans));
+    res.add_final_transition(get(trans));
     return res;
 }

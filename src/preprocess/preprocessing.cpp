@@ -11,7 +11,7 @@
 
 #include "formulapreprocessing.hpp"
 
-Preprocessor::Preprocessor(const ITSPtr& its): its(its), chain(its), rule_preproc(its), cex(*its) {}
+Preprocessor::Preprocessor(const ITSPtr& its): its(its), chain(its), rule_preproc(its), cex(its->getAllTransitions()) {}
 
 bool Preprocessor::successful() const {
     return success;

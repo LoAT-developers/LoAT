@@ -6,7 +6,11 @@
 #include <stack>
 #include <utility>
 
-ITSCex::ITSCex(const ITSProblem& its): its(its) {}
+bool ITSCex::is_known(const RulePtr &rule) const {
+    return accel.contains(rule) || resolvents.contains(rule) || recurrent_set.contains(rule) || implicants.contains(rule) || orig.contains(rule);
+}
+
+ITSCex::ITSCex(const linked_hash_set<RulePtr> &orig): orig(orig) {}
 
 LocationIdx ITSCex::get_lhs_loc(const RulePtr &rule) const {
     if (accel.contains(rule)) {
@@ -21,7 +25,24 @@ LocationIdx ITSCex::get_lhs_loc(const RulePtr &rule) const {
     if (resolvents.contains(rule)) {
         return get_lhs_loc(resolvents.at(rule).front());
     }
-    return its.getLhsLoc(rule);
+    if (orig.contains(rule)) {
+        return ITSProblem::getLhsLoc(rule);
+    }
+    assert(false);
+}
+
+void ITSCex::add_orig(const RulePtr &rule) {
+    orig.insert(rule);
+}
+
+void ITSCex::undo_chaining(const std::vector<RulePtr> &rules, const RulePtr &res) {
+    orig.erase(res);
+    for (const auto& r: rules) {
+        if (!is_known(r)) {
+            orig.insert(r);
+        }
+    }
+    add_resolvent(rules, res);
 }
 
 std::vector<std::pair<RulePtr, ProofStepKind>> ITSCex::get_used_rules(const std::vector<RulePtr> &transitions) const {
@@ -41,11 +62,11 @@ std::vector<std::pair<RulePtr, ProofStepKind>> ITSCex::get_used_rules(const std:
                 } else {
                     todo.push(*loop);
                 }
-            } else if (const auto orig{implicants.get(t)}) {
-                if ((ready = done.contains(*orig))) {
+            } else if (const auto o{implicants.get(t)}) {
+                if ((ready = done.contains(*o))) {
                     derived.emplace_back(t, ProofStepKind::IMPLICANT);
                 } else {
-                    todo.push(*orig);
+                    todo.push(*o);
                 }
             } else if (const auto rules{resolvents.get(t)}) {
                 for (const auto &r : *rules) {
@@ -64,6 +85,7 @@ std::vector<std::pair<RulePtr, ProofStepKind>> ITSCex::get_used_rules(const std:
                     todo.push(*loop);
                 }
             } else {
+                assert(orig.contains(t));
                 derived.emplace_back(t, ProofStepKind::ORIG);
             }
         }
@@ -77,22 +99,30 @@ std::vector<std::pair<RulePtr, ProofStepKind>> ITSCex::get_used_rules(const std:
 
 void ITSCex::add_recurrent_set(const RulePtr& loop, const RulePtr& res) {
     assert(res->getGuard() != bot());
+    assert(is_known(loop));
     recurrent_set.emplace(res, loop);
 }
 
 void ITSCex::add_accel(const RulePtr& loop, const RulePtr& res) {
     assert(loop->getGuard() != bot());
+    assert(is_known(loop));
     accel.emplace(res, loop);
 }
 
 void ITSCex::add_resolvent(const std::vector<RulePtr> &rules, const RulePtr& res) {
     assert(res->getGuard() != bot());
+    assert(std::ranges::all_of(rules, [&](const auto& r) { return is_known(r);}));
     resolvents.emplace(res, rules);
 }
 
 void ITSCex::add_implicant(const RulePtr& rule, const RulePtr& imp) {
+    assert(is_known(rule));
     assert(imp->getGuard() != bot());
     implicants.emplace(imp, rule);
+}
+
+const linked_hash_set<RulePtr> & ITSCex::get_orig() const {
+    return orig;
 }
 
 const linked_hash_map<RulePtr, RulePtr> &ITSCex::get_accel() const {

@@ -28,8 +28,8 @@ public:
 
     template <class CEX>
     CEX transform_cex(const CEX &cex) const {
-        auto transformed {chain.transform_cex(cex)};
-        transformed = rule_preproc.transform_cex(transformed);
+        auto transformed = rule_preproc.transform_cex(cex);
+        transformed = chain.transform_cex(transformed);
         return transformed;
     }
 

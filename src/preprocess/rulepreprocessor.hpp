@@ -1,5 +1,7 @@
 #pragma once
 
+#include <ranges>
+
 #include "itsproblem.hpp"
 #include "smt.hpp"
 #include "itssafetycex.hpp"
@@ -16,8 +18,8 @@ public:
     template <class CEX>
     CEX transform_cex(const CEX &cex) const {
         auto res = cex;
-        for (auto it = replacements.rbegin(); it != replacements.rend(); ++it) {
-            res = cex.replace_rules(*it);
+        for (const auto& replacement : std::views::reverse(replacements)) {
+            res = cex.replace_rules(replacement);
         }
         return res;
     }

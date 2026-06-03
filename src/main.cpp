@@ -337,6 +337,7 @@ int main(int argc, char *argv[]) {
     chc2its = CHCToITS(*chcs);
     its = chc2its->transform();
     profile.end();
+    const auto orig_transitions = (*its)->getAllTransitions();
     if (Config::Analysis::log) {
         std::cout << "Initial ITS\n" << *its << std::endl;
     }
@@ -508,6 +509,9 @@ int main(int argc, char *argv[]) {
         std::cout << std::endl << std::endl;
     } else if (its_cex) {
         its_cex = preprocessor->transform_cex(*its_cex);
+        assert(std::ranges::all_of(its_cex->get_orig(), [&](const auto& r) {
+            return orig_transitions.contains(r);
+        }));
         if (chc2its) {
             auto chc_cex{chc2its->transform_cex(*its_cex)};
             if (reverse) {

@@ -91,8 +91,8 @@ ADCL::ADCL(const ITSPtr& chcs, const std::function<void(const ITSCpxCex&)> &prin
     chcs(chcs),
     solver(SmtFactory::modelBuildingSolver(chcs->hasArrays() ? Logic::QF_AEA : Logic::QF_EA)),
     drop(true),
-    cex(*chcs),
-    cpx_cex(*chcs),
+    cex(chcs->getAllTransitions()),
+    cpx_cex(chcs->getAllTransitions()),
     print_cpx_cex(print_cpx_cex) {
     solver->enableModels();
 }
@@ -484,13 +484,34 @@ std::unique_ptr<LearningState> ADCL::learn_clause(const RulePtr& rule, const Mod
     if (status == acceleration::PseudoLoop) {
         return std::make_unique<Unroll>();
     }
+    const bool nonterm_succeeded = Config::Analysis::tryNonterm() && nonterm != bot();
+    auto rule_for_cex = rule;
+    if (Config::Analysis::model && (nonterm_succeeded || accel)) {
+        std::vector<RulePtr> rules;
+        for (unsigned i = range.start(); i <= range.end(); ++i) {
+            const auto e = trace.at(i);
+            const auto imp = e.implicant->renameVars(e.tmp_var_renaming);
+            if (is_orig_clause(e.clause_idx) && imp != e.clause_idx) {
+                the_cex()->add_implicant(e.clause_idx, imp);
+                rules.emplace_back(imp);
+            } else {
+                rules.emplace_back(e.clause_idx);
+            }
+        }
+        if (rules.size() > 1) {
+            the_cex()->add_resolvent(rules, rule);
+        } else {
+            // if it's a loop of length 1, use the implicant from the trace, where the variables haven't been renamed
+            rule_for_cex = trace.at(range.start()).implicant;
+        }
+    }
     LearnedClauses res{.res = {}, .prefix = prefix, .period = period};
-    if (Config::Analysis::tryNonterm() && nonterm != bot()) {
+    if (nonterm_succeeded) {
         const auto simplified = Preprocess::preprocessFormula(nonterm);
         const auto query {chcs->addQuery(simplified, trace.at(range.start()).clause_idx)};
         res.res.emplace_back(query);
         if (Config::Analysis::model) {
-            the_cex()->add_recurrent_set(rule, query);
+            the_cex()->add_recurrent_set(rule_for_cex, query);
         }
         if (Config::Analysis::log) {
             std::cout << "found certificate of non-termination: " << query << std::endl;
@@ -508,7 +529,7 @@ std::unique_ptr<LearningState> ADCL::learn_clause(const RulePtr& rule, const Mod
             add_learned_clause(simplified, range);
             res.res.emplace_back(simplified);
             if (Config::Analysis::model) {
-                the_cex()->add_accel(rule, simplified);
+                the_cex()->add_accel(rule_for_cex, simplified);
             }
             if (Config::Analysis::log) {
                 std::cout << "accelerated rule: " << *simplified << std::endl;
@@ -520,22 +541,6 @@ std::unique_ptr<LearningState> ADCL::learn_clause(const RulePtr& rule, const Mod
             std::cout << "acceleration failed, status: " << status << std::endl;
         }
         return std::make_unique<Unroll>(1, true);
-    }
-    if (Config::Analysis::model) {
-        std::vector<RulePtr> rules;
-        for (unsigned i = range.start(); i <= range.end(); ++i) {
-            const auto e = trace.at(i);
-            const auto imp = e.implicant->renameVars(e.tmp_var_renaming);
-            if (is_orig_clause(e.clause_idx) && imp != e.clause_idx) {
-                the_cex()->add_implicant(e.clause_idx, imp);
-                rules.emplace_back(imp);
-            } else {
-                rules.emplace_back(e.clause_idx);
-            }
-        }
-        if (rules.size() > 1) {
-            the_cex()->add_resolvent(rules, rule);
-        }
     }
     return std::make_unique<Succeeded>(res);
 }

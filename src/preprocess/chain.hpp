@@ -21,7 +21,7 @@ public:
     CEX transform_cex(const CEX &cex) const {
         CEX res {cex};
         for (const auto &[c,p]: chained) {
-            res.add_resolvent({p.first, p.second}, c);
+            res.undo_chaining(std::vector{p.first, p.second}, c);
         }
         return res;
     }

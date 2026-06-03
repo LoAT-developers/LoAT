@@ -59,7 +59,6 @@ bool ITSProblem::areAdjacent(const RulePtr& first, const RulePtr& second) const 
 
 void ITSProblem::removeRule(const RulePtr& transition) {
     graph.removeNode(transition);
-    startAndTargetLocations.erase(transition);
     rules.erase(transition);
 }
 
@@ -119,7 +118,6 @@ void ITSProblem::replaceRule(const RulePtr& toReplace, const RulePtr& replacemen
     }
     rules.emplace(replacement);
     startAndTargetLocations.emplace(replacement, startAndTargetLocations[toReplace]);
-    startAndTargetLocations.erase(toReplace);
     graph.replaceNode(toReplace, replacement);
     rules.erase(toReplace);
 }
