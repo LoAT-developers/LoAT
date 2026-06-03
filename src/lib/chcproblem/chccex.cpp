@@ -122,12 +122,14 @@ void CHCCex::complete_recurrent_set(RecurrentSet& rs, const ClausePtr& clause, b
     if (resolvents.contains(clause)) {
         const auto cs = resolvents.at(clause);
         for (const auto &c: cs | std::views::reverse) {
-            complete_recurrent_set(rs, c, c != cs.front());
+            complete_recurrent_set(rs, c, with_start || c != cs.front());
         }
     } else if (accel.contains(clause)) {
-        complete_recurrent_set(rs, accel.at(clause), false);
+        complete_recurrent_set(rs, accel.at(clause), with_start);
     } else if (recurrent_set.contains(clause)) {
-        complete_recurrent_set(rs, recurrent_set.at(clause), false);
+        complete_recurrent_set(rs, recurrent_set.at(clause), with_start);
+    } else if (implicants.contains(clause)) {
+        complete_recurrent_set(rs, implicants.at(clause), with_start);
     } else {
         rs.add(clause);
         if (with_start && !clause->is_fact()) {
