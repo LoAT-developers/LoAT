@@ -14,7 +14,7 @@ using namespace Config::ABMC;
 ABMC::ABMC(const ITSPtr& its):
     its(its),
     solver(SmtFactory::solver(its->hasArrays() ? Logic::QF_AEA : Logic::QF_EA)),
-    cex(its) {
+    cex(*its) {
     vars.insert(trace_var->var());
     cells.insert(trace_var);
     vars.insert(n->var());
@@ -523,7 +523,7 @@ ITSModel ABMC::get_model() {
         model.set_invariant(
             l,
             m->subs(
-                Subs::build(its->getLocVar()->var(), arrays::update(its->getLocVar(), arith::mkConst(l)))));
+                Subs::build(ITSProblem::loc_var()->var(), arrays::update(ITSProblem::loc_var(), arith::mkConst(l)))));
     }
     model.set_invariant(its->getInitialLocation(), top());
     return model;

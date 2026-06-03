@@ -5,7 +5,7 @@
 
 #include <cassert>
 
-ITSSafetyCex::ITSSafetyCex(const ITSPtr& its): ITSCex(its) {}
+ITSSafetyCex::ITSSafetyCex(const ITSProblem& its): ITSCex(its) {}
 
 void ITSSafetyCex::do_step(const RulePtr& trans, const ModelPtr &next) {
     states.push_back(next);
@@ -19,14 +19,14 @@ void ITSSafetyCex::set_initial_state(const ModelPtr &m) {
 }
 
 void ITSSafetyCex::add_final_transition(const RulePtr& trans) {
-    assert(trans->getUpdate().getConst(its->getLocVar()) == arith::mkConst(its->getSink()));
+    assert(trans->getUpdate().getConst(ITSProblem::loc_var()) == arith::mkConst(its.getSink()));
     transitions.push_back(trans);
 }
 
 std::ostream& operator<<(std::ostream &s, const ITSSafetyCex &cex) {
     const auto derived {cex.get_used_rules()};
-    s << "init: " << cex.its->getLocVar() << " = " << cex.its->getInitialLocation();
-    s << "\n\nerr: " << cex.its->getLocVar() << " = " << cex.its->getSink();
+    s << "init: " << ITSProblem::loc_var() << " = " << cex.its.getInitialLocation();
+    s << "\n\nerr: " << ITSProblem::loc_var() << " = " << cex.its.getSink();
     if (!derived.empty()) {
         s << "\n\nrules:" << std::endl;
         for (const auto &[t,kind]: derived) {
@@ -103,7 +103,11 @@ std::vector<std::pair<RulePtr, ProofStepKind>> ITSSafetyCex::get_used_rules() co
 }
 
 ITSSafetyCex ITSSafetyCex::replace_rules(const linked_hash_map<RulePtr, RulePtr> &map) const {
-    ITSSafetyCex res{its};
+    ITSProblem res_its = its;
+    for (const auto& [k,v]: map) {
+        res_its.replaceRule(k, v);
+    }
+    ITSSafetyCex res{res_its};
     for (const auto &[x, y] : implicants) {
         res.add_implicant(map.get(y).value_or(y), map.get(x).value_or(x));
     }

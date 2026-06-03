@@ -7,18 +7,18 @@
 #include <boost/algorithm/string.hpp>
 #include <cassert>
 
-ITSCpxCex::ITSCpxCex(const ITSPtr& its): ITSCex(its) {}
+ITSCpxCex::ITSCpxCex(const ITSProblem& its): ITSCex(its) {}
 
 std::ostream& operator<<(std::ostream &s, const ITSCpxCex &cex) {
     if (cex.witness) {
         const auto derived {cex.get_used_rules({*cex.witness})};
-        s << "init: " << cex.its->getLocVar() << " = " << cex.its->getInitialLocation();
-        s << "\n\nerr: " << cex.its->getLocVar() << " = " << cex.its->getSink();
+        s << "init: " << ITSProblem::loc_var() << " = " << ITSProblem::getInitialLocation();
+        s << "\n\nerr: " << ITSProblem::loc_var() << " = " << ITSProblem::getSink();
         if (!derived.empty()) {
             s << "\n\nrules:" << std::endl;
             for (const auto &[t,kind]: derived) {
                 s << "\t" << *t << std::endl;
-                s << "\t\tcost: " << cex.its->getCost(t) << std::endl;
+                s << "\t\tcost: " << ITSProblem::getCost(t) << std::endl;
                 s << "\t\torigin: ";
                 switch (kind) {
                     case ProofStepKind::ORIG: {

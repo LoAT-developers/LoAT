@@ -38,7 +38,7 @@ struct Step {
 
     const RulePtr resolvent;
 
-    Step(RulePtr transition, RulePtr sat, Renaming var_renaming, Renaming tmp_var_renaming, RulePtr resolvent);
+    Step(RulePtr transition, RulePtr implicant, Renaming var_renaming, Renaming tmp_var_renaming, RulePtr resolvent);
 
     Step(const Step &that) = default;
 

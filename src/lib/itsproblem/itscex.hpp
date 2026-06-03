@@ -8,7 +8,7 @@ class ITSCex {
 
 protected:
 
-    ITSPtr its;
+    ITSProblem its;
     linked_hash_map<RulePtr, RulePtr> accel;
     linked_hash_map<RulePtr, RulePtr> implicants;
     linked_hash_map<RulePtr, RulePtr> recurrent_set;
@@ -16,8 +16,9 @@ protected:
 
 public:
 
-    explicit ITSCex(ITSPtr its);
+    explicit ITSCex(const ITSProblem& its);
 
+    LocationIdx get_lhs_loc(const RulePtr&) const;
     void add_accel(const RulePtr& loop, const RulePtr& res);
     void add_recurrent_set(const RulePtr& loop, const RulePtr& res);
     void add_resolvent(const std::vector<RulePtr> &rules, const RulePtr& res);

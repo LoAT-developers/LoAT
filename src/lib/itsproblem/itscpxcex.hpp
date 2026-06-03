@@ -12,7 +12,7 @@ friend std::ostream& operator<<(std::ostream &s, const ITSCpxCex &);
     std::optional<ArithVarPtr> param;
 
 public:
-    explicit ITSCpxCex(const ITSPtr& its);
+    explicit ITSCpxCex(const ITSProblem& its);
 
     ITSCpxCex replace_rules(const linked_hash_map<RulePtr, RulePtr>&) const;
 

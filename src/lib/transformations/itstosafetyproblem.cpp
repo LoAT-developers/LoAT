@@ -4,17 +4,17 @@
 #include "formulapreprocessing.hpp"
 #include "config.hpp"
 
-ITSToSafety::ITSToSafety(ITSPtr  its)
+ITSToSafety::ITSToSafety(ITSPtr its)
     : its(std::move(its)) {}
 
 ITSModel ITSToSafety::transform_model(const Bools::Expr &e) const {
     ITSModel res;
-    const auto loc_var {its->getLocVar()};
+    const auto loc_var {ITSProblem::loc_var()};
     for (const auto &x : its->getLocations()) {
         Subs s{Subs::build(loc_var, arith::mkConst(x))};
         res.set_invariant(x, e->subs(s));
     }
-    res.set_invariant(its->getInitialLocation(), top());
+    res.set_invariant(ITSProblem::getInitialLocation(), top());
     return res;
 }
 
@@ -127,7 +127,7 @@ SafetyProblem ITSToSafety::transform() {
 }
 
 ITSSafetyCex ITSToSafety::transform_cex(const SafetyCex &cex) const {
-    ITSSafetyCex res{its};
+    ITSSafetyCex res{*its};
     const auto init_model{cex.get_state(0)->composeBackwards(post_to_pre)};
     res.set_initial_state(init_model);
     const auto& fst {cex.get_state(0)};
@@ -154,7 +154,7 @@ ITSSafetyCex ITSToSafety::transform_cex(const SafetyCex &cex) const {
         const auto rule = rev_map.at(transition);
         res.do_step(rule, model->composeBackwards(pre_to_post));
     }
-    const auto last {cex.get_state(steps)};
+    const auto& last {cex.get_state(steps)};
     for (const auto &[b,t]: rev_err_map) {
         if (last->eval(b)) {
             res.add_final_transition(t);

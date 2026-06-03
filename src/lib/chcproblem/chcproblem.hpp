@@ -34,6 +34,8 @@ public:
 
     static FunAppPtr mk(const std::string &pred, const std::vector<Expr> &args);
 
+    static Bools::Expr unify(const FunAppPtr &f1, const FunAppPtr &f2);
+
     sexpresso::Sexp to_smtlib() const;
     const std::string& get_pred() const;
     const std::vector<Expr>& get_args() const;

@@ -91,16 +91,16 @@ ADCL::ADCL(const ITSPtr& chcs, const std::function<void(const ITSCpxCex&)> &prin
     chcs(chcs),
     solver(SmtFactory::modelBuildingSolver(chcs->hasArrays() ? Logic::QF_AEA : Logic::QF_EA)),
     drop(true),
-    cex(chcs),
-    cpx_cex(chcs),
+    cex(*chcs),
+    cpx_cex(*chcs),
     print_cpx_cex(print_cpx_cex) {
     solver->enableModels();
 }
 
-Step::Step(RulePtr transition, RulePtr sat, Renaming var_renaming,
+Step::Step(RulePtr transition, RulePtr implicant, Renaming var_renaming,
            Renaming tmp_var_renaming, RulePtr resolvent) :
     clause_idx(std::move(transition)),
-    implicant(std::move(sat)),
+    implicant(std::move(implicant)),
     var_renaming(std::move(var_renaming)),
     tmp_var_renaming(std::move(tmp_var_renaming)),
     resolvent(std::move(resolvent)) {}

@@ -22,7 +22,7 @@ public:
 
     CHCModel transform_model(const ITSModel &) const;
 
-    ClausePtr rule_to_clause(const RulePtr& rule, const ClausePtr& prototype) const;
+    ClausePtr rule_to_clause(LocationIdx lhs_loc, const RulePtr& rule, const ClausePtr& prototype) const;
 
     CHCCex transform_cex(const ITSSafetyCex &);
 

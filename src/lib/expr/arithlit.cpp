@@ -433,14 +433,24 @@ bool ArithLit::simplifyOr(linked_hash_set<ArithLitPtr> &lits) {
                     remove.insert(l1);
                     remove.insert(l2);
                     add.insert(arith::mkGeq(l1->lhs(), arith::zero()));
+                } else if (const auto d = diff->isRational()) {
+                    if (***d > 0) {
+                        // t > 0 \/ t - c = 0 <-> t > 0
+                        remove.insert(l2);
+                    }
                 }
-            } else if (l2->isEq() && l1->isGt()) {
+            } else if (l1->isEq() && l2->isGt()) {
                 const auto diff = l1->lhs() - l2->lhs();
                 if (diff->is(0)) {
-                    // t = 0 \/ t >= 0 <-> t >= 0
+                    // t = 0 \/ t > 0 <-> t >= 0
                     remove.insert(l1);
                     remove.insert(l2);
                     add.insert(arith::mkGeq(l1->lhs(), arith::zero()));
+                } else if (const auto d = diff->isRational()) {
+                    if (***d < 0) {
+                        // t - c = 0 \/ t > 0 <-> t > 0
+                        remove.insert(l1);
+                    }
                 }
             }
         }

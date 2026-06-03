@@ -1,4 +1,3 @@
-#include "dependencygraph.hpp"
 #include "preprocessing.hpp"
 #include "config.hpp"
 #include "loopacceleration.hpp"
@@ -12,7 +11,7 @@
 
 #include "formulapreprocessing.hpp"
 
-Preprocessor::Preprocessor(const ITSPtr& its): its(its), chain(its), rule_preproc(its), cex(its) {}
+Preprocessor::Preprocessor(const ITSPtr& its): its(its), chain(its), rule_preproc(its), cex(*its) {}
 
 bool Preprocessor::successful() const {
     return success;
@@ -22,9 +21,9 @@ ITSModel Preprocessor::transform_model(const ITSModel &model) const {
     return chain.transform_model(model);
 }
 
-ITSModel Preprocessor::get_model() const {
+ITSModel Preprocessor::get_model() {
     ITSModel model;
-    model.set_invariant(its->getInitialLocation(), top());
+    model.set_invariant(ITSProblem::getInitialLocation(), top());
     return model;
 }
 

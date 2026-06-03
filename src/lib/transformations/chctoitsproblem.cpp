@@ -3,17 +3,17 @@
 #include <utility>
 #include "config.hpp"
 
-CHCToITS::CHCToITS(CHCPtr  chcs): chcs(std::move(chcs)) {}
+CHCToITS::CHCToITS(CHCPtr chcs): chcs(std::move(chcs)) {}
 
 CHCModel CHCToITS::transform_model(const ITSModel& its_m) const {
     CHCModel chc_m;
     const auto signature {chcs->get_signature()};
     for (const auto loc : its->getLocations()) {
-        if (its->getInitialLocation() == loc || its->getSink() == loc) {
+        if (ITSProblem::getInitialLocation() == loc || ITSProblem::getSink() == loc) {
             continue;
         }
         const auto inv{its_m.get_invariant(loc)};
-        const auto pred{its->getPrintableLocationName(loc)};
+        const auto pred{ITSProblem::getPrintableLocationName(loc)};
         const auto& sig{signature.at(pred)};
         unsigned next_int_var{0};
         std::unordered_map<size_t, unsigned> next_arr_var;
@@ -41,7 +41,7 @@ CHCModel CHCToITS::transform_model(const ITSModel& its_m) const {
     return chc_m;
 }
 
-ClausePtr CHCToITS::rule_to_clause(const RulePtr& rule, const ClausePtr& prototype) const {
+ClausePtr CHCToITS::rule_to_clause(const LocationIdx lhs_loc, const RulePtr& rule, const ClausePtr& prototype) const {
     std::vector<FunAppPtr> premise;
     std::optional<FunAppPtr> conclusion;
     for (const auto& prem: prototype->get_premise()) {
@@ -100,20 +100,21 @@ ClausePtr CHCToITS::rule_to_clause(const RulePtr& rule, const ClausePtr& prototy
         conclusion = FunApp::mk((*conc)->get_pred(), args);
     }
     Subs subs;
-    subs.writeConst(its->getLocVar()->var(), arith::mkConst(its->getLhsLoc(rule)));
-    return Clause::mk(premise, rule->getGuard(), its->getCost(rule), conclusion)->subs(subs);
+    subs.writeConst(ITSProblem::loc_var()->var(), arith::mkConst(lhs_loc));
+    return Clause::mk(premise, rule->getGuard(), ITSProblem::getCost(rule), conclusion)->subs(subs);
 }
 
 CHCCex CHCToITS::transform_cex(const ITSSafetyCex &cex) {
     CHCCex res {chcs};
     for (const auto &[rule, kind]: cex.get_used_rules()) {
+        const auto lhs = cex.get_lhs_loc(rule);
         switch (kind) {
             case ProofStepKind::IMPLICANT: {
                 const auto orig {cex.get_implicants().at(rule)};
                 const auto it{clause_map.find(orig)};
                 assert(it != clause_map.end());
                 const auto orig_clause{it->second};
-                const auto clause{rule_to_clause(rule, orig_clause)};
+                const auto clause{rule_to_clause(lhs, rule, orig_clause)};
                 clause_map.emplace(rule, clause);
                 res.add_implicant(orig_clause, clause);
                 break;
@@ -123,7 +124,7 @@ CHCCex CHCToITS::transform_cex(const ITSSafetyCex &cex) {
                 const auto it{clause_map.find(orig)};
                 assert(it != clause_map.end());
                 const auto orig_clause{it->second};
-                const auto clause{rule_to_clause(rule, orig_clause)};
+                const auto clause{rule_to_clause(lhs, rule, orig_clause)};
                 clause_map.emplace(rule, clause);
                 res.add_accel(orig_clause, clause);
                 break;
@@ -133,7 +134,7 @@ CHCCex CHCToITS::transform_cex(const ITSSafetyCex &cex) {
                 const auto it{clause_map.find(orig)};
                 assert(it != clause_map.end());
                 const auto orig_clause{it->second};
-                const auto clause{rule_to_clause(rule, orig_clause)};
+                const auto clause{rule_to_clause(lhs, rule, orig_clause)};
                 clause_map.emplace(rule, clause);
                 res.add_recurrent_set(orig_clause, clause);
                 break;
@@ -145,7 +146,7 @@ CHCCex CHCToITS::transform_cex(const ITSSafetyCex &cex) {
                     orig_clauses.emplace_back(clause_map.at(o));
                 }
                 const auto prototype {Clause::mk(orig_clauses.front()->get_premise(), top(), arith::one(), orig_clauses.back()->get_conclusion())};
-                const auto resolvent{rule_to_clause(rule, prototype)};
+                const auto resolvent{rule_to_clause(lhs, rule, prototype)};
                 clause_map.emplace(rule, resolvent);
                 res.add_resolvent(orig_clauses, resolvent);
                 break;
@@ -192,8 +193,8 @@ ITSPtr CHCToITS::transform() {
         Renaming renaming;
         const auto premise = c->get_premise();
         std::vector constraints{c->get_constraint()};
-        const auto lhs_loc = premise.empty() ? its->getInitialLocation() : its->getOrAddLocation(premise.front()->get_pred());
-        constraints.emplace_back(Arith::mkEq(its->getLocVar(), arith::mkConst(lhs_loc)));
+        const auto lhs_loc = premise.empty() ? ITSProblem::getInitialLocation() : ITSProblem::getOrAddLocation(premise.front()->get_pred());
+        constraints.emplace_back(Arith::mkEq(ITSProblem::loc_var(), arith::mkConst(lhs_loc)));
         // replace the arguments of the body predicate with the corresponding program variables
         unsigned bool_premise_arity{0};
         std::unordered_map<size_t, size_t> arr_premise_arity;
@@ -271,10 +272,10 @@ ITSPtr CHCToITS::transform() {
                 up.put(bvars[i], bools::mkLit(bools::mk(BoolVar::next())));
             }
         }
-        const auto rhs_loc = c->get_conclusion() ? its->getOrAddLocation((*c->get_conclusion())->get_pred()) : its->getSink();
-        const auto loc_var {its->getLocVar()->var()};
+        const auto rhs_loc = c->get_conclusion() ? ITSProblem::getOrAddLocation((*c->get_conclusion())->get_pred()) : ITSProblem::getSink();
+        const auto loc_var {ITSProblem::loc_var()->var()};
         up.writeConst(loc_var, arith::mkConst(rhs_loc));
-        up.update(its->getCostVar(), its->getCostVar() + c->get_cost());
+        up.update(ITSProblem::cost_var(), ITSProblem::cost_var()+ c->get_cost());
         const auto rule{Rule::mk(bools::mkAnd(constraints), up)->renameVars(renaming)};
         if (Config::Analysis::model) {
             clause_map.emplace(rule, c);

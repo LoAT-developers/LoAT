@@ -12,7 +12,7 @@ friend std::ostream& operator<<(std::ostream &s, const ITSSafetyCex &);
 
 public:
 
-    explicit ITSSafetyCex(const ITSPtr& its);
+    explicit ITSSafetyCex(const ITSProblem& its);
 
     size_t num_transitions() const;
     RulePtr get_transition(size_t i) const;

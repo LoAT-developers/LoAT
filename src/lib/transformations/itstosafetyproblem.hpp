@@ -16,7 +16,7 @@ class ITSToSafety {
     Renaming post_to_pre;
 
 public:
-    explicit ITSToSafety(ITSPtr  its);
+    explicit ITSToSafety(ITSPtr its);
 
     Bools::Expr rule_to_formula(const RulePtr& r, const VarSet &prog_vars);
 

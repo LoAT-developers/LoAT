@@ -13,7 +13,7 @@ class Chain {
     linked_hash_map<RulePtr, std::pair<RulePtr, RulePtr>> chained;
 
 public:
-    explicit Chain(ITSPtr  its);
+    explicit Chain(ITSPtr its);
 
     ITSModel transform_model(const ITSModel &) const;
 

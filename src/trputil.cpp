@@ -226,8 +226,8 @@ Int TRPUtil::add_learned_clause(const Range &range, const Bools::Expr &accel) {
         assert(accel->isAnd());
         for (const auto &c: accel->getChildren()) {
             const auto vars = c->vars();
-            if (vars.contains(its->getLocVar()->var())
-                || vars.contains(its->getLocVar()->var()->postVar())
+            if (vars.contains(ITSProblem::loc_var()->var())
+                || vars.contains(ITSProblem::loc_var()->var()->postVar())
                 || vars.contains(trace_var->var())) {
                 lits.emplace(c);
             }
@@ -296,7 +296,7 @@ std::optional<Arith::Expr> TRPUtil::prove_term(const Bools::Expr& loop, const Mo
     std::vector<Arith::Expr> decreasing;
     std::unordered_map<ArithVarPtr, ArithVarPtr> coeffs;
     for (const auto &[pre,post]: ptp.get<Arrays<Arith>>()) {
-        if (pre == its->getLocVar()->var()) {
+        if (pre == ITSProblem::loc_var()->var()) {
             continue;
         }
         const auto pre_cell {arrays::readConst(pre)};

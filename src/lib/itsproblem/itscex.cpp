@@ -6,7 +6,23 @@
 #include <stack>
 #include <utility>
 
-ITSCex::ITSCex(ITSPtr its): its(std::move(its)) {}
+ITSCex::ITSCex(const ITSProblem& its): its(its) {}
+
+LocationIdx ITSCex::get_lhs_loc(const RulePtr &rule) const {
+    if (accel.contains(rule)) {
+        return get_lhs_loc(accel.at(rule));
+    }
+    if (implicants.contains(rule)) {
+        return get_lhs_loc(implicants.at(rule));
+    }
+    if (recurrent_set.contains(rule)) {
+        return get_lhs_loc(recurrent_set.at(rule));
+    }
+    if (resolvents.contains(rule)) {
+        return get_lhs_loc(resolvents.at(rule).front());
+    }
+    return its.getLhsLoc(rule);
+}
 
 std::vector<std::pair<RulePtr, ProofStepKind>> ITSCex::get_used_rules(const std::vector<RulePtr> &transitions) const {
     linked_hash_set<RulePtr> done;
@@ -60,18 +76,22 @@ std::vector<std::pair<RulePtr, ProofStepKind>> ITSCex::get_used_rules(const std:
 }
 
 void ITSCex::add_recurrent_set(const RulePtr& loop, const RulePtr& res) {
+    assert(res->getGuard() != bot());
     recurrent_set.emplace(res, loop);
 }
 
 void ITSCex::add_accel(const RulePtr& loop, const RulePtr& res) {
+    assert(loop->getGuard() != bot());
     accel.emplace(res, loop);
 }
 
 void ITSCex::add_resolvent(const std::vector<RulePtr> &rules, const RulePtr& res) {
+    assert(res->getGuard() != bot());
     resolvents.emplace(res, rules);
 }
 
 void ITSCex::add_implicant(const RulePtr& rule, const RulePtr& imp) {
+    assert(imp->getGuard() != bot());
     implicants.emplace(imp, rule);
 }
 

@@ -5,28 +5,33 @@
 #include <utility>
 
 #include "formulapreprocessing.hpp"
+#include "recurrentset.hpp"
 
 CHCCex::CHCCex(CHCPtr chcs): chcs(std::move(chcs)) {}
 
 void CHCCex::do_step(const ModelPtr &m, const ClausePtr &c) {
+    assert(c->get_constraint() != bot());
     states.emplace_back(m);
     transitions.emplace_back(c);
 }
 
 void CHCCex::add_accel(const ClausePtr &loop, const ClausePtr &res) {
+    assert(res->get_constraint() != bot());
     accel.emplace(res, loop);
 }
 
 void CHCCex::add_recurrent_set(const ClausePtr &loop, const ClausePtr &res) {
+    assert(res->get_constraint() != bot());
     recurrent_set.emplace(res, loop);
 }
 
 void CHCCex::add_resolvent(const std::vector<ClausePtr> &rules, const ClausePtr &res) {
+    assert(res->get_constraint() != bot());
     resolvents.emplace(res, rules);
-
 }
 
 void CHCCex::add_implicant(const ClausePtr &rule, const ClausePtr &imp) {
+    assert(imp->get_constraint() != bot());
     implicants.emplace(imp, rule);
 }
 
@@ -81,58 +86,6 @@ std::vector<std::pair<ClausePtr, ProofStepKind>> CHCCex::get_used_clauses() cons
     return derived;
 }
 
-Bools::Expr unify(const FunAppPtr &f1, const FunAppPtr &f2) {
-    BoolExprSet conjuncts;
-    for (unsigned j = 0; j < f1->get_args().size(); ++j) {
-        const auto last_arg = f1->get_args()[j];
-        const auto current_arg = f2->get_args()[j];
-        theory::apply(
-            last_arg,
-            [&](const Arith::Expr &last_arg) {
-                conjuncts.insert(bools::mkLit(arith::mkEq(
-                    last_arg, std::get<Arith::Expr>(current_arg))));
-            },
-            [&](const Bools::Expr &last_arg) {
-                conjuncts.insert(Bools::mkEq(
-                    last_arg, std::get<Bools::Expr>(current_arg)));
-            },
-            [&](const Arrays<Arith>::Expr &last_arg) {
-                conjuncts.insert(bools::mkLit(arrays::mkEq(
-                    last_arg,
-                    std::get<Arrays<Arith>::Expr>(current_arg))));
-            });
-    }
-    return bools::mkAnd(conjuncts);
-}
-
-Bools::Expr simplify(const FunAppPtr& p, const Bools::Expr& e) {
-    const auto keep = p->vars();
-    return Preprocess::preprocessFormula(e, [&](const auto& x) {
-        return !keep.contains(x);
-    });
-}
-
-FunAppPtr mk_template(const FunAppPtr& f) {
-    std::vector<Expr> args;
-    for (const auto &x: f->get_args()) {
-        theory::apply(
-            x, [&](const Arrays<Arith>::Expr &x) {
-                args.push_back(Arrays<Arith>::next(x->dim()));
-            },
-            [&](const Bools::Expr &) {
-                args.push_back(bools::mkLit(bools::mk(Bools::next(0))));
-            },
-            [&](const Arith::Expr &) {
-                args.push_back(arrays::nextConst<Arith>());
-            });
-    }
-    return FunApp::mk(f->get_pred(), args);
-}
-
-std::pair<FunAppPtr, BoolExprSet>& init(std::unordered_map<std::string, std::pair<FunAppPtr, BoolExprSet>>& rs, const FunAppPtr& f) {
-    return rs.emplace(f->get_pred(), std::pair{mk_template(f), BoolExprSet()}).first->second;
-}
-
 ClausePtr rename_clause(const ClausePtr &c) {
     Renaming ren;
     VarSet vars;
@@ -145,7 +98,7 @@ ClausePtr rename_clause(const ClausePtr &c) {
     return c->rename_vars(ren);
 }
 
-void CHCCex::complete_recurrent_set(std::unordered_map<std::string, std::pair<FunAppPtr, BoolExprSet>>& rs, const ClausePtr& clause, bool with_start) const{
+void CHCCex::complete_recurrent_set(RecurrentSet& rs, const ClausePtr& clause, bool with_start) const{
 
     const auto rename = [&](const std::pair<FunAppPtr, BoolExprSet> &p) {
         Renaming ren;
@@ -175,21 +128,22 @@ void CHCCex::complete_recurrent_set(std::unordered_map<std::string, std::pair<Fu
         complete_recurrent_set(rs, accel.at(clause), false);
     } else if (recurrent_set.contains(clause)) {
         complete_recurrent_set(rs, recurrent_set.at(clause), false);
-    } else if (with_start && !clause->is_fact()) {
-        const auto renamed = rename_clause(clause);
-        const auto premise = renamed->get_premise().front();
-        const auto conclusion = renamed->get_conclusion().value();
-        auto& [sig_premise, rs_premise] = init(rs, premise);
-        const auto [sig_conclusion, rs_conclusion] = rename(init(rs, conclusion));
-        const auto unif_premise = unify(premise, sig_premise);
-        const auto unif_conclusion = unify(conclusion, sig_conclusion);
-        for (const auto& b: rs_conclusion) {
-            rs_premise.insert(simplify(sig_premise, bools::mkAnd(BoolExprSet{renamed->get_constraint(), b, unif_premise, unif_conclusion})));
+    } else {
+        rs.add(clause);
+        if (with_start && !clause->is_fact()) {
+            const auto renamed = rename_clause(clause);
+            const auto premise = renamed->get_premise().front();
+            const auto conclusion = renamed->get_conclusion().value();
+            const auto [sig_conclusion, rs_conclusion] = rename(rs.get(conclusion));
+            const auto unif = FunApp::unify(conclusion, sig_conclusion);
+            for (const auto& b: rs_conclusion) {
+                rs.add(premise, BoolExprSet{renamed->get_constraint(), b, unif});
+            }
         }
     }
 }
 
-std::unordered_map<std::string, std::pair<FunAppPtr, BoolExprSet>> CHCCex::to_recurrent_set() const {
+RecurrentSet CHCCex::to_recurrent_set() const {
 
     const auto instantiate = [](const FunAppPtr& f, const ModelPtr& m) {
         Subs subs;
@@ -211,18 +165,14 @@ std::unordered_map<std::string, std::pair<FunAppPtr, BoolExprSet>> CHCCex::to_re
         return f->subs(subs);
     };
 
-    std::unordered_map<std::string, std::pair<FunAppPtr, BoolExprSet>> res;
+    RecurrentSet res;
 
     for (unsigned i = 0; i < transitions.size(); ++i) {
         const auto t = transitions.at(i);
-        std::cout << "processing " << t << std::endl;
         const auto from = states.at(i);
         if (recurrent_set.contains(t)) {
             const auto premise = t->get_premise().front();
-            auto &[p, c] = init(res, premise);
-            const auto to_add = simplify(p, t->get_constraint() && unify(p, premise));
-            std::cout << "adding " << p << ": " << to_add << std::endl;
-            c.insert(to_add);
+            res.add(premise, t->get_constraint());
         } else {
             const auto to = states.at(i+1);
             if (accel.contains(t)) {
@@ -230,41 +180,26 @@ std::unordered_map<std::string, std::pair<FunAppPtr, BoolExprSet>> CHCCex::to_re
                 const auto premise = renamed->get_premise().front();
                 const auto conc = renamed->get_conclusion().value();
                 const auto spec = instantiate(transitions.at(i+1)->get_premise().front(), to);
-                auto &[p, c] = init(res, conc);
-                const auto unif_conc = unify(conc, spec);
-                const auto unif_premise = unify(premise, p);
-                std::cout << "spec: " << spec << std::endl;
-                const auto to_add = simplify(p, unif_premise && unif_conc && renamed->get_constraint());
-                std::cout << "adding " << p << ": " << to_add << std::endl;
+                const auto unif = FunApp::unify(conc, spec);
                 // the final value is in the recurrent set
-                c.insert(simplify(p, unify(p, spec)));
+                res.add(conc, unif);
                 // all values that can reach the final value are in the recurrent set
-                c.insert(to_add);
+                res.add(premise, unif && renamed->get_constraint());
             } else {
                 if (!t->is_fact()) {
                     const auto premise = t->get_premise().front();
                     const auto premise_spec = instantiate(premise, from);
-                    auto &[p, c] = init(res, premise);
-                    std::cout << "premise_spec: " << premise_spec << std::endl;
-                    const auto to_add = simplify(p, unify(p, premise_spec));
-                    std::cout << "adding " << p << ": " << to_add << std::endl;
-                    c.insert(to_add);
+                    res.add(premise, FunApp::unify(premise, premise_spec));
                 }
                 const auto conc = t->get_conclusion().value();
                 const auto conc_spec = instantiate(transitions.at(i+1)->get_premise().front(), to);
-                auto &[p, c] = init(res, conc);
-                std::cout << "conc_spec: " << conc_spec << std::endl;
-                const auto to_add = simplify(p, unify(p, conc_spec));
-                std::cout << "adding " << p << ": " << to_add << std::endl;
-                c.insert(to_add);
+                res.add(conc, FunApp::unify(conc, conc_spec));
             }
         }
         complete_recurrent_set(res, t, false);
     }
-    for (const auto &[f,b]: res | std::views::values) {
-        std::cout << f << std::endl;
-        std::cout << Preprocess::simplifyOr(bools::mkOr(b)) << std::endl;
-    }
+    res.simplify();
+    std::cout << res << std::endl;
     return res;
 }
 

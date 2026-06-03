@@ -442,3 +442,27 @@ std::ostream& operator<<(std::ostream &s, const CHCPtr& t) {
     }
     return s;
 }
+
+Bools::Expr FunApp::unify(const FunAppPtr &f1, const FunAppPtr &f2) {
+    BoolExprSet conjuncts;
+    for (unsigned j = 0; j < f1->get_args().size(); ++j) {
+        const auto last_arg = f1->get_args()[j];
+        const auto current_arg = f2->get_args()[j];
+        theory::apply(
+            last_arg,
+            [&](const Arith::Expr &last_arg) {
+                conjuncts.insert(bools::mkLit(arith::mkEq(
+                    last_arg, std::get<Arith::Expr>(current_arg))));
+            },
+            [&](const Bools::Expr &last_arg) {
+                conjuncts.insert(Bools::mkEq(
+                    last_arg, std::get<Bools::Expr>(current_arg)));
+            },
+            [&](const Arrays<Arith>::Expr &last_arg) {
+                conjuncts.insert(bools::mkLit(arrays::mkEq(
+                    last_arg,
+                    std::get<Arrays<Arith>::Expr>(current_arg))));
+            });
+    }
+    return bools::mkAnd(conjuncts);
+}

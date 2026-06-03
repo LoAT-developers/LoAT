@@ -3,6 +3,7 @@
 #include "chcproblem.hpp"
 #include "model.hpp"
 #include "proof.hpp"
+#include "recurrentset.hpp"
 
 class CHCCex {
 
@@ -31,7 +32,7 @@ public:
     const std::vector<ClausePtr>& get_transitions() const;
     const std::vector<ModelPtr>& get_states() const;
     std::vector<std::pair<ClausePtr, ProofStepKind>> get_used_clauses() const;
-    void complete_recurrent_set(std::unordered_map<std::string, std::pair<FunAppPtr, BoolExprSet>>& rs, const ClausePtr& clause, bool with_start) const;
-    std::unordered_map<std::string, std::pair<FunAppPtr, BoolExprSet>> to_recurrent_set() const;
+    void complete_recurrent_set(RecurrentSet& rs, const ClausePtr& clause, bool with_start) const;
+    RecurrentSet to_recurrent_set() const;
 
 };

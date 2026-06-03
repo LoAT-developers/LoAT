@@ -15,6 +15,8 @@ add_library(${PROJECT_NAME} OBJECT
     chccex.cpp
     inline.hpp
     inline.cpp
+    recurrentset.hpp
+    recurrentset.cpp
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE

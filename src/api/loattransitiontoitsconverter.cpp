@@ -6,18 +6,16 @@ ITSPtr LoatTransitionToITSConverter::convertTransitionsToITS(const std::vector<L
     auto its = std::make_shared<ITSProblem>();
 
     // Transfer start location
-    LocationIdx startIdx = its->getOrAddLocation(start.getName());
-    its->setInitialLocation(startIdx);
+    ITSProblem::nameInitialLocation(start.getName());
 
     // Transfer sink location
     if (sink)
     {
-        LocationIdx sinkIdx = its->getOrAddLocation(sink.value().getName());
-        its->setSinkLocation(sinkIdx);
+        ITSProblem::nameSink(sink.value().getName());
     }
 
     // Get location var
-    ArithVarPtr locVar = its->getLocVar();
+    ArithVarPtr locVar = ITSProblem::loc_var();
 
     // Loop through all transitions
     for (const LoatTransition &transition : transitions)
@@ -30,8 +28,8 @@ ITSPtr LoatTransitionToITSConverter::convertTransitionsToITS(const std::vector<L
         RulePtr rule = convert(transition);
 
         // Get the index values to the source and target locations
-        LocationIdx sourceIdx = its->getOrAddLocation(source.getName());
-        LocationIdx targetIdx = its->getOrAddLocation(target.getName());
+        LocationIdx sourceIdx = ITSProblem::getOrAddLocation(source.getName());
+        LocationIdx targetIdx = ITSProblem::getOrAddLocation(target.getName());
 
         // New Guard: locVar == srcIdx && old Guard
         Arith::Expr curLoc = locVar;

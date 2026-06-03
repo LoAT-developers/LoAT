@@ -1,28 +1,44 @@
 #include "itsproblem.hpp"
 #include "config.hpp"
 
+std::unordered_map<LocationIdx, std::string> ITSProblem::locationNames {};
+linked_hash_map<RulePtr, std::pair<LocationIdx, LocationIdx>> ITSProblem::startAndTargetLocations {};
+LocationIdx ITSProblem::nextUnusedLocation {1};
+LocationIdx ITSProblem::initialLocation {0};
+LocationIdx ITSProblem::sink {addNamedLocation("LoAT_sink")};
+
+ArithVarPtr ITSProblem::loc_var() {
+    const auto static res = arrays::nextProgConst<Arith>();
+    return res;
+}
+
+ArithVarPtr ITSProblem::cost_var() {
+    const auto static res = arrays::nextProgConst<Arith>();
+    return res;
+}
+
 bool ITSProblem::isEmpty() const {
     return rules.empty();
 }
 
-LocationIdx ITSProblem::getInitialLocation() const {
+LocationIdx ITSProblem::getInitialLocation() {
     return initialLocation;
 }
 
-bool ITSProblem::isInitialLocation(const LocationIdx loc) const {
+void ITSProblem::nameInitialLocation(const std::string &name) {
+    locationNames[initialLocation] = name;
+}
+
+bool ITSProblem::isInitialLocation(const LocationIdx loc) {
     return loc == initialLocation;
 }
 
-void ITSProblem::setInitialLocation(const LocationIdx loc) {
-    initialLocation = loc;
-}
-
-void ITSProblem::setSinkLocation(const LocationIdx loc) {
-    sink = loc;
-}
-
-LocationIdx ITSProblem::getSink() const {
+LocationIdx ITSProblem::getSink() {
     return sink;
+}
+
+void ITSProblem::nameSink(const std::string &name) {
+    locationNames[sink] = name;
 }
 
 const linked_hash_set<RulePtr>& ITSProblem::getAllTransitions() const {
@@ -78,13 +94,13 @@ void ITSProblem::addLearnedRule(const RulePtr& rule, const RulePtr& same_preds, 
 RulePtr ITSProblem::addQuery(const Bools::Expr& guard, const RulePtr& same_preds) {
     const auto start = getLhsLoc(same_preds);
     const auto preds = graph.getPredecessors(same_preds);
-    const auto res {Rule::mk(guard, Subs::build(loc_var, arith::mkConst(sink)))};
+    const auto res {Rule::mk(guard, Subs::build(loc_var(), arith::mkConst(sink)))};
     addRule(res, start, sink, preds, {});
     return res;
 }
 
 void ITSProblem::addRule(const RulePtr& rule, const LocationIdx start) {
-    const auto target {rule->getUpdate().getConst(loc_var)->isInt().value_or(start).convert_to<LocationIdx>()};
+    const auto target {rule->getUpdate().getConst(loc_var())->isInt().value_or(start).convert_to<LocationIdx>()};
     linked_hash_set<RulePtr> preds, succs;
     for (const auto & [s, t]: startAndTargetLocations) {
         if (t.first == target) {
@@ -110,7 +126,6 @@ void ITSProblem::replaceRule(const RulePtr& toReplace, const RulePtr& replacemen
 
 LocationIdx ITSProblem::addLocation() {
     const LocationIdx loc = nextUnusedLocation++;
-    locations.insert(loc);
     return loc;
 }
 
@@ -128,10 +143,16 @@ LocationIdx ITSProblem::getOrAddLocation(const std::string &name) {
 }
 
 linked_hash_set<LocationIdx> ITSProblem::getLocations() const {
-    return locations;
+    linked_hash_set<LocationIdx> res;
+    for (const auto& r: rules) {
+        const auto &[s,t] = startAndTargetLocations.at(r);
+        res.insert(s);
+        res.insert(t);
+    }
+    return res;
 }
 
-std::optional<LocationIdx> ITSProblem::getLocationIdx(const std::string &name) const {
+std::optional<LocationIdx> ITSProblem::getLocationIdx(const std::string &name) {
     for (const auto & [loc, n]: locationNames) {
         if (n == name) {
             return loc;
@@ -140,7 +161,7 @@ std::optional<LocationIdx> ITSProblem::getLocationIdx(const std::string &name) c
     return {};
 }
 
-std::string ITSProblem::getPrintableLocationName(const LocationIdx idx) const {
+std::string ITSProblem::getPrintableLocationName(const LocationIdx idx) {
     if (const auto it = locationNames.find(idx); it != locationNames.end()) {
         return it->second;
     }
@@ -163,24 +184,18 @@ CellSet ITSProblem::getCells() const {
     return res;
 }
 
-Arith::Expr ITSProblem::getCost(const RulePtr& rule) const {
-    return rule->getUpdate().getConst(cost_var) - cost_var;
+Arith::Expr ITSProblem::getCost(const RulePtr& rule) {
+    return rule->getUpdate().getConst(cost_var()) - cost_var();
 }
 
-ArithVarPtr ITSProblem::getCostVar() const {
-    return cost_var;
+LocationIdx ITSProblem::getLhsLoc(const RulePtr& idx) {
+    assert(startAndTargetLocations.contains(idx));
+    return startAndTargetLocations.at(idx).first;
 }
 
-ArithVarPtr ITSProblem::getLocVar() const {
-    return loc_var;
-}
-
-LocationIdx ITSProblem::getLhsLoc(const RulePtr& idx) const {
-    return startAndTargetLocations[idx].first;
-}
-
-LocationIdx ITSProblem::getRhsLoc(const RulePtr& idx) const {
-    return startAndTargetLocations[idx].second;
+LocationIdx ITSProblem::getRhsLoc(const RulePtr& idx) {
+    assert(startAndTargetLocations.contains(idx));
+    return startAndTargetLocations.at(idx).second;
 }
 
 const linked_hash_set<RulePtr>& ITSProblem::getInitialTransitions() const {
@@ -228,11 +243,11 @@ bool ITSProblem::hasArrays() const {
 
 std::ostream& operator<<(std::ostream &s, const ITSPtr& its) {
     s << "Start location: ";
-    s << its->getPrintableLocationName(its->getInitialLocation()) << "\n\n";
+    s << ITSProblem::getPrintableLocationName(ITSProblem::getInitialLocation()) << "\n\n";
     if (!its->getLocations().empty()) {
         s << "Location map:" << std::endl;
         for (const auto p: its->getLocations()) {
-            s << its->getPrintableLocationName(p);
+            s << ITSProblem::getPrintableLocationName(p);
             s << " -> " << p << std::endl;
         }
     }

@@ -37,7 +37,7 @@ public:
 
     bool successful() const;
 
-    ITSModel get_model() const;
+    static ITSModel get_model();
 
     const ITSSafetyCex& get_cex() const;
 
