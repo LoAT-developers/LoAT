@@ -350,6 +350,9 @@ Bools::Expr TRP::compute(const Bools::Expr& loop_non_bool, const Bools::Expr& lo
     if (Config::Analysis::log) {
         std::cout << "bool: " << rec_bool << std::endl;
     }
+    if (Config::Analysis::abstraction_refinement) {
+        return pre && step && post && rec_bool;
+    }
     return removeRedundantInequations(pre && step && post) && rec_bool;
 }
 
