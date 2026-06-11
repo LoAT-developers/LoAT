@@ -519,7 +519,7 @@ bool TRPUtil::add_blocking_clauses(const Range &range, const ModelPtr& model) {
 }
 
 std::optional<Int> TRPUtil::refine_abstraction(const Range& range, const bool fix_trace) {
-    BoolExprSet assumptions;
+    BoolExprSet assumptions, pre_post_assumptions;
     std::unordered_map<Bools::Expr, std::pair<Int, Bools::Expr>> assumption_to_refinement;
     bool is_model = true;
     if (fix_trace) {
@@ -543,6 +543,10 @@ std::optional<Int> TRPUtil::refine_abstraction(const Range& range, const bool fi
                         const auto assumption = c->renameVars(subs);
                         is_model &= (*model)->eval(assumption);
                         assumptions.insert(assumption);
+                        const auto vars = c->vars();
+                        if (std::ranges::all_of(vars, theory::isProgVar) || std::ranges::all_of(vars, theory::isPostVar)) {
+                            pre_post_assumptions.insert(assumption);
+                        }
                         assumption_to_refinement.emplace(assumption, std::pair(frame.id, c));
                     }
                 }
@@ -550,33 +554,35 @@ std::optional<Int> TRPUtil::refine_abstraction(const Range& range, const bool fi
         }
     }
     if (!is_model) {
-        switch (const auto [res, core] = solver->check_with_assumptions(assumptions); res) {
-            case SmtResult::Sat:
-                model = solver->model();
-                break;
-            case SmtResult::Unknown:
-                break;
-            case SmtResult::Unsat:
-                linked_hash_set<Int> refined;
-                for (const auto& c: core) {
-                    const auto& [id, refinement] = assumption_to_refinement.at(c);
-                    const auto current = rule_map.at(id);
-                    if (Config::Analysis::log) {
-                        std::cout << "refining " << current << " with " << refinement << std::endl;
+        for (const auto& assumps: std::vector{pre_post_assumptions, assumptions}) {
+            switch (const auto [res, core] = solver->check_with_assumptions(assumps); res) {
+                case SmtResult::Sat:
+                    model = solver->model();
+                    break;
+                case SmtResult::Unknown:
+                    break;
+                case SmtResult::Unsat:
+                    linked_hash_set<Int> refined;
+                    for (const auto& c: core) {
+                        const auto& [id, refinement] = assumption_to_refinement.at(c);
+                        const auto current = rule_map.at(id);
+                        if (Config::Analysis::log) {
+                            std::cout << "refining " << current << " with " << refinement << std::endl;
+                        }
+                        refined.insert(id);
+                        const auto t = current && refinement;
+                        rule_map.put(id, t);
+                        projections.erase(id);
+                        add_projection(id, t->subs(Subs::build(trp.get_n(), arith::one())));
+                        for (auto &b: blocked_per_step | std::views::values) {
+                            b.erase(id);
+                        }
                     }
-                    refined.insert(id);
-                    const auto t = current && refinement;
-                    rule_map.put(id, t);
-                    projections.erase(id);
-                    add_projection(id, t->subs(Subs::build(trp.get_n(), arith::one())));
-                    for (auto &b: blocked_per_step | std::views::values) {
-                        b.erase(id);
+                    if (fix_trace) {
+                        solver->pop();
                     }
-                }
-                if (fix_trace) {
-                    solver->pop();
-                }
-                return 0;
+                    return 0;
+            }
         }
     }
     if (fix_trace) {
