@@ -4,7 +4,8 @@
 namespace Config {
 
     namespace Output {
-        bool PrintDependencyGraph {false};
+        bool print_dependency_graph = false;
+        bool print_version = true;
     }
 
     namespace Input {
@@ -30,6 +31,7 @@ namespace Config {
         bool logAccel = false;
         bool profile = false;
         bool model = false;
+        std::string cert = "";
         bool abstraction_refinement = false;
         bool fail_early = false;
         Direction dir;

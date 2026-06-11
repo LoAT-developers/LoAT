@@ -36,7 +36,8 @@ void printHelp(const char *arg0) {
     std::cout << "  --engine <adcl|bmc|abmc|trl|kind>                               Analysis engine" << std::endl;
     std::cout << "  --log                                                           Enable logging" << std::endl;
     std::cout << "  --profile                                                       Enable profiling" << std::endl;
-    std::cout << "  --proof                                                         Print model/counterexample/recurrent set/..." << std::endl;
+    std::cout << "  --proof                                                         Print human-readable proof" << std::endl;
+    std::cout << "  --cert $FILENAME                                                Print certificate" << std::endl;
     std::cout << "  --abmc::blocking_clauses <true|false>                           ABMC: En- or disable blocking clauses" << std::endl;
     std::cout << "  --abstraction_refinement <true|false>                           En- or disable abstraction refinement" << std::endl;
     std::cout << "  --accel::non_linear <true|false>                                Also use acceleration if the result is non-linear" << std::endl;
@@ -47,6 +48,7 @@ void printHelp(const char *arg0) {
     std::cout << "  --trl::recurrent_pseudo_divs <true|false>                       TRL: En- or disable search for pseudo-recurrent divisibility constraints" << std::endl;
     std::cout << "  --trl::recurrent_bounds <true|false>                            TRL: En- or disable search for recurrent bounds" << std::endl;
     std::cout << "  --trl::mbp_kind <int|lower_int|upper_int|real|real_qe>          TRL: use model based projection for LIA or LRA, or QE for LRA" << std::endl;
+    std::cout << "  --version                                                       Print version and terminate" << std::endl;
 }
 
 void setBool(const char *str, bool &b) {
@@ -91,7 +93,7 @@ void parseFlags(const int argc, char *argv[]) {
             printHelp(argv[0]);
             exit(0);
         } else if (strcmp("--print_dep_graph", argv[arg]) == 0) {
-            Config::Output::PrintDependencyGraph = true;
+            Config::Output::print_dependency_graph = true;
         } else if (strcmp("--log", argv[arg]) == 0) {
             Config::Analysis::log = true;
             Config::Analysis::logAccel = true;
@@ -99,6 +101,9 @@ void parseFlags(const int argc, char *argv[]) {
             Config::Analysis::profile = true;
         } else if (strcmp("--proof", argv[arg]) == 0) {
             Config::Analysis::model = true;
+        } else if (strcmp("--cert", argv[arg]) == 0) {
+            Config::Analysis::model = true;
+            Config::Analysis::cert = getNext();
         } else if (strcmp("--mode", argv[arg]) == 0) {
             std::string str = getNext();
             for (const Config::Analysis::Mode mode : Config::Analysis::modes) {
@@ -517,8 +522,13 @@ int main(int argc, char *argv[]) {
             if (reverse) {
                 chc_cex = reverse->transform_cex(chc_cex);
             }
-            std::cout << chc_cex;
-            chc_cex.to_recurrent_set();
+            if (!Config::Analysis::cert.empty()) {
+                std::ofstream cert_file(Config::Analysis::cert);
+                cert_file << chc_cex.to_recurrent_set() << std::endl;
+                cert_file.close();
+            } else {
+                std::cout << chc_cex;
+            }
         } else {
             std::cout << *its_cex;
         }

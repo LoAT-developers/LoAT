@@ -101,12 +101,13 @@ RulePtr ITSProblem::addQuery(const Bools::Expr& guard, const RulePtr& same_preds
 void ITSProblem::addRule(const RulePtr& rule, const LocationIdx start) {
     const auto target {rule->getUpdate().getConst(loc_var())->isInt().value_or(start).convert_to<LocationIdx>()};
     linked_hash_set<RulePtr> preds, succs;
-    for (const auto & [s, t]: startAndTargetLocations) {
-        if (t.first == target) {
-            succs.insert(s);
+    for (const auto & r: rules) {
+        const auto [s,t] = startAndTargetLocations.at(r);
+        if (s == target) {
+            succs.insert(r);
         }
-        if (t.second == start) {
-            preds.insert(s);
+        if (t == start) {
+            preds.insert(r);
         }
     }
     addRule(rule, start, target, preds, succs);
@@ -259,7 +260,7 @@ std::ostream& operator<<(std::ostream &s, const ITSPtr& its) {
             s << std::endl;
         }
     }
-    if (Config::Output::PrintDependencyGraph) {
+    if (Config::Output::print_dependency_graph) {
         s << "\nDependency graph:\n";
         s << its->getDependencyGraph() << std::endl;
     }

@@ -201,7 +201,6 @@ RecurrentSet CHCCex::to_recurrent_set() const {
         complete_recurrent_set(res, t, false);
     }
     res.simplify();
-    std::cout << res << std::endl;
     return res;
 }
 

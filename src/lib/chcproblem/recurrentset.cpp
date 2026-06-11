@@ -61,7 +61,15 @@ sexpresso::Sexp RecurrentSet::to_certificate() const {
         fun_def.addChild("define-fun");
         fun_def.addChild(f->get_pred());
         sexpresso::Sexp args;
+        const auto body = bools::mkOr(b);
+        auto free_vars = body->vars();
         for (const auto& x: f->get_args()) {
+            assert(theory::apply(x, [](const auto& x) {
+                return x->isVar().has_value();
+            }));
+            for (const auto& x: theory::vars(x)) {
+                free_vars.erase(x);
+            }
             sexpresso::Sexp arg;
             arg.addChild(toString(x));
             arg.addChild(toString(theory::to_type(x)));
@@ -69,7 +77,23 @@ sexpresso::Sexp RecurrentSet::to_certificate() const {
         }
         fun_def.addChild(args);
         fun_def.addChild("Bool");
-        fun_def.addChild(bools::mkOr(b)->to_smtlib());
+        auto body_sexp = body->to_smtlib();
+        if (!free_vars.empty()) {
+            sexpresso::Sexp exists, vars;
+            exists.addChild("exists");
+            for (const auto& x: free_vars) {
+                sexpresso::Sexp var;
+                var.addChild(theory::apply(x, [&](const auto& x) {
+                    return x->to_smtlib();
+                }));
+                var.addChild(toString(theory::to_type(x)));
+                vars.addChild(var);
+            }
+            exists.addChild(vars);
+            exists.addChild(body_sexp);
+            body_sexp = exists;
+        }
+        fun_def.addChild(body_sexp);
         fun_defs.addChild(fun_def);
     }
     recurrent_set.addChild(fun_defs);

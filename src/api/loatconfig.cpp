@@ -136,7 +136,7 @@ void LoatConfig::applyToGlobalConfig() const
     Analysis::log = std::any_cast<bool>(m_dynamic.get(DynamicParameterKey::Log));
     Analysis::logAccel = std::any_cast<bool>(m_dynamic.get(DynamicParameterKey::LogAccel));
     Analysis::logPreproc = std::any_cast<bool>(m_dynamic.get(DynamicParameterKey::LogPreproc));
-    Output::PrintDependencyGraph = std::any_cast<bool>(m_dynamic.get(DynamicParameterKey::PrintDependencyGraph));
+    Output::print_dependency_graph = std::any_cast<bool>(m_dynamic.get(DynamicParameterKey::PrintDependencyGraph));
     ABMC::blocking_clauses = std::any_cast<bool>(m_dynamic.get(DynamicParameterKey::BlockingClauses));
 
     trp.recurrent_cycles = std::any_cast<bool>(m_dynamic.get(DynamicParameterKey::TRP_RecurrentCycles));

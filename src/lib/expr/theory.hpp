@@ -39,6 +39,7 @@ Bools::Expr mkLit(const Lit &lit);
 namespace theory {
 
 std::string getName(const Var &var);
+bool isVar(const Expr&);
 bool isTempVar(const Var &var);
 bool isTempCell(const Cell &var);
 bool isProgVar(const Var &var);

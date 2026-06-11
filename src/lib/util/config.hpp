@@ -8,7 +8,7 @@
 namespace Config {
 
     namespace Output {
-        extern bool PrintDependencyGraph;
+        extern bool print_dependency_graph;
     }
 
     namespace Input {
@@ -39,6 +39,7 @@ namespace Config {
         extern bool logPreproc;
         extern bool profile;
         extern bool model;
+        extern std::string cert;
         extern bool abstraction_refinement;
         extern bool fail_early;
 
