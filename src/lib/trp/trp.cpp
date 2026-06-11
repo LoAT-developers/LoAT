@@ -350,6 +350,11 @@ Bools::Expr TRP::compute(const Bools::Expr& loop_non_bool, const Bools::Expr& lo
     if (Config::Analysis::log) {
         std::cout << "bool: " << rec_bool << std::endl;
     }
+    // With abstraction refinement, we do not remove redundant literals.
+    // The reasons are:
+    // (1) removing them is expensive
+    // (2) with abstraction refinement, redundant literals do not harm that much, as they do not get concretized
+    // (3) redundant literals are not necessarily in the subsets used by the abstraction refinement
     if (Config::Analysis::abstraction_refinement) {
         return pre && step && post && rec_bool;
     }
