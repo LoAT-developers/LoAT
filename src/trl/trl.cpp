@@ -228,6 +228,7 @@ std::optional<SmtResult> TRL::do_step() {
                             case LoopStatus::Success: {
                                 while (depth > range->start()) {
                                     pop();
+                                    trace.pop_back();
                                 }
                             }
                         }
