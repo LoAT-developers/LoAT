@@ -13,7 +13,13 @@ class TRL final : public TRPUtil {
     Bools::Expr step {bot()};
     unsigned depth {0};
 
-    bool handle_loop(const Range &range);
+    enum class LoopStatus {
+        Success,
+        Failure,
+        NoLoop,
+    };
+
+    LoopStatus handle_loop(const Range &range);
     void build_trace();
     void pop();
     void build_step();

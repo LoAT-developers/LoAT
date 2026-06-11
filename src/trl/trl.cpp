@@ -23,7 +23,7 @@ void TRL::build_step() {
     step = bools::mkOr(steps);
 }
 
-bool TRL::handle_loop(const Range &range) {
+TRL::LoopStatus TRL::handle_loop(const Range &range) {
     const auto old_model = *model;
     if (Config::Analysis::abstraction_refinement) {
         if (const auto backtrack_point = refine_abstraction(range, true)) {
@@ -34,10 +34,14 @@ bool TRL::handle_loop(const Range &range) {
                 pop();
             }
             build_step();
-            return true;
+            return LoopStatus::Success;
         }
     }
     auto [loop_non_bool, loop_bool, model]{specialize(range, theory::isTempCell)};
+    const auto kind = trp.get_loop_kind(loop_non_bool, loop_bool);
+    if (kind == TRP::NoLoop) {
+        return LoopStatus::NoLoop;
+    }
     auto loop = loop_non_bool && loop_bool;
     Bools::Expr termination_argument {top()};
     if (Config::Analysis::termination()) {
@@ -53,7 +57,7 @@ bool TRL::handle_loop(const Range &range) {
             loop_non_bool = loop_non_bool && termination_argument;
             loop = loop && termination_argument;
         } else {
-            return false;
+            return LoopStatus::Failure;
         }
     }
     if (TRPUtil::add_blocking_clauses(range, model)) {
@@ -80,16 +84,15 @@ bool TRL::handle_loop(const Range &range) {
                             pop();
                         }
                         build_step();
-                        return true;
+                        return LoopStatus::Success;
                     }
                 }
             }
             last_model = model;
         }
-        return true;
+        return LoopStatus::Success;
     }
     auto ti = top();
-    const auto kind = trp.get_loop_kind(loop_non_bool, loop_bool);
     // With abstraction refinement, we have to apply tp even to transitive loops.
     // In this way, we obtain a set of literals such that every subset is transitive.
     if (kind == TRP::Transitive && !Config::Analysis::abstraction_refinement) {
@@ -120,7 +123,7 @@ bool TRL::handle_loop(const Range &range) {
     if (range.length() > 1) {
         add_blocking_clause(range, id, projected);
     }
-    return true;
+    return LoopStatus::Success;
 }
 
 void TRL::build_trace() {
@@ -209,15 +212,25 @@ std::optional<SmtResult> TRL::do_step() {
                     if (Config::Analysis::log) {
                         std::cout << "starting loop handling" << std::endl;
                     }
-                    if (auto range{has_looping_infix(0, 1)}) {
+                    unsigned next_start = 0;
+                    unsigned next_length = 1;
+                    while (const auto range{has_looping_infix(next_start, next_length)}) {
                         if (Config::Analysis::log) {
                             std::cout << "found loop: " << range->start() << " to " << range->end() << std::endl;
                         }
-                        if (!handle_loop(*range)) {
-                            return SmtResult::Unknown;
-                        }
-                        while (depth > range->start()) {
-                            pop();
+                        switch (handle_loop(*range)) {
+                            case LoopStatus::Failure: return SmtResult::Unknown;
+                            case LoopStatus::NoLoop: {
+                                next_start = range->start() + 1;
+                                next_length = range->length();
+                                break;
+                            }
+                            case LoopStatus::Success: {
+                                while (depth > range->start()) {
+                                    pop();
+                                    trace.pop_back();
+                                }
+                            }
                         }
                     }
                     if (Config::Analysis::log) {
