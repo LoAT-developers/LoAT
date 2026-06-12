@@ -52,11 +52,11 @@ bool ADCLSat::handle_loop(const Range& range) {
         return true;
     }
     if (Config::Analysis::abstraction_refinement) {
-        if (const auto backtrack_point = refine_abstraction(range, false)) {
+        if (refine_abstraction(range)) {
             if (Config::Analysis::log) {
                 std::cout << "***** Refinement *****" << std::endl;
             }
-            while (trace.size() > *backtrack_point) {
+            while (!trace.empty()) {
                 trace.pop_back();
                 solver->pop();
             }
@@ -151,9 +151,9 @@ std::optional<SmtResult> ADCLSat::do_step() {
                     if (Config::Analysis::log) {
                         std::cout << "proving safety failed, abstraction refinement" << std::endl;
                     }
-                    if (const auto backtrack_point = refine_abstraction(Range::from_length(0, trace.size()), false)) {
+                    if (const auto backtrack_point = refine_abstraction(Range::from_length(0, trace.size()))) {
                         solver->pop();
-                        while (trace.size() > *backtrack_point) {
+                        while (!trace.empty()) {
                             trace.pop_back();
                             solver->pop();
                         }

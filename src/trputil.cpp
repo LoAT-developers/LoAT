@@ -523,19 +523,13 @@ std::optional<Int> TRPUtil::add_blocking_clauses(const Range &range, const Model
     return std::nullopt;
 }
 
-std::optional<Int> TRPUtil::refine_abstraction(const Range& range, const bool fix_trace) {
+bool TRPUtil::refine_abstraction(const Range& range) {
     BoolExprSet assumptions, pre_post_assumptions;
     std::unordered_map<Bools::Expr, std::pair<Int, Bools::Expr>> assumption_to_refinement;
     bool is_model = true;
-    if (fix_trace) {
-        solver->push();
-    }
     for (unsigned i = range.start(); i <= range.end(); ++i) {
         const auto& frame = trace.at(i);
         const auto& subs = get_subs(i, 1);
-        if (fix_trace) {
-            solver->add(frame.implicant->renameVars(subs));
-        }
         if (frame.id > last_orig_clause) {
             const auto current = rule_map.at(frame.id);
             const auto conc = concretization.at(frame.id);
@@ -583,89 +577,11 @@ std::optional<Int> TRPUtil::refine_abstraction(const Range& range, const bool fi
                             b.erase(id);
                         }
                     }
-                    if (fix_trace) {
-                        solver->pop();
-                    }
-                    return 0;
+                    return true;
             }
         }
     }
-    if (fix_trace) {
-        solver->pop();
-    }
-    return std::nullopt;
-}
-
-std::optional<Int> TRPUtil::refine_by_model(const Range& range, const ModelPtr& m) {
-    for (unsigned i = range.start(); i <= range.end(); ++i) {
-        const auto& frame = trace.at(i);
-        if (frame.id > last_orig_clause) {
-            const auto current = frame.implicant;
-            const auto conc = concretization.at(frame.id);
-            assert(current->isAnd());
-            assert(conc->isAnd());
-            const auto current_children = current->getChildren();
-            if (conc != current) {
-                const auto& subs = get_subs(i, 1);
-                for (const auto& c: conc->getChildren()) {
-                    if (!current_children.contains(c)) {
-                        if (!m->eval(c->renameVars(subs))) {
-                            const auto refined = current && c;
-                            rule_map.erase(frame.id);
-                            rule_map.emplace(frame.id, refined);
-                            projections.erase(frame.id);
-                            add_projection(frame.id, refined->subs(Subs::build(trp.get_n(), arith::one())));
-                            if (Config::Analysis::log) {
-                                std::cout << "refining by model: " << frame.id << ": " << current << " with " << c << std::endl;
-                            }
-                            for (auto &b: blocked_per_step | std::views::values) {
-                                b.erase(frame.id);
-                            }
-                            return 0;
-                        }
-                    }
-                }
-            }
-        }
-    }
-    return std::nullopt;
-}
-
-std::optional<Int> TRPUtil::refine_partially(const Range& range) {
-    for (unsigned i = range.start(); i <= range.end(); ++i) {
-        const auto& frame = trace.at(i);
-        if (frame.id > last_orig_clause) {
-            const auto current = rule_map.at(frame.id);
-            const auto conc = concretization.at(frame.id);
-            assert(current->isAnd());
-            assert(conc->isAnd());
-            const auto current_children = current->getChildren();
-            if (conc != current) {
-                const auto& subs = get_subs(i, 1);
-                for (const auto& c: conc->getChildren()) {
-                    if (!current_children.contains(c)) {
-                        solver->add(c->renameVars(subs));
-                        if (solver->check() == SmtResult::Unsat) {
-                            const auto refined = current && c;
-                            rule_map.erase(frame.id);
-                            rule_map.emplace(frame.id, refined);
-                            projections.erase(frame.id);
-                            add_projection(frame.id, refined->subs(Subs::build(trp.get_n(), arith::one())));
-                            if (Config::Analysis::log) {
-                                std::cout << "refining " << frame.id << ": " << current << " with " << c << std::endl;
-                            }
-                            for (auto &b: blocked_per_step | std::views::values) {
-                                b.erase(frame.id);
-                            }
-                            return 0;
-                        }
-                        model = solver->model();
-                    }
-                }
-            }
-        }
-    }
-    return std::nullopt;
+    return false;
 }
 
 ITSSafetyCex TRPUtil::get_cex() {

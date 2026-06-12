@@ -24,19 +24,6 @@ void TRL::build_step() {
 }
 
 TRL::LoopStatus TRL::handle_loop(const Range &range) {
-    const auto old_model = *model;
-    if (Config::Analysis::abstraction_refinement) {
-        if (const auto backtrack_point = refine_abstraction(range, true)) {
-            if (Config::Analysis::log) {
-                std::cout << "refined loop" << std::endl;
-            }
-            while (depth > *backtrack_point) {
-                pop();
-            }
-            build_step();
-            return LoopStatus::Success;
-        }
-    }
     auto [loop_non_bool, loop_bool, model]{specialize(range, theory::isTempCell)};
     const auto kind = trp.get_loop_kind(loop_non_bool, loop_bool);
     if (kind == TRP::NoLoop) {
@@ -61,45 +48,9 @@ TRL::LoopStatus TRL::handle_loop(const Range &range) {
         }
     }
     if (TRPUtil::add_blocking_clauses(range, model)) {
-        if (Config::Analysis::abstraction_refinement) {
-            if (!add_blocking_clauses(range, old_model->composeBackwards(get_subs(range.start(), range.length())))) {
-                if (last_model) {
-                    CellSet cells;
-                    loop_non_bool->collectCells(cells);
-                    loop_bool->collectCells(cells);
-                    if (std::ranges::all_of(cells, [&](const auto& c) {
-                        return theory::apply(c, [&](const auto& c) {
-                            return (*last_model)->get(c) == model->get(c);
-                        });
-                    })) {
-                        last_model.reset();
-                        const auto backtrack_point = refine_by_model(range, old_model);
-                        if (!backtrack_point) {
-                            throw std::logic_error("failed to refine with original model");
-                        }
-                        if (Config::Analysis::log) {
-                            std::cout << "refined loop" << std::endl;
-                        }
-                        while (depth > *backtrack_point) {
-                            pop();
-                        }
-                        build_step();
-                        return LoopStatus::Success;
-                    }
-                }
-            }
-            last_model = model;
-        }
         return LoopStatus::Success;
     }
-    auto ti = top();
-    // With abstraction refinement, we have to apply tp even to transitive loops.
-    // In this way, we obtain a set of literals such that every subset is transitive.
-    if (kind == TRP::Transitive && !Config::Analysis::abstraction_refinement) {
-        ti = loop;
-    } else {
-        ti = trp.compute(loop_non_bool, loop_bool, model);
-    }
+    auto ti = kind == TRP::Transitive ? loop : trp.compute(loop_non_bool, loop_bool, model);
     if (Config::Analysis::termination()) {
         ti = ti && termination_argument;
     }
@@ -174,19 +125,6 @@ std::optional<SmtResult> TRL::do_step() {
             return SmtResult::Unknown;
         case SmtResult::Sat:
             build_trace();
-            if (Config::Analysis::abstraction_refinement && depth > 0) {
-                if (Config::Analysis::log) {
-                    std::cout << "proving safety failed, abstraction refinement" << std::endl;
-                }
-                if (const auto backtrack_point = refine_abstraction(Range::from_length(0, trace.size()), true)) {
-                    solver->pop();
-                    while (depth > *backtrack_point) {
-                        pop();
-                    }
-                    build_step();
-                    return std::nullopt;
-                }
-            }
             if (Config::Analysis::log) {
                 std::cout << "proving safety failed, trying to construct counterexample" << std::endl;
             }
