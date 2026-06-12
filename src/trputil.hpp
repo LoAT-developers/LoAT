@@ -61,7 +61,7 @@ protected:
     void add_projection(const Int& id, const Bools::Expr& projection);
     void add_blocking_clauses(unsigned depth);
     void add_blocking_clause(const Range &range, const Int &id, Bools::Expr loop);
-    bool add_blocking_clauses(const Range &range, const ModelPtr& model);
+    std::optional<Int> add_blocking_clauses(const Range &range, const ModelPtr& model);
     std::optional<Int> refine_abstraction(const Range&, bool fix_trace);
     std::optional<Int> refine_partially(const Range&);
     std::optional<Int> refine_by_model(const Range& range, const ModelPtr& m);

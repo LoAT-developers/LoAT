@@ -463,21 +463,26 @@ void TRPUtil::add_blocking_clause(const Range &range, const Int &id, const Bools
 }
 
 void TRPUtil::add_blocking_clauses(unsigned depth) {
-    const auto s1{get_subs(depth, 1)};
-    const auto s2{get_subs(depth + 1, 1)};
-    for (const auto &b : projections | std::views::values) {
-        solver->add(b->renameVars(s1));
+    const auto subs{get_subs(depth, 1)};
+    for (const auto &[id,b] : projections) {
+        if (Config::Analysis::log) {
+            std::cout << "adding projection " << id << ": " << b << std::endl;
+        }
+        solver->add(b->renameVars(subs));
     }
     if (const auto it{blocked_per_step.find(depth)}; it != blocked_per_step.end()) {
-        for (const auto& blocked : it->second | std::views::values) {
+        for (const auto& [id,blocked] : it->second) {
             for (const auto& b: blocked) {
+                if (Config::Analysis::log) {
+                    std::cout << "adding blocking clause " << id << ": " << b << std::endl;
+                }
                 solver->add(b);
             }
         }
     }
 }
 
-bool TRPUtil::add_blocking_clauses(const Range &range, const ModelPtr& model) {
+std::optional<Int> TRPUtil::add_blocking_clauses(const Range &range, const ModelPtr& model) {
     const auto n {trp.get_n()};
     for (const auto &[id, b] : rule_map) {
         const auto is_orig_clause {id <= last_orig_clause};
@@ -506,16 +511,16 @@ bool TRPUtil::add_blocking_clauses(const Range &range, const ModelPtr& model) {
                             })
                         };
                         add_blocking_clause(range, id, projected);
-                        return true;
+                        return id;
                     }
                 }
             }
         } else if (model->eval(b)) {
             add_blocking_clause(range, id, b);
-            return true;
+            return id;
         }
     }
-    return false;
+    return std::nullopt;
 }
 
 std::optional<Int> TRPUtil::refine_abstraction(const Range& range, const bool fix_trace) {

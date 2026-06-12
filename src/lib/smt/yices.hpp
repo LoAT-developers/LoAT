@@ -16,6 +16,8 @@ extern void exit();
 
 class Yices final : public Smt {
 
+    std::vector<BoolExprSet> assertions;
+
 public:
 
     Yices(const Yices &that) = delete;

@@ -32,15 +32,18 @@ ADCLSat::ADCLSat(const ITSPtr& its, const Config::TRPConfig &config): TRPUtil(it
             dg_over_approx.markSink(id);
         }
     }
+    // for the first set of blocking clauses
+    solver->push();
 }
 
 bool ADCLSat::handle_loop(const Range& range) {
     backtracking = true;
     const auto subs = get_subs(range.start(), range.length());
     auto model = (*this->model)->composeBackwards(subs);
-    if (add_blocking_clauses(range, model)) {
+    if (const auto id = add_blocking_clauses(range, model)) {
         if (Config::Analysis::log) {
             std::cout << "***** Covered *****" << std::endl;
+            std::cout << "by " << *id << std::endl;
         }
         while (trace.size() > range.end()) {
             trace.pop_back();
@@ -57,6 +60,9 @@ bool ADCLSat::handle_loop(const Range& range) {
                 trace.pop_back();
                 solver->pop();
             }
+            // also remove the first set of blocking clauses
+            solver->pop();
+            solver->push();
             return true;
         }
         model = (*this->model)->composeBackwards(subs);
@@ -126,7 +132,7 @@ std::optional<SmtResult> ADCLSat::do_step() {
     if (Config::Analysis::log) {
         std::cout << "Trace:" << std::endl;
         for (const auto &e: trace) {
-            std::cout << e.implicant << std::endl;
+            std::cout << e.id << ": " << e.implicant << std::endl;
         }
     }
     const std::optional<Int> last =
@@ -151,6 +157,9 @@ std::optional<SmtResult> ADCLSat::do_step() {
                             trace.pop_back();
                             solver->pop();
                         }
+                        // also remove the first set of blocking clauses
+                        solver->pop();
+                        solver->push();
                         return std::nullopt;
                     }
                 }

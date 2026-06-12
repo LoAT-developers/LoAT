@@ -47,9 +47,13 @@ Yices::Yices(const Logic logic): ctx(YicesContext()), config(yices_new_config())
     }
     solver = yices_new_context(config);
     yices::check_err();
+    assertions.emplace_back();
 }
 
 std::pair<SmtResult, BoolExprSet> Yices::check_with_assumptions(const BoolExprSet& set) {
+    if (pushes_since_unsat > 0) {
+        return {SmtResult::Unsat, BoolExprSet()};
+    }
     std::unordered_map<term_t, Bools::Expr> map;
     std::vector<term_t> converted;
     for (const auto& a: set) {
@@ -73,13 +77,17 @@ std::pair<SmtResult, BoolExprSet> Yices::check_with_assumptions(const BoolExprSe
 }
 
 void Yices::add(const Bools::Expr e) {
-    if (yices_assert_formula(solver, Converter::convert(e, ctx)) < 0) {
-        throw YicesError();
+    assertions.back().insert(e);
+    if (pushes_since_unsat == 0) {
+        if (yices_assert_formula(solver, Converter::convert(e, ctx)) < 0) {
+            throw YicesError();
+        }
     }
     yices::check_err();
 }
 
 void Yices::push() {
+    assertions.emplace_back();
     if (yices_context_status(solver) == STATUS_UNSAT) {
         ++pushes_since_unsat;
     } else {
@@ -89,6 +97,7 @@ void Yices::push() {
 }
 
 void Yices::pop() {
+    assertions.pop_back();
     if (pushes_since_unsat > 0) {
         --pushes_since_unsat;
     } else {
@@ -113,6 +122,9 @@ SmtResult Yices::processResult(const smt_status status) {
 }
 
 SmtResult Yices::check() {
+    if (pushes_since_unsat > 0) {
+        return SmtResult::Unsat;
+    }
     const auto res = processResult(yices_check_context(solver, nullptr));
     yices::check_err();
     return res;
@@ -143,7 +155,10 @@ Yices::~Yices() {
 }
 
 std::ostream& Yices::print(std::ostream& os) const {
-    throw std::invalid_argument("print not supported by yices");
+    for (const auto& e: assertions) {
+        os << e << std::endl;
+    }
+    return os;
 }
 
 Rational Yices::getRealFromModel(model_t *model, const type_t symbol) {
