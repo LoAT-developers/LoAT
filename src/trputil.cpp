@@ -528,11 +528,11 @@ std::optional<Int> TRPUtil::refine_abstraction(const Range& range, const bool fi
     for (unsigned i = range.start(); i <= range.end(); ++i) {
         const auto& frame = trace.at(i);
         const auto& subs = get_subs(i, 1);
-        const auto current = frame.implicant;
         if (fix_trace) {
-            solver->add(current->renameVars(subs));
+            solver->add(frame.implicant->renameVars(subs));
         }
         if (frame.id > last_orig_clause) {
+            const auto current = rule_map.at(frame.id);
             const auto conc = concretization.at(frame.id);
             assert(current->isAnd());
             assert(conc->isAnd());
@@ -567,7 +567,7 @@ std::optional<Int> TRPUtil::refine_abstraction(const Range& range, const bool fi
                         const auto& [id, refinement] = assumption_to_refinement.at(c);
                         const auto current = rule_map.at(id);
                         if (Config::Analysis::log) {
-                            std::cout << "refining " << current << " with " << refinement << std::endl;
+                            std::cout << "refining " << id << ": " << current << " with " << refinement << std::endl;
                         }
                         refined.insert(id);
                         const auto t = current && refinement;
