@@ -4,7 +4,7 @@
 
 #include "model.hpp"
 
-ConsHashFree<Rule, Bools::Expr, Subs> Rule::cache;
+ConsHash<Rule, Bools::Expr, Subs> Rule::cache;
 
 unsigned Rule::next_id {0};
 
@@ -19,10 +19,6 @@ size_t Rule::CacheHash::operator()(const std::tuple<Bools::Expr, Subs> &args) co
 
 bool Rule::CacheEqual::operator()(const std::tuple<Bools::Expr, Subs> &args1, const std::tuple<Bools::Expr, Subs> &args2) const noexcept {
     return args1 == args2;
-}
-
-Rule::~Rule() {
-    cache.erase(guard, update);
 }
 
 CellSet Rule::cells() const {

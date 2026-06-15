@@ -239,6 +239,7 @@ class ArrayRead final: public T::Expr::element_type {
 public:
 
     ArrayRead(const ArrayPtr<T>& p_arr, const std::vector<Arith::Expr>& p_indices);
+    ~ArrayRead();
 
     // getter
     ArrayPtr<T> arr() const;
