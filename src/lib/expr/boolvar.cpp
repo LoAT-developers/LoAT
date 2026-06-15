@@ -12,6 +12,10 @@ ConsHash<BoolVar, int> BoolVar::cache {};
 
 BoolVar::BoolVar(const int idx): idx(idx) {}
 
+BoolVar::~BoolVar() {
+    cache.erase(idx);
+}
+
 std::string BoolVar::getName() const {
     if (idx > 0) {
         return "b" + std::to_string(idx);
@@ -86,5 +90,5 @@ unsigned BoolVar::dim() {
 }
 
 BoolExprPtr BoolVar::subs(const Subs& subs) const {
-    return subs.get(cpp::assume_not_null(this));
+    return subs.get(cpp::assume_not_null(this->shared_from_this()));
 }

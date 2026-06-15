@@ -6,7 +6,7 @@
 #include "linkedhashset.hpp"
 #include "conshash.hpp"
 #include "notnull.hpp"
-#include "exprfwd.hpp"
+#include "notnull_hash.hpp"
 
 class LoatIntExpr;
 
@@ -17,12 +17,12 @@ class LoatIntMult;
 class LoatIntMod;
 class LoatIntVar;
 
-using LoatIntExprPtr = ptr<LoatIntExpr>;
-using LoatIntConstPtr = ptr<LoatIntConst>;
-using LoatIntAddPtr = ptr<LoatIntAdd>;
-using LoatIntMultPtr = ptr<LoatIntMult>;
-using LoatIntModPtr = ptr<LoatIntMod>;
-using LoatIntExpPtr = ptr<LoatIntExp>;
+using LoatIntExprPtr = cpp::not_null<std::shared_ptr<const LoatIntExpr>>;
+using LoatIntConstPtr = cpp::not_null<std::shared_ptr<const LoatIntConst>>;
+using LoatIntAddPtr = cpp::not_null<std::shared_ptr<const LoatIntAdd>>;
+using LoatIntMultPtr = cpp::not_null<std::shared_ptr<const LoatIntMult>>;
+using LoatIntModPtr = cpp::not_null<std::shared_ptr<const LoatIntMod>>;
+using LoatIntExpPtr = cpp::not_null<std::shared_ptr<const LoatIntExp>>;
 using LoatIntExprSet = linked_hash_set<LoatIntExprPtr>;
 using LoatIntExprVec = std::vector<LoatIntExprPtr>;
 
@@ -59,7 +59,7 @@ namespace LoatIntExpression
 /**
  * Base class for all expression types.
  */
-class LoatIntExpr
+class LoatIntExpr : public std::enable_shared_from_this<LoatIntExpr>
 {
 protected:
     // Constructs an expression with a specific kind.
@@ -99,6 +99,7 @@ class LoatIntConst : public LoatIntExpr
 
 public:
     explicit LoatIntConst(Rational t);
+    ~LoatIntConst();
     const Rational &operator*() const;
     const Rational &getValue() const;
 
@@ -144,6 +145,7 @@ private:
 
 public:
     explicit LoatIntAdd(LoatIntExprSet args);
+    ~LoatIntAdd();
 };
 
 /**
@@ -176,6 +178,7 @@ private:
 
 public:
     explicit LoatIntMult(LoatIntExprSet args);
+    ~LoatIntMult();
 };
 
 /**
@@ -210,6 +213,7 @@ private:
 
 public:
     LoatIntMod(LoatIntExprPtr  lhs, LoatIntExprPtr  rhs);
+    ~LoatIntMod();
 };
 
 /**
@@ -239,6 +243,7 @@ class LoatIntExp : public LoatIntExpr
 
 public:
     LoatIntExp(LoatIntExprPtr  base, LoatIntExprPtr  exponent);
+    ~LoatIntExp();
 
     LoatIntExprPtr getBase() const;
     LoatIntExprPtr getExponent() const;
@@ -272,6 +277,7 @@ class LoatIntVar : public LoatIntExpr
 
 public:
     explicit LoatIntVar(std::string name, bool isPost);
+    ~LoatIntVar();
 
     std::string getName() const;
     bool isPost() const;

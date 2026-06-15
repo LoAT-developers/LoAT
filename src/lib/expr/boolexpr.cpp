@@ -255,7 +255,7 @@ Bools::Expr BoolExpr::eval(const ModelPtr& model, const ArithVarPtr &keep) const
 }
 
 Bools::Expr BoolExpr::toPtr() const {
-    return cpp::assume_not_null(this);
+    return cpp::assume_not_null(shared_from_this());
 }
 
 linked_hash_set<Bound> BoolExpr::getBounds(const ArithVarPtr& n) const {

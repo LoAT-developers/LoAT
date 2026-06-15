@@ -8,11 +8,15 @@
 #include "sexpresso.hpp"
 #include "exprfwd.hpp"
 
+class BoolVar;
+
+using BoolVarPtr = cpp::not_null<std::shared_ptr<const BoolVar>>;
+
 namespace bools {
     BoolVarPtr mkVar(int idx);
 }
 
-class BoolVar {
+class BoolVar: public std::enable_shared_from_this<BoolVar> {
 
     friend BoolVarPtr bools::mkVar(int idx);
     friend class ConsHash<BoolVar, int>;
@@ -33,6 +37,7 @@ class BoolVar {
 public:
 
     explicit BoolVar(int idx);
+    ~BoolVar();
 
     std::string getName() const;
 

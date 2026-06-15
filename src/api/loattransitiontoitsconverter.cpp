@@ -87,7 +87,7 @@ RulePtr LoatTransitionToITSConverter::convert(const LoatTransition &transition)
 Arith::Expr LoatTransitionToITSConverter::convertArith(const LoatIntExprPtr &expr)
 {
     // Search for expression in cache and use it if possible
-    if (const auto it = m_arithExprCache.find(expr.as_nullable()); it != m_arithExprCache.end()) {
+    if (const auto it = m_arithExprCache.find(expr); it != m_arithExprCache.end()) {
         return it->second;
     }
 
@@ -174,7 +174,7 @@ Arith::Expr LoatTransitionToITSConverter::convertArith(const LoatIntExprPtr &exp
     }
 
     // Store in cache
-    m_arithExprCache.emplace(expr.as_nullable(), result);
+    m_arithExprCache.emplace(expr, result);
     // Return result
     return result;
 }
@@ -182,7 +182,7 @@ Arith::Expr LoatTransitionToITSConverter::convertArith(const LoatIntExprPtr &exp
 Bools::Expr LoatTransitionToITSConverter::convertBool(const LoatBoolExprPtr &expr)
 {
     // Search for expression in cache and use it if possible
-    if (const auto it = m_boolExprCache.find(expr.as_nullable()); it != m_boolExprCache.end()) {
+    if (const auto it = m_boolExprCache.find(expr); it != m_boolExprCache.end()) {
         return it->second;
     }
 
@@ -313,7 +313,7 @@ Bools::Expr LoatTransitionToITSConverter::convertBool(const LoatBoolExprPtr &exp
     }
 
     // Store in cache
-    m_boolExprCache.emplace(expr.as_nullable(), result);
+    m_boolExprCache.emplace(expr, result);
     // Return result
     return result;
 }

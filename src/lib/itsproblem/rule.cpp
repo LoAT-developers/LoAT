@@ -21,6 +21,10 @@ bool Rule::CacheEqual::operator()(const std::tuple<Bools::Expr, Subs> &args1, co
     return args1 == args2;
 }
 
+Rule::~Rule() {
+    cache.erase(guard, update);
+}
+
 CellSet Rule::cells() const {
     CellSet res;
     guard->collectCells(res);

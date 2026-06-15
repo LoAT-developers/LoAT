@@ -7,7 +7,7 @@
 
 class Rule;
 
-using RulePtr = ptr<const Rule>;
+using RulePtr = cpp::not_null<std::shared_ptr<const Rule>>;
 
 class Rule {
 
@@ -32,6 +32,8 @@ class Rule {
 public:
 
     Rule(Bools::Expr  guard, Subs update);
+
+    ~Rule();
 
     CellSet cells() const;
 

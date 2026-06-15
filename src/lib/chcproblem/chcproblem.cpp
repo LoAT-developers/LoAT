@@ -66,6 +66,10 @@ ConsHash<FunApp, std::string, std::vector<Expr>> FunApp::cache;
 
 FunApp::FunApp(std::string pred, const std::vector<Expr> &args): pred(std::move(pred)), args(args) {}
 
+FunApp::~FunApp() {
+    cache.erase(pred, args);
+}
+
 FunAppPtr FunApp::mk(const std::string &pred, const std::vector<Expr> &args) {
     return cache.from_cache(pred, args);
 }
@@ -156,8 +160,13 @@ Clause::Clause(
     cost(cost),
     conclusion(conclusion) {}
 
+
 ClausePtr Clause::mk(const std::vector<FunAppPtr>& premise, const Bools::Expr& constraint, const Arith::Expr& cost, const std::optional<FunAppPtr>& conclusion) {
     return cache.from_cache(premise, constraint, cost, conclusion);
+}
+
+Clause::~Clause() {
+    cache.erase(premise, constraint, cost, conclusion);
 }
 
 bool Clause::is_fact() const {
