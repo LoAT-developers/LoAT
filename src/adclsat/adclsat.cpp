@@ -151,7 +151,7 @@ std::optional<SmtResult> ADCLSat::do_step() {
                     if (Config::Analysis::log) {
                         std::cout << "proving safety failed, abstraction refinement" << std::endl;
                     }
-                    if (const auto backtrack_point = refine_abstraction(Range::from_length(0, trace.size()))) {
+                    if (refine_abstraction(Range::from_length(0, trace.size()))) {
                         solver->pop();
                         while (!trace.empty()) {
                             trace.pop_back();
