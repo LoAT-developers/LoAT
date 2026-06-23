@@ -4,10 +4,11 @@
 
 #include <unordered_set>
 
-Bools::Expr integerFourierMotzkin(const Bools::Expr& e, const std::function<bool(const ArrayVarPtr<Arith> &)> &allow) {
+std::pair<Bools::Expr, std::vector<std::pair<ArithVarPtr, std::vector<Arith::Expr>>>> integerFourierMotzkin(const Bools::Expr& e, const std::function<bool(const ArrayVarPtr<Arith> &)> &allow) {
     if (!e->isConjunction()) {
-        return e;
+        return {e, {}};
     }
+    std::vector<std::pair<ArithVarPtr, std::vector<Arith::Expr>>> lower_bound_map;
     auto all_lits {e->lits()};
     auto& lits {all_lits.get<Arith::Lit>()};
 
@@ -108,6 +109,7 @@ Bools::Expr integerFourierMotzkin(const Bools::Expr& e, const std::function<bool
             }
         }
         eliminated.insert(var);
+        lower_bound_map.emplace_back(var, lower_bounds);
         if (Config::Analysis::doLogPreproc()) {
             std::cout << "eliminated " << var << "; lower bounds: " << lower_bounds << "; upper bounds: " << upper_bounds << std::endl;
         }
@@ -115,7 +117,7 @@ Bools::Expr integerFourierMotzkin(const Bools::Expr& e, const std::function<bool
 abort:  ; //this symbol could not be eliminated, try the next one
     }
     if (eliminated.empty()) {
-        return e;
+        return {e, {}};
     }
-    return bools::mkAnd(all_lits);
+    return {bools::mkAnd(all_lits), lower_bound_map};
 }

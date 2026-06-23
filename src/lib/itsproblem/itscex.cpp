@@ -106,7 +106,9 @@ void ITSCex::add_recurrent_set(const RulePtr& loop, const RulePtr& res) {
 void ITSCex::add_accel(const RulePtr& loop, const RulePtr& res) {
     assert(loop->getGuard() != bot());
     assert(is_known(loop));
-    accel.emplace(res, loop);
+    if (res != loop) {
+        accel.emplace(res, loop);
+    }
 }
 
 void ITSCex::add_resolvent(const std::vector<RulePtr> &rules, const RulePtr& res) {
@@ -118,7 +120,9 @@ void ITSCex::add_resolvent(const std::vector<RulePtr> &rules, const RulePtr& res
 void ITSCex::add_implicant(const RulePtr& rule, const RulePtr& imp) {
     assert(is_known(rule));
     assert(imp->getGuard() != bot());
-    implicants.emplace(imp, rule);
+    if (rule != imp) {
+        implicants.emplace(imp, rule);
+    }
 }
 
 const linked_hash_set<RulePtr> & ITSCex::get_orig() const {

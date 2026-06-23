@@ -64,7 +64,7 @@ RulePtr integerFourierMotzkin(const RulePtr &rule) {
     auto isTempOnlyInGuard = [&](const ArrayVarPtr<Arith> &sym) {
         return sym->isTempVar() && !varsInUpdate.contains(sym);
     };
-    if (const auto new_guard {integerFourierMotzkin(rule->getGuard(), isTempOnlyInGuard)}; new_guard == rule->getGuard()) {
+    if (const auto new_guard {integerFourierMotzkin(rule->getGuard(), isTempOnlyInGuard).first}; new_guard == rule->getGuard()) {
         return rule;
     } else {
         return rule->withGuard(new_guard);
@@ -83,7 +83,7 @@ RulePtr Preprocess::preprocessRule(const RulePtr &rule) {
         std::cout << "preprocessing " << rule << std::endl;
     }
     auto current {rule};
-    if (const auto g{simplifyAnd(current->getGuard())}; g != current->getGuard()) {
+    if (const auto g{AndSimplifier(current->getGuard()).process()}; g != current->getGuard()) {
         current = current->withGuard(g);
     }
     auto changed{false};
@@ -93,7 +93,7 @@ RulePtr Preprocess::preprocessRule(const RulePtr &rule) {
         current = eliminateArithVars(prop);
         if (current != prop) {
             changed = true;
-            current = current->withGuard(simplifyAnd(current->getGuard()));
+            current = current->withGuard(AndSimplifier(current->getGuard()).process());
         }
     } while (changed);
     if (const auto res {eliminateIdentities(current)}) {

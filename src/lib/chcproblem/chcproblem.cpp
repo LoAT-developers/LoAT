@@ -75,7 +75,8 @@ FunAppPtr FunApp::mk(const std::string &pred, const std::vector<Expr> &args) {
 }
 
 sexpresso::Sexp FunApp::to_smtlib() const {
-    sexpresso::Sexp res {pred};
+    sexpresso::Sexp res;
+    res.addChild(pred);
     for (const auto &arg: args) {
         res.addChild(theory::to_smtlib(arg));
     }

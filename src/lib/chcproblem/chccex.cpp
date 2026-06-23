@@ -11,13 +11,21 @@ CHCCex::CHCCex(CHCPtr chcs): chcs(std::move(chcs)) {}
 
 void CHCCex::do_step(const ModelPtr &m, const ClausePtr &c) {
     assert(c->get_constraint() != bot());
+    if (!m->eval(c->get_constraint())) {
+        std::cerr << "not a model" << std::endl;
+        std::cerr << c->get_constraint() << std::endl;
+        std::cerr << m->toString(c->vars()) << std::endl;
+        throw std::logic_error("failed to transform cex");
+    }
     states.emplace_back(m);
     transitions.emplace_back(c);
 }
 
 void CHCCex::add_accel(const ClausePtr &loop, const ClausePtr &res) {
     assert(res->get_constraint() != bot());
-    accel.emplace(res, loop);
+    if (res != loop) {
+        accel.emplace(res, loop);
+    }
 }
 
 void CHCCex::add_recurrent_set(const ClausePtr &loop, const ClausePtr &res) {
@@ -32,7 +40,9 @@ void CHCCex::add_resolvent(const std::vector<ClausePtr> &rules, const ClausePtr 
 
 void CHCCex::add_implicant(const ClausePtr &rule, const ClausePtr &imp) {
     assert(imp->get_constraint() != bot());
-    implicants.emplace(imp, rule);
+    if (rule != imp) {
+        implicants.emplace(imp, rule);
+    }
 }
 
 std::vector<std::pair<ClausePtr, ProofStepKind>> CHCCex::get_used_clauses() const {
@@ -125,6 +135,14 @@ void CHCCex::complete_recurrent_set(RecurrentSet& rs, const ClausePtr& clause, b
             complete_recurrent_set(rs, c, with_start || c != cs.front());
         }
     } else if (accel.contains(clause)) {
+        const auto renamed = rename_clause(clause);
+        const auto premise = renamed->get_premise().front();
+        const auto conclusion = renamed->get_conclusion().value();
+        const auto [sig_conclusion, rs_conclusion] = rename(rs.get(conclusion));
+        const auto unif = FunApp::unify(conclusion, sig_conclusion);
+        for (const auto& b: rs_conclusion) {
+            rs.add(premise, BoolExprSet{renamed->get_constraint(), b, unif});
+        }
         complete_recurrent_set(rs, accel.at(clause), with_start);
     } else if (recurrent_set.contains(clause)) {
         complete_recurrent_set(rs, recurrent_set.at(clause), with_start);

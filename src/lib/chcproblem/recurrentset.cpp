@@ -46,7 +46,7 @@ std::pair<FunAppPtr, BoolExprSet>& RecurrentSet::get(const FunAppPtr &f) {
 
 void RecurrentSet::simplify() {
     for (auto &bs: map | std::views::values | std::views::values) {
-        const auto b = Preprocess::simplifyOr(bools::mkOr(bs));
+        const auto b = OrSimplifier(bools::mkOr(bs)).process();
         bs.clear();
         bs.insert(b);
     }

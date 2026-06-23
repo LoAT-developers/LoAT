@@ -2,59 +2,131 @@
 #include "subs.hpp"
 #include "impliedequivalences.hpp"
 #include "intfm.hpp"
+#include "model.hpp"
 
-Bools::Expr propagateEquivalences(const Bools::Expr& e) {
-    if (const auto subs {impliedEquivalences(e)}; subs.empty()) {
-        return e;
-    } else {
-        return e->subs(subs);
+AbstractFormulaPreprocessor::AbstractFormulaPreprocessor(const Bools::Expr& in): in(in) {}
+
+EquivalencePropagator::EquivalencePropagator(const Bools::Expr &in): AbstractFormulaPreprocessor(in) {}
+
+Bools::Expr EquivalencePropagator::process() {
+    subs = impliedEquivalences(in);
+    if (subs.empty()) {
+        return in;
     }
+    return in->subs(subs);
 }
 
-Bools::Expr propagateEqualities(const Bools::Expr& e, const std::function<bool(const Var&)> &allow) {
-    if (const auto subs {e->propagateEqualities(allow)}; subs.empty()) {
-        return e;
-    } else {
-        return e->subs(subs);
-    }
+ModelPtr EquivalencePropagator::transform_model(const ModelPtr &model) {
+    return model->composeBackwards(subs);
 }
 
-Bools::Expr Preprocess::simplifyAnd(const Bools::Expr& e) {
-    if (e->isConjunction()) {
-        if (auto lits{e->lits()}; ArithLit::simplifyAnd(lits.get<Arith::Lit>())) {
+EqualityPropagator::EqualityPropagator(const Bools::Expr &in, const std::function<bool(const Var&)>& allow): AbstractFormulaPreprocessor(in), allow(allow) {}
+
+Bools::Expr EqualityPropagator::process() {
+    subs = in->propagateEqualities(allow);
+    if (subs.empty()) {
+        return in;
+    }
+    return in->subs(subs);
+}
+
+ModelPtr EqualityPropagator::transform_model(const ModelPtr &model) {
+    return model->composeBackwards(subs);
+}
+
+AndSimplifier::AndSimplifier(const Bools::Expr &in): AbstractFormulaPreprocessor(in) {}
+
+Bools::Expr AndSimplifier::process() {
+    if (in->isConjunction()) {
+        if (auto lits{in->lits()}; ArithLit::simplifyAnd(lits.get<Arith::Lit>())) {
             return bools::mkAnd(lits);
         }
     }
-    return e;
+    return in;
 }
 
-Bools::Expr Preprocess::simplifyOr(const Bools::Expr& e) {
-    if (e->isDisjunction()) {
-        if (auto lits{e->lits()}; ArithLit::simplifyOr(lits.get<Arith::Lit>())) {
+ModelPtr AndSimplifier::transform_model(const ModelPtr &model) {
+    return model;
+}
+
+OrSimplifier::OrSimplifier(const Bools::Expr &in): AbstractFormulaPreprocessor(in) {}
+
+Bools::Expr OrSimplifier::process() {
+    if (in->isDisjunction()) {
+        if (auto lits{in->lits()}; ArithLit::simplifyOr(lits.get<Arith::Lit>())) {
             return bools::mkOr(lits);
         }
     }
-    return e;
+    return in;
 }
 
-Bools::Expr Preprocess::preprocessFormula(Bools::Expr e, const std::function<bool(const Var &)> &allow) {
-    for (const auto prop = propagateEquivalences(e); prop != e;) {
-        e = prop;
+ModelPtr OrSimplifier::transform_model(const ModelPtr &model) {
+    return model;
+}
+
+IntegerFourierMotzkin::IntegerFourierMotzkin(const Bools::Expr &in, const std::function<bool(const Var&)>& allow): AbstractFormulaPreprocessor(in), allow(allow) {}
+
+Bools::Expr IntegerFourierMotzkin::process() {
+    const auto [res, lb] = integerFourierMotzkin(in, allow);
+    lower_bound_map = lb;
+    return res;
+}
+
+ModelPtr IntegerFourierMotzkin::transform_model(const ModelPtr &model) {
+    for (const auto& [x,lbs]: lower_bound_map | std::views::reverse) {
+        auto max_val = model->eval(lbs.front());
+        for (const auto& lb: lbs) {
+            const auto val = model->eval(lb);
+            if (val > max_val) {
+                max_val = val;
+            }
+        }
+        model->put(x, max_val);
     }
-    e = simplifyAnd(e);
+    return model;
+}
+
+FormulaPreprocessor::FormulaPreprocessor(const Bools::Expr &in, const std::function<bool(const Var&)>& allow): AbstractFormulaPreprocessor(in), allow(allow) {}
+
+Bools::Expr FormulaPreprocessor::process() {
+    Bools::Expr last = in;
+    Bools::Expr current = in;
+    const auto apply_proc = [&](auto proc) {
+        current = proc->process();
+        if (current != last) {
+            procs.emplace_back(std::move(proc));
+            last = current;
+            return true;
+        }
+        return false;
+    };
+    while (apply_proc(std::make_unique<EquivalencePropagator>(current))){}
+    apply_proc(std::make_unique<AndSimplifier>(current));
     bool changed;
     do {
         changed = false;
-        if (const auto prop {propagateEqualities(e, allow)}; prop != e) {
+        if (apply_proc(std::make_unique<EqualityPropagator>(current, allow))) {
             changed = true;
-            e = simplifyAnd(prop);
+            apply_proc(std::make_unique<AndSimplifier>(current));
         }
-        if (const auto fm_res {integerFourierMotzkin(e, allow)}; fm_res != e) {
+        if (apply_proc(std::make_unique<IntegerFourierMotzkin>(current, allow))) {
             changed = true;
-            e = simplifyAnd(fm_res);
+            apply_proc(std::make_unique<AndSimplifier>(current));
         }
     } while (changed);
-    return e;
+    return current;
+}
+
+ModelPtr FormulaPreprocessor::transform_model(const ModelPtr &model) {
+    ModelPtr res = model;
+    for (const auto& proc: procs | std::views::reverse) {
+        res = proc->transform_model(res);
+    }
+    return res;
+}
+
+Bools::Expr Preprocess::preprocessFormula(Bools::Expr e, const std::function<bool(const Var &)> &allow) {
+    return FormulaPreprocessor(e, allow).process();
 }
 
 std::tuple<Bools::Expr, Renaming, Renaming> Preprocess::chain(const Bools::Expr &fst, const Bools::Expr &snd) {

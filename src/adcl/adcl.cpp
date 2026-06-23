@@ -670,9 +670,14 @@ bool ADCL::try_to_finish() {
 ITSSafetyCex ADCL::get_cex() {
     const auto model {solver->model()};
     cex.set_initial_state(model);
+    std::optional<ModelPtr> last_model;
     for (size_t i = 0; i + 1 < trace.size(); ++i) {
         const auto &t {trace.at(i)};
-        cex.do_step(t.implicant, model->composeBackwards(t.var_renaming));
+        if (last_model) {
+            assert((*last_model)->eval(t.implicant->getGuard()));
+        }
+        last_model = model->composeBackwards(t.var_renaming);
+        cex.do_step(t.implicant, *last_model);
     }
     const auto &last {trace.back()};
     cex.add_final_transition(last.implicant);

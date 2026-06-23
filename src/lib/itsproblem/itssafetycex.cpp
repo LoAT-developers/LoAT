@@ -70,13 +70,7 @@ std::ostream& operator<<(std::ostream &s, const ITSSafetyCex &cex) {
         for (size_t i = 0; i < cex.transitions.size(); ++i) {
             const auto &trans{cex.transitions.at(i)};
             auto vars{trans->vars()};
-            for (const auto& x: vars) {
-                if (theory::isProgVar(x)) {
-                    prog_vars.insert(x);
-                }
-            }
-            vars.insertAll(prog_vars);
-            s << "\t" << cex.states.at(i)->toString(vars) << "\n\t-" << trans->getId() << "->\n";
+            s << "\t" << cex.states.at(i)->toString(prog_vars) << "\n\t-" << trans->getId() << "->\n";
         }
         s << "\terr";
     }

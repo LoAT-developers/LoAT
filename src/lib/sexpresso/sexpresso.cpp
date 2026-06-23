@@ -200,6 +200,9 @@ namespace sexpresso {
 
     static auto stringValToString(std::string const& s) -> std::string {
         if(s.empty()) return std::string{"\"\""};
+        if (s.front() == '|' && s.back() == '|') {
+            return s;
+        }
         if((std::find(s.begin(), s.end(), ' ') == s.end()) && countEscapeValues(s) == 0) return s;
         return ('"' + escape(s) + '"');
     }
@@ -374,10 +377,10 @@ namespace sexpresso {
                     for(; nextiter != str.end() && (*nextiter == '\n' || *nextiter == '\r'); ++nextiter) {}
                     break;
                 case '|': {
-                    ++iter;
-                    auto symend = std::find_if(iter, str.end(), [](char const& c) { return c == '|'; });
+                    auto symend = std::find_if(std::next(iter), str.end(), [](char const& c) { return c == '|'; });
                     auto& top = sexprstack.top();
-                    top.addChild(Sexp{std::string{iter, symend}});
+                    ++symend;
+                    top.addChild(Sexp::unescaped(std::string{iter, symend}));
                     nextiter = std::next(symend);
                     break;
                 }
@@ -402,6 +405,9 @@ namespace sexpresso {
     }
 
     auto escape(std::string const& str) -> std::string {
+        if (str.front() == '|' && str.back() == '|') {
+            return str;
+        }
         auto escape_count = countEscapeValues(str);
         if(escape_count == 0) return str;
         auto result_str = std::string{};
