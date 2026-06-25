@@ -20,7 +20,6 @@
 #include "profile.hpp"
 
 #include <boost/algorithm/string.hpp>
-#include <iostream>
 #include <swine/version.h>
 
 #include <z3.h>

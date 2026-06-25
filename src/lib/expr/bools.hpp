@@ -11,7 +11,7 @@ struct Bools {
     using Lit = BoolLitPtr;
     using Var = BoolVarPtr;
     using Const = bool;
-    using Expr = ptr<BoolExpr>;
+    using Expr = cpp::not_null<std::shared_ptr<const BoolExpr>>;
     using Renaming = boost::bimap<boost::bimaps::unordered_set_of<Var>, boost::bimaps::unordered_set_of<Var>>;
     using Subs = BoolSubs;
 

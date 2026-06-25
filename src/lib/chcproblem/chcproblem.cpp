@@ -62,7 +62,7 @@ size_t FunApp::CacheHash::operator()(const std::tuple<std::string, std::vector<E
     return seed;
 }
 
-ConsHashFree<FunApp, std::string, std::vector<Expr>> FunApp::cache;
+ConsHash<FunApp, std::string, std::vector<Expr>> FunApp::cache;
 
 FunApp::FunApp(std::string pred, const std::vector<Expr> &args): pred(std::move(pred)), args(args) {}
 
@@ -200,7 +200,7 @@ size_t Clause::CacheHash::operator()(const Args &args) const noexcept {
     return seed;
 }
 
-ConsHashFree<Clause, std::vector<FunAppPtr>, Bools::Expr, Arith::Expr, std::optional<FunAppPtr>> Clause::cache;
+ConsHash<Clause, std::vector<FunAppPtr>, Bools::Expr, Arith::Expr, std::optional<FunAppPtr>> Clause::cache;
 
 Clause::Clause(
     const std::vector<FunAppPtr>& premise,
@@ -212,12 +212,13 @@ Clause::Clause(
     cost(cost),
     conclusion(conclusion) {}
 
-Clause::~Clause() {
-    cache.erase(premise, constraint, cost, conclusion);
-}
 
 ClausePtr Clause::mk(const std::vector<FunAppPtr>& premise, const Bools::Expr& constraint, const Arith::Expr& cost, const std::optional<FunAppPtr>& conclusion) {
     return cache.from_cache(premise, constraint, cost, conclusion);
+}
+
+Clause::~Clause() {
+    cache.erase(premise, constraint, cost, conclusion);
 }
 
 bool Clause::is_fact() const {

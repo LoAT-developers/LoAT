@@ -35,72 +35,57 @@ void ADCLSat::init() {
             dg_over_approx.markSink(id);
         }
     }
+    // for the first set of blocking clauses
+    solver->push();
 }
 
 bool ADCLSat::handle_loop(const Range& range) {
-    const auto old_model = *model;
-    if (Config::Analysis::abstraction_refinement) {
-        if (const auto backtrack_point = refine_abstraction(range, false)) {
-            if (Config::Analysis::log) {
-                std::cout << "refined loop" << std::endl;
-            }
-            while (trace.size() > *backtrack_point) {
-                trace.pop_back();
-                solver->pop();
-            }
-            backtracking = false;
-            return true;
-        }
-    }
-    auto [loop_non_bool, loop_bool, model]{specialize(range, theory::isTempCell)};
-    const auto kind = trp.get_loop_kind(loop_non_bool, loop_bool);
-    if (kind == TRP::NoLoop) {
-        return false;
-    }
-    const auto loop = loop_non_bool && loop_bool;
     backtracking = true;
-    solver->pop();
-    if (add_blocking_clauses(range, model)) {
-        if (Config::Analysis::abstraction_refinement) {
-            const auto renamed_model = old_model->composeBackwards(get_subs(range.start(), range.length()));
-            if (!add_blocking_clauses(range, renamed_model)) {
-                if (last_model) {
-                    const auto cells = loop->cells();
-                    if (std::ranges::all_of(cells, [&](const auto& c) {
-                        return theory::apply(c, [&](const auto& c) {
-                            return (*last_model)->get(c) == model->get(c);
-                        });
-                    })) {
-                        last_model.reset();
-                        const auto backtrack_point = refine_by_model(range, old_model);
-                        if (!backtrack_point) {
-                            throw std::logic_error("failed to refine with original model");
-                        }
-                        if (Config::Analysis::log) {
-                            std::cout << "refined loop" << std::endl;
-                        }
-                        trace.pop_back();
-                        while (trace.size() > *backtrack_point) {
-                            trace.pop_back();
-                            solver->pop();
-                        }
-                        backtracking = false;
-                        return true;
-                    }
-                }
-            }
-            last_model = model;
-        }
+    const auto subs = get_subs(range.start(), range.length());
+    auto model = (*this->model)->composeBackwards(subs);
+    if (const auto id = add_blocking_clauses(range, model)) {
         if (Config::Analysis::log) {
             std::cout << "***** Covered *****" << std::endl;
+            std::cout << "by " << *id << std::endl;
         }
-        trace.pop_back();
         while (trace.size() > range.end()) {
             trace.pop_back();
             solver->pop();
         }
         return true;
     }
+    if (Config::Analysis::abstraction_refinement) {
+        if (refine_abstraction(range)) {
+            if (Config::Analysis::log) {
+                std::cout << "***** Refinement *****" << std::endl;
+            }
+            while (!trace.empty()) {
+                trace.pop_back();
+                solver->pop();
+            }
+            // also remove the first set of blocking clauses
+            solver->pop();
+            solver->push();
+            return true;
+        }
+        model = (*this->model)->composeBackwards(subs);
+        if (add_blocking_clauses(range, model)) {
+            if (Config::Analysis::log) {
+                std::cout << "***** Covered *****" << std::endl;
+            }
+            while (trace.size() > range.end()) {
+                trace.pop_back();
+                solver->pop();
+            }
+            return true;
+        }
+    }
+    auto [loop_non_bool, loop_bool, _]{specialize(range, theory::isTempCell)};
+    const auto kind = trp.get_loop_kind(loop_non_bool, loop_bool);
+    if (kind == TRP::NoLoop) {
+        return false;
+    }
+    const auto loop = loop_non_bool && loop_bool;
     if (Config::Analysis::log) {
         std::cout << "***** Accelerate *****" << std::endl;
     }
@@ -139,7 +124,6 @@ bool ADCLSat::handle_loop(const Range& range) {
         dg_over_approx.markSink(id);
     }
     add_projection(id, projected);
-    trace.pop_back();
     while (trace.size() > range.start()) {
         trace.pop_back();
         solver->pop();
@@ -151,7 +135,7 @@ std::optional<SmtResult> ADCLSat::do_step() {
     if (Config::Analysis::log) {
         std::cout << "Trace:" << std::endl;
         for (const auto &e: trace) {
-            std::cout << e.implicant << std::endl;
+            std::cout << e.id << ": " << e.implicant << std::endl;
         }
     }
     const std::optional<Int> last =
@@ -170,12 +154,15 @@ std::optional<SmtResult> ADCLSat::do_step() {
                     if (Config::Analysis::log) {
                         std::cout << "proving safety failed, abstraction refinement" << std::endl;
                     }
-                    if (const auto backtrack_point = refine_abstraction(Range::from_length(0, trace.size()), false)) {
+                    if (refine_abstraction(Range::from_length(0, trace.size()))) {
                         solver->pop();
-                        while (trace.size() > *backtrack_point) {
+                        while (!trace.empty()) {
                             trace.pop_back();
                             solver->pop();
                         }
+                        // also remove the first set of blocking clauses
+                        solver->pop();
+                        solver->push();
                         return std::nullopt;
                     }
                 }

@@ -6,7 +6,7 @@
 #include "theory.hpp"
 #include "sexpresso.hpp"
 #include "subs.hpp"
-#include "conshashfree.hpp"
+#include "conshash.hpp"
 
 class FunApp;
 
@@ -14,7 +14,7 @@ using FunAppPtr = cpp::not_null<std::shared_ptr<const FunApp>>;
 
 class FunApp {
 
-    friend class ConsHashFree<FunApp, std::string, std::vector<Expr>>;
+    friend class ConsHash<FunApp, std::string, std::vector<Expr>>;
 
     std::string pred;
     std::vector<Expr> args;
@@ -25,7 +25,7 @@ class FunApp {
     struct CacheHash {
         size_t operator()(const std::tuple<std::string, std::vector<Expr>> &args) const noexcept;
     };
-    static ConsHashFree<FunApp, std::string, std::vector<Expr>> cache;
+    static ConsHash<FunApp, std::string, std::vector<Expr>> cache;
 
 public:
 
@@ -59,7 +59,7 @@ using ClausePtr = cpp::not_null<std::shared_ptr<const Clause>>;
 
 class Clause {
 
-    friend class ConsHashFree<Clause, std::vector<FunAppPtr>, Bools::Expr, Arith::Expr, std::optional<FunAppPtr>>;
+    friend class ConsHash<Clause, std::vector<FunAppPtr>, Bools::Expr, Arith::Expr, std::optional<FunAppPtr>>;
 
     std::vector<FunAppPtr> premise {};
     Bools::Expr constraint;
@@ -76,7 +76,8 @@ class Clause {
     struct CacheHash {
         size_t operator()(const Args &args) const noexcept;
     };
-    static ConsHashFree<Clause, std::vector<FunAppPtr>, Bools::Expr, Arith::Expr, std::optional<FunAppPtr>> cache;
+
+    static ConsHash<Clause, std::vector<FunAppPtr>, Bools::Expr, Arith::Expr, std::optional<FunAppPtr>> cache;
 
 public:
 

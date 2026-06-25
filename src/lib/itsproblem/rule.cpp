@@ -4,7 +4,7 @@
 
 #include "model.hpp"
 
-ConsHashFree<Rule, Bools::Expr, Subs> Rule::cache;
+ConsHash<Rule, Bools::Expr, Subs> Rule::cache;
 
 unsigned Rule::next_id {0};
 

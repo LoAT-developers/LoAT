@@ -8,11 +8,11 @@
 #include "model.hpp"
 
 std::size_t hash_value(const ArithExprPtr &x) {
-    return std::hash<const ArithExpr*>{}(x.as_nullable());
+    return std::hash<std::shared_ptr<const ArithExpr>>{}(x.as_nullable());
 }
 
 std::size_t hash_value(const ArithVarPtr &x) {
-    return std::hash<const ArrayRead<Arith>*>{}(x.as_nullable());
+    return std::hash<std::shared_ptr<const ArrayRead<Arith>>>{}(x.as_nullable());
 }
 
 ArithExpr::ArithExpr(): kind(arith::Kind::Variable) {}
@@ -115,7 +115,7 @@ ArithExprPtr operator^(const ArithExprPtr& x, const ArithExprPtr& y) {
 
 std::optional<ArithConstPtr> ArithExpr::isRational() const {
     if (kind == arith::Kind::Constant) {
-        return cpp::assume_not_null(static_cast<const ArithConst*>(this));
+        return cpp::assume_not_null(static_pointer_cast<const ArithConst>(shared_from_this()));
     }
     return {};
 }
@@ -128,35 +128,35 @@ std::optional<Int> ArithExpr::isInt() const {
 
 std::optional<ArithVarPtr> ArithExpr::isVar() const {
     if (kind == arith::Kind::Variable) {
-        return cpp::assume_not_null(static_cast<const ArrayRead<Arith>*>(this));
+        return cpp::assume_not_null(static_pointer_cast<const ArrayRead<Arith>>(shared_from_this()));
     }
     return {};
 }
 
 std::optional<ArithExpPtr> ArithExpr::isPow() const {
     if (kind == arith::Kind::Exp) {
-        return cpp::assume_not_null(static_cast<const ArithExp*>(this));
+        return cpp::assume_not_null(static_pointer_cast<const ArithExp>(shared_from_this()));
     }
     return {};
 }
 
 std::optional<ArithMultPtr> ArithExpr::isMult() const {
     if (kind == arith::Kind::Times) {
-        return cpp::assume_not_null(static_cast<const ArithMult*>(this));
+        return cpp::assume_not_null(static_pointer_cast<const ArithMult>(shared_from_this()));
     }
     return {};
 }
 
 std::optional<ArithModPtr> ArithExpr::isMod() const {
     if (kind == arith::Kind::Mod) {
-        return cpp::assume_not_null(static_cast<const ArithMod*>(this));
+        return cpp::assume_not_null(static_pointer_cast<const ArithMod>(shared_from_this()));
     }
     return {};
 }
 
 std::optional<ArithAddPtr> ArithExpr::isAdd() const {
     if (kind == arith::Kind::Plus) {
-        return cpp::assume_not_null(static_cast<const ArithAdd*>(this));
+        return cpp::assume_not_null(static_pointer_cast<const ArithAdd>(shared_from_this()));
     }
     return {};
 }
@@ -772,7 +772,7 @@ std::optional<ArithExprPtr> ArithExpr::solve(const ArithVarPtr& var) const {
 }
 
 ArithExprPtr ArithExpr::toPtr() const {
-    return cpp::assume_not_null(this);
+    return cpp::assume_not_null(shared_from_this());
 }
 
 sexpresso::Sexp ArithExpr::to_smtlib() const {

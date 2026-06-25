@@ -8,6 +8,10 @@ ConsHash<ArithMult, ArithExprSet> ArithMult::cache;
 
 ArithMult::ArithMult(ArithExprSet args): ArithExpr(arith::Kind::Times), args(std::move(args)) {}
 
+ArithMult::~ArithMult() {
+    cache.erase(args);
+}
+
 bool ArithMult::CacheEqual::operator()(const std::tuple<ArithExprSet> &args1, const std::tuple<ArithExprSet> &args2) const noexcept {
     return args1 == args2;
 }

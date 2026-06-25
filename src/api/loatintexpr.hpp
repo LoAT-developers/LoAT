@@ -4,7 +4,7 @@
 #include <string>
 
 #include "linkedhashset.hpp"
-#include "conshashfree.hpp"
+#include "conshash.hpp"
 #include "notnull.hpp"
 #include "notnull_hash.hpp"
 
@@ -95,7 +95,7 @@ class LoatIntConst : public LoatIntExpr
     friend LoatIntExprPtr LoatIntExpression::mkConst(const Rational &r);
     friend LoatIntExprPtr LoatIntExpression::mkConst(const Rational &&r);
     friend class LoatIntExpr;
-    friend class ConsHashFree<LoatIntConst, Rational>;
+    friend class ConsHash<LoatIntConst, Rational>;
 
 public:
     explicit LoatIntConst(Rational t);
@@ -114,7 +114,7 @@ private:
     {
         size_t operator()(const std::tuple<Rational> &args) const noexcept;
     };
-    static ConsHashFree<LoatIntConst, Rational> cache;
+    static ConsHash<LoatIntConst, Rational> cache;
 };
 
 /**
@@ -125,7 +125,7 @@ class LoatIntAdd : public LoatIntExpr
     friend LoatIntExprPtr LoatIntExpression::mkPlus(LoatIntExprPtr, LoatIntExprPtr);
     friend LoatIntExprPtr LoatIntExpression::mkPlus(LoatIntExprVec &&args);
     friend class LoatIntExpr;
-    friend class ConsHashFree<LoatIntAdd, LoatIntExprSet>;
+    friend class ConsHash<LoatIntAdd, LoatIntExprSet>;
 
 public:
     const LoatIntExprSet &getArgs() const;
@@ -141,7 +141,7 @@ private:
     {
         size_t operator()(const std::tuple<LoatIntExprSet> &args) const noexcept;
     };
-    static ConsHashFree<LoatIntAdd, LoatIntExprSet> cache;
+    static ConsHash<LoatIntAdd, LoatIntExprSet> cache;
 
 public:
     explicit LoatIntAdd(LoatIntExprSet args);
@@ -156,7 +156,7 @@ class LoatIntMult : public LoatIntExpr
     friend LoatIntExprPtr LoatIntExpression::mkTimes(const LoatIntExprPtr&, const LoatIntExprPtr&);
     friend LoatIntExprPtr LoatIntExpression::mkTimes(LoatIntExprVec &&args);
     friend class LoatIntExpr;
-    friend class ConsHashFree<LoatIntMult, LoatIntExprSet>;
+    friend class ConsHash<LoatIntMult, LoatIntExprSet>;
 
 public:
     const LoatIntExprSet &getArgs() const;
@@ -174,7 +174,7 @@ private:
         size_t operator()(const std::tuple<LoatIntExprSet> &args) const noexcept;
     };
 
-    static ConsHashFree<LoatIntMult, LoatIntExprSet> cache;
+    static ConsHash<LoatIntMult, LoatIntExprSet> cache;
 
 public:
     explicit LoatIntMult(LoatIntExprSet args);
@@ -188,7 +188,7 @@ class LoatIntMod : public LoatIntExpr
 {
     friend LoatIntExprPtr LoatIntExpression::mkMod(const LoatIntExprPtr& x, const LoatIntExprPtr& y);
     friend class LoatIntExpr;
-    friend class ConsHashFree<LoatIntMod, LoatIntExprPtr, LoatIntExprPtr>;
+    friend class ConsHash<LoatIntMod, LoatIntExprPtr, LoatIntExprPtr>;
 
 public:
     LoatIntExprPtr getLhs() const;
@@ -209,7 +209,7 @@ private:
         size_t operator()(const std::tuple<LoatIntExprPtr, LoatIntExprPtr> &args) const noexcept;
     };
 
-    static ConsHashFree<LoatIntMod, LoatIntExprPtr, LoatIntExprPtr> cache;
+    static ConsHash<LoatIntMod, LoatIntExprPtr, LoatIntExprPtr> cache;
 
 public:
     LoatIntMod(LoatIntExprPtr  lhs, LoatIntExprPtr  rhs);
@@ -223,7 +223,7 @@ class LoatIntExp : public LoatIntExpr
 {
     friend LoatIntExprPtr LoatIntExpression::mkExp(const LoatIntExprPtr& base, const LoatIntExprPtr& exponent);
     friend class LoatIntExpr;
-    friend class ConsHashFree<LoatIntExp, LoatIntExprPtr, LoatIntExprPtr>;
+    friend class ConsHash<LoatIntExp, LoatIntExprPtr, LoatIntExprPtr>;
 
     LoatIntExprPtr m_base;
     LoatIntExprPtr m_exponent;
@@ -239,7 +239,7 @@ class LoatIntExp : public LoatIntExpr
         size_t operator()(const std::tuple<LoatIntExprPtr, LoatIntExprPtr> &a) const noexcept;
     };
 
-    static ConsHashFree<LoatIntExp, LoatIntExprPtr, LoatIntExprPtr> cache;
+    static ConsHash<LoatIntExp, LoatIntExprPtr, LoatIntExprPtr> cache;
 
 public:
     LoatIntExp(LoatIntExprPtr  base, LoatIntExprPtr  exponent);
@@ -258,7 +258,7 @@ class LoatIntVar : public LoatIntExpr
     friend LoatIntExprPtr LoatIntExpression::mkPreVar(const std::string &name);
     friend LoatIntExprPtr LoatIntExpression::mkPostVar(const std::string &name);
     friend class LoatIntExpr;
-    friend class ConsHashFree<LoatIntVar, std::string, bool>;
+    friend class ConsHash<LoatIntVar, std::string, bool>;
 
     std::string m_name;
     bool m_isPost;
@@ -273,7 +273,7 @@ class LoatIntVar : public LoatIntExpr
         size_t operator()(const std::tuple<std::string, bool> &a) const noexcept;
     };
 
-    static ConsHashFree<LoatIntVar, std::string, bool> cache;
+    static ConsHash<LoatIntVar, std::string, bool> cache;
 
 public:
     explicit LoatIntVar(std::string name, bool isPost);

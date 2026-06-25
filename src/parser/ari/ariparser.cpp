@@ -87,6 +87,7 @@ void ARIParser::run(const std::string &filename) {
                     throw std::invalid_argument("failed to parse " + ex.toString());
                 }
             }
+            guard.emplace_back(state.refinement());
             const auto c = Clause::mk({lhs}, bools::mkAnd(guard), cost, rhs);
             its->add_clause(c);
             state.pop();

@@ -6,7 +6,6 @@ add_library(${PROJECT_NAME} OBJECT
     vector.hpp
     variant.hpp
     conshash.hpp
-    conshashfree.hpp
     config.cpp
     config.hpp
     pair.hpp

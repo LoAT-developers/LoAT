@@ -39,6 +39,11 @@ template <class T>
 ArrayVar<T>::ArrayVar(const int p_idx, const unsigned p_dim) : m_idx(p_idx), m_dim(p_dim) {}
 
 template <class T>
+ArrayVar<T>::~ArrayVar() {
+    cache.erase(m_idx, m_dim);
+}
+
+template <class T>
 ArrayVar<T>::Self ArrayVar<T>::next(const unsigned p_dim) {
     --last_tmp_idx;
     return arrays::mkVar<T>(last_tmp_idx, p_dim);
@@ -99,7 +104,7 @@ std::optional<typename ArrayVar<T>::Self> ArrayVar<T>::isVar() const {
 
 template <class T>
 ArrayVar<T>::Self ArrayVar<T>::var() const {
-    return cpp::assume_not_null(this);
+    return cpp::assume_not_null(std::static_pointer_cast<const ArrayVar>(static_cast<const Array<T>*>(this)->shared_from_this()));
 }
 
 template <class T>
@@ -157,7 +162,7 @@ ArrayVarPtr<T> ArrayVar<T>::dummyConst() {
 
 template <class T>
 ArrayPtr<T> ArrayVar<T>::syntacticImplicant(ModelPtr, LitSet&) const {
-    return cpp::assume_not_null(this);
+    return cpp::assume_not_null(this->shared_from_this());
 }
 
 template <class T>
@@ -186,6 +191,11 @@ ArrayWrite<T>::ArrayWrite(const ArrayPtr<T>& p_arr, Bools::Expr p_cond,
                           const typename T::Expr& p_val) : m_arr(p_arr), m_cond(std::move(p_cond)), m_val(p_val) {}
 
 template <class T>
+ArrayWrite<T>::~ArrayWrite() {
+    cache.erase(m_arr, m_cond, m_val);
+}
+
+template <class T>
 ArrayPtr<T> ArrayWrite<T>::arr() const {
     return m_arr;
 }
@@ -212,7 +222,7 @@ std::optional<ArrayVarPtr<T>> ArrayWrite<T>::isVar() const {
 
 template <class T>
 std::optional<ArrayWritePtr<T>> ArrayWrite<T>::isArrayWrite() const {
-    return cpp::assume_not_null(this);
+    return cpp::assume_not_null(std::static_pointer_cast<const ArrayWrite>(static_cast<const Array<T>*>(this)->shared_from_this()));
 }
 
 template <class T>
@@ -408,6 +418,11 @@ size_t ArrayRead<T>::CacheHash::operator(
 template <class T>
 ArrayRead<T>::ArrayRead(const ArrayPtr<T>& p_arr, const std::vector<Arith::Expr>& p_indices): m_arr(p_arr), m_indices(p_indices) {
     assert(m_arr->dim() == m_indices.size());
+}
+
+template <class T>
+ArrayRead<T>::~ArrayRead() {
+    cache.erase(m_arr, m_indices);
 }
 
 template <class T>

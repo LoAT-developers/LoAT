@@ -22,7 +22,7 @@ LoatBoolExprPtr LoatBoolExpr::toPtr() const
 // LoatBoolVar
 // ==============================
 
-ConsHashFree<LoatBoolVar, std::string, bool> LoatBoolVar::cache;
+ConsHash<LoatBoolVar, std::string, bool> LoatBoolVar::cache;
 
 LoatBoolVar::LoatBoolVar(std::string name, const bool isPost)
     : LoatBoolExpr(LoatBoolExpression::Kind::Variable), m_name(std::move(name)), m_isPost(isPost) {}
@@ -68,7 +68,7 @@ LoatBoolExprPtr LoatBoolExpression::mkPostVar(const std::string &name)
 // LoatBoolAnd
 // ==============================
 
-ConsHashFree<LoatBoolAnd, LoatBoolExprVec> LoatBoolAnd::cache;
+ConsHash<LoatBoolAnd, LoatBoolExprVec> LoatBoolAnd::cache;
 
 LoatBoolAnd::LoatBoolAnd(LoatBoolExprVec args)
     : LoatBoolExpr(LoatBoolExpression::Kind::And), m_args(std::move(args)) {}
@@ -102,7 +102,7 @@ LoatBoolExprPtr LoatBoolExpression::mkAnd(const LoatBoolExprVec &&args)
 // LoatBoolOr
 // ==============================
 
-ConsHashFree<LoatBoolOr, LoatBoolExprVec> LoatBoolOr::cache;
+ConsHash<LoatBoolOr, LoatBoolExprVec> LoatBoolOr::cache;
 
 LoatBoolOr::LoatBoolOr(LoatBoolExprVec args)
     : LoatBoolExpr(LoatBoolExpression::Kind::Or), m_args(std::move(args)) {}
@@ -136,7 +136,7 @@ LoatBoolExprPtr LoatBoolExpression::mkOr(const LoatBoolExprVec &&args)
 // LoatBoolNot
 // ==============================
 
-ConsHashFree<LoatBoolNot, LoatBoolExprPtr> LoatBoolNot::cache;
+ConsHash<LoatBoolNot, LoatBoolExprPtr> LoatBoolNot::cache;
 
 LoatBoolNot::LoatBoolNot(LoatBoolExprPtr arg)
     : LoatBoolExpr(LoatBoolExpression::Kind::Not), m_arg(std::move(arg)) {}
@@ -217,7 +217,7 @@ size_t LoatBoolCmp::CacheHash::operator()(const std::tuple<LoatIntExprPtr, LoatB
     return hash;
 }
 
-ConsHashFree<LoatBoolCmp, LoatIntExprPtr, LoatBoolExpression::CmpOp, LoatIntExprPtr> LoatBoolCmp::cache;
+ConsHash<LoatBoolCmp, LoatIntExprPtr, LoatBoolExpression::CmpOp, LoatIntExprPtr> LoatBoolCmp::cache;
 LoatBoolCmp::LoatBoolCmp(LoatIntExprPtr lhs, const LoatBoolExpression::CmpOp op, LoatIntExprPtr  rhs)
     : LoatBoolExpr(LoatBoolExpression::Kind::Compare), m_lhs(std::move(lhs)), m_rhs(std::move(rhs)), m_op(op) {}
 LoatBoolCmp::~LoatBoolCmp()

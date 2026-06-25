@@ -104,7 +104,7 @@ void SexpressoParser::run(const std::string &filename) {
             if (!conc.isString("false")) {
                 conclusion = parsePred(conc, state);
             }
-            const auto res = Clause::mk(premise, state.refinement(), arith::one(), conclusion);
+            const auto res = Clause::mk(premise, state.refinement(), arith::zero(), conclusion);
             chcs->add_clause(res);
             state.pop();
         }
