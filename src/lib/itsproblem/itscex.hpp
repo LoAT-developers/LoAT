@@ -3,6 +3,7 @@
 #include "itsproblem.hpp"
 #include "rule.hpp"
 #include "proof.hpp"
+#include "rulepreprocessing.hpp"
 
 class ITSCex {
 
@@ -17,6 +18,7 @@ protected:
     bool is_known(const RulePtr& rule) const;
 
 public:
+    virtual ~ITSCex() = default;
 
     explicit ITSCex(const linked_hash_set<RulePtr>& orig);
 
@@ -33,5 +35,8 @@ public:
     const linked_hash_map<RulePtr, RulePtr> &get_implicants() const;
     const linked_hash_map<RulePtr, std::vector<RulePtr>> &get_resolvents() const;
     std::vector<std::pair<RulePtr, ProofStepKind>> get_used_rules(const std::vector<RulePtr> &transitions) const;
+    virtual std::shared_ptr<ITSCex> replace_rules(
+        const linked_hash_map<RulePtr, RulePtr>&,
+        const linked_hash_map<RulePtr, std::shared_ptr<RulePreprocessor>>&) const = 0;
 
 };

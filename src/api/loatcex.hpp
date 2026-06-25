@@ -8,34 +8,33 @@
 
 class LoatCex
 {
-private:
-    ITSCex m_cex;
+    std::shared_ptr<ITSCex> m_cex;
 
 public:
-    explicit LoatCex(const ITSCex &cex)
+    explicit LoatCex(const std::shared_ptr<ITSCex> &cex)
         : m_cex(cex) {}
 
     const linked_hash_map<RulePtr, RulePtr> &getAccelerations() const
     {
-        return m_cex.get_accel();
+        return m_cex->get_accel();
     }
 
     const linked_hash_map<RulePtr, RulePtr> &getImplicants() const
     {
-        return m_cex.get_implicants();
+        return m_cex->get_implicants();
     }
 
     const linked_hash_map<RulePtr, std::vector<RulePtr>> &getResolvents() const
     {
-        return m_cex.get_resolvents();
+        return m_cex->get_resolvents();
     }
 
     std::vector<std::pair<RulePtr, ProofStepKind>> getUsedSteps(const std::vector<RulePtr> &transitions) const
     {
-        return m_cex.get_used_rules(transitions);
+        return m_cex->get_used_rules(transitions);
     }
 
-    const ITSCex &raw() const
+    const std::shared_ptr<ITSCex> &raw() const
     {
         return m_cex;
     }

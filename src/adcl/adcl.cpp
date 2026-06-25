@@ -684,6 +684,10 @@ ITSSafetyCex ADCL::get_cex() {
     return cex;
 }
 
+ITSModel ADCL::get_model() {
+    throw std::logic_error("ADCL cannot prove SAT!");
+}
+
 unsigned ADCL::get_penalty(const RulePtr& idx) const {
     if (const auto it {penalty.find(idx)}; it != penalty.end()) {
         return it->second;
@@ -695,113 +699,107 @@ void ADCL::bump_penalty(const RulePtr& idx) {
     penalty.emplace(idx, 0).first->second++;
 }
 
-SmtResult ADCL::analyze() {
-    init();
-    if (try_to_finish()) {
-        return SmtResult::Unsat;
-    }
-    blocked_clauses[0].clear();
-    do {
-        ++luby_count;
-        const size_t next_restart = luby_unit * luby.second;
-        std::unique_ptr<LearningState> state;
-        if (!trace.empty()) {
-            for (auto range = has_looping_infix(trace.size() - 1);
-                 range;
-                 range = has_looping_infix(range->start() - 1)) {
-                auto step {trace[range->start()]};
-                const auto simple_loop {range->length() == 1};
-                state = handle_loop(*range);
-                if (state->restart()) {
-                    break;
-                }
-                if (state->covered()) {
-                    backtrack();
-                    print_state();
-                    break;
-                }
-                if (state->succeeded()) {
-                    if (simple_loop) {
-                        block(step);
-                    }
-                    print_state();
-                    if ((drop || simple_loop) && try_to_finish()) {
-                        return SmtResult::Unsat;
-                    }
-                    continue;
-                }
-                if (state->dropped()) {
-                    if (simple_loop) {
-                        block(step);
-                    }
-                    print_state();
-                    break;
-                }
-                if (state->unsat()) {
-                    print_state();
-                    unsat();
-                    return SmtResult::Unsat;
-                }
-                if (state->unroll() && state->unroll()->acceleration_failed()) {
-                    // stop searching for longer loops if the current one was already too complicated
-                    break;
-                }
-            }
-        }
-        if (luby_count >= next_restart || (state && state->restart())) {
-            if (Config::Analysis::log) std::cout << "restarting after " << luby_count << " iterations" << std::endl;
-            // restart
-            while (!trace.empty()) {
-                pop();
-            }
-            luby_next();
-        }
-        auto try_set = trace.empty() ? chcs->getInitialTransitions() : chcs->getSuccessors(trace.back().clause_idx);
-        for (auto it = try_set.begin(); it != try_set.end();) {
-            if (is_learned_clause(*it) && locked.contains(*redundancy->get_language(*it))) {
-                it = try_set.erase(it);
-            } else {
-                ++it;
-            }
-        }
-        std::vector to_try(try_set.begin(), try_set.end());
-        std::ranges::sort(to_try, [this](const RulePtr& x, const RulePtr& y){
-            if (const auto p1 {get_penalty(x)}, p2 {get_penalty(y)}; p1 != p2) {
-                return p1 < p2;
-            }
-            if (const auto xdet {x->isDeterministic()}; xdet != y->isDeterministic()) {
-                return xdet;
-            }
-            if (const auto xlin {x->isLinear()}; xlin != y->isLinear()) {
-                return xlin;
-            }
-            return x->getId() > y->getId();
-        });
-        bool all_failed {true};
-        for (const auto &idx: to_try) {
-            solver->push();
-            const auto implicant {resolve(idx)};
-            solver->pop();
-            if (implicant && store_step(idx, *implicant)) {
-                print_state();
-                update_cpx();
-                all_failed = false;
+std::optional<SmtResult> ADCL::do_step() {
+    ++luby_count;
+    const size_t next_restart = luby_unit * luby.second;
+    std::unique_ptr<LearningState> state;
+    if (!trace.empty()) {
+        for (auto range = has_looping_infix(trace.size() - 1);
+             range;
+             range = has_looping_infix(range->start() - 1)) {
+            auto step{trace[range->start()]};
+            const auto simple_loop{range->length() == 1};
+            state = handle_loop(*range);
+            if (state->restart()) {
                 break;
             }
-            bump_penalty(idx);
+            if (state->covered()) {
+                backtrack();
+                print_state();
+                break;
+            }
+            if (state->succeeded()) {
+                if (simple_loop) {
+                    block(step);
+                }
+                print_state();
+                if ((drop || simple_loop) && try_to_finish()) {
+                    return SmtResult::Unsat;
+                }
+                continue;
+            }
+            if (state->dropped()) {
+                if (simple_loop) {
+                    block(step);
+                }
+                print_state();
+                break;
+            }
+            if (state->unsat()) {
+                print_state();
+                unsat();
+                return SmtResult::Unsat;
+            }
+            if (state->unroll() && state->unroll()->acceleration_failed()) {
+                // stop searching for longer loops if the current one was already too complicated
+                break;
+            }
         }
-        if (trace.empty()) {
+    }
+    if (luby_count >= next_restart || (state && state->restart())) {
+        if (Config::Analysis::log) std::cout << "restarting after " << luby_count << " iterations" << std::endl;
+        // restart
+        while (!trace.empty()) {
+            pop();
+        }
+        luby_next();
+    }
+    auto try_set = trace.empty() ? chcs->getInitialTransitions() : chcs->getSuccessors(trace.back().clause_idx);
+    for (auto it = try_set.begin(); it != try_set.end();) {
+        if (is_learned_clause(*it) && locked.contains(*redundancy->get_language(*it))) {
+            it = try_set.erase(it);
+        } else {
+            ++it;
+        }
+    }
+    std::vector to_try(try_set.begin(), try_set.end());
+    std::ranges::sort(to_try, [this](const RulePtr &x, const RulePtr &y) {
+        if (const auto p1{get_penalty(x)}, p2{get_penalty(y)}; p1 != p2) {
+            return p1 < p2;
+        }
+        if (const auto xdet{x->isDeterministic()}; xdet != y->isDeterministic()) {
+            return xdet;
+        }
+        if (const auto xlin{x->isLinear()}; xlin != y->isLinear()) {
+            return xlin;
+        }
+        return x->getId() > y->getId();
+    });
+    bool all_failed{true};
+    for (const auto &idx: to_try) {
+        solver->push();
+        const auto implicant{resolve(idx)};
+        solver->pop();
+        if (implicant && store_step(idx, *implicant)) {
+            print_state();
+            update_cpx();
+            all_failed = false;
             break;
         }
-        if (all_failed) {
-            backtrack();
-            print_state();
-            continue;
-        }
-        if (try_to_finish()) { // check whether a query is applicable after every step and, importantly, before acceleration (which might approximate)
-            return SmtResult::Unsat;
-        }
-    } while (true);
+        bump_penalty(idx);
+    }
+    if (trace.empty()) {
+        return SmtResult::Unknown;
+    }
+    if (all_failed) {
+        backtrack();
+        print_state();
+        return SmtResult::Unknown;
+    }
+    if (try_to_finish()) {
+        // check whether a query is applicable after every step and, importantly, before acceleration (which might approximate)
+        return SmtResult::Unsat;
+    }
     return SmtResult::Unknown;
 }
 

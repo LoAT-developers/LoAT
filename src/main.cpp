@@ -25,6 +25,8 @@
 
 #include <z3.h>
 
+#include "trivialanalysis.hpp"
+
 // Variables for command line flags
 std::string filename;
 
@@ -349,83 +351,67 @@ int main(int argc, char *argv[]) {
     yices::init();
     std::optional<ITSModel> its_model;
     std::optional<ITSSafetyCex> its_cex;
-    auto preprocessor{std::make_shared<Preprocessor>(*its)};
-    auto res {preprocessor->preprocess()};
+    auto preprocessor{std::make_shared<ITSPreprocessor>(*its)};
+    if (preprocessor->process() && Config::Analysis::log) {
+        std::cout << "Simplified ITS\n" << *its << std::endl;
+    }
+    auto trivial_analysis = TrivialAnalysis(*its);
+    auto res = trivial_analysis.analyze();
     if (res != SmtResult::Unknown) {
         if (Config::Analysis::log) {
-            std::cout << "solved by preprocessing" << std::endl;
+            std::cout << "solved by trivial analysis" << std::endl;
         }
         if (Config::Analysis::model) {
             if (res == SmtResult::Sat) {
-                its_model = preprocessor->get_model();
+                its_model = trivial_analysis.get_model();
             } else {
-                its_cex = preprocessor->get_cex();
+                its_cex = trivial_analysis.get_cex();
             }
         }
     } else {
-        if (preprocessor->successful() && Config::Analysis::log) {
-            std::cout << "Simplified ITS\n" << *its << std::endl;
-        }
         if (Config::Analysis::dir == Config::Analysis::Direction::Interleaved) {
             reverse = Reverse(*chcs);
             CHCToITS reversed_chc2its{reverse->reverse()};
             auto reversed{reversed_chc2its.transform()};
-            auto backward_preprocessor{std::make_shared<Preprocessor>(reversed)};
-            res = backward_preprocessor->preprocess();
-            if (res != SmtResult::Unknown) {
-                if (Config::Analysis::log) {
-                    std::cout << "solved by backward preprocessing" << std::endl;
+            auto backward_preprocessor{std::make_shared<ITSPreprocessor>(reversed)};
+            if (backward_preprocessor->process() && Config::Analysis::log) {
+                std::cout << "Simplified reversed ITS\n" << reversed << std::endl;
+            }
+            std::unique_ptr<StepwiseAnalysis> f, b;
+            switch (Config::Analysis::engine) {
+                case Config::Analysis::TRL: {
+                    f = std::make_unique<TRL>(*its, TRL::forwardConfig);
+                    b = std::make_unique<TRL>(reversed, TRL::backwardConfig);
+                    break;
                 }
-                if (Config::Analysis::model) {
+                case Config::Analysis::ABMC: {
+                    f = std::make_unique<ABMC>(*its);
+                    b = std::make_unique<ABMC>(reversed);
+                    break;
+                }
+                case Config::Analysis::ADCLSAT: {
+                    f = std::make_unique<ADCLSat>(*its, TRL::forwardConfig);
+                    b = std::make_unique<ADCLSat>(reversed, TRL::backwardConfig);
+                    break;
+                }
+                default: {
+                    std::cerr << "interleaved analysis is only supported by TRL, ABMC, and ADCL-SAT" << std::endl;
+                    exit(-1);
+                }
+            }
+            Interleaved fb(*f, *b);
+            res = fb.analyze();
+            if (Config::Analysis::model) {
+                if (res == SmtResult::Sat) {
+                    its_model = fb.get_model();
+                } else if (res == SmtResult::Unsat) {
+                    its_cex = fb.get_cex();
+                }
+                if (fb.is_forward()) {
+                    reverse.reset();
+                } else {
                     chc2its = reversed_chc2its;
                     preprocessor = backward_preprocessor;
-                    if (res == SmtResult::Sat) {
-                        its_model = backward_preprocessor->get_model();
-                    } else {
-                        its_cex = backward_preprocessor->get_cex();
-                    }
-                }
-            } else {
-                if (backward_preprocessor->successful() && Config::Analysis::log) {
-                    std::cout << "Simplified reversed ITS\n"
-                              << reversed << std::endl;
-                }
-                std::unique_ptr<StepwiseAnalysis> f, b;
-                switch (Config::Analysis::engine) {
-                    case Config::Analysis::TRL: {
-                        f = std::make_unique<TRL>(*its, TRL::forwardConfig);
-                        b = std::make_unique<TRL>(reversed, TRL::backwardConfig);
-                        break;
-                    }
-                    case Config::Analysis::ABMC: {
-                        f = std::make_unique<ABMC>(*its);
-                        b = std::make_unique<ABMC>(reversed);
-                        break;
-                    }
-                    case Config::Analysis::ADCLSAT: {
-                        f = std::make_unique<ADCLSat>(*its, TRL::forwardConfig);
-                        b = std::make_unique<ADCLSat>(reversed, TRL::backwardConfig);
-                        break;
-                    }
-                    default: {
-                        std::cerr << "interleaved analysis is only supported by TRL, ABMC, and ADCL-SAT" << std::endl;
-                        exit(-1);
-                    }
-                }
-                Interleaved fb(*f, *b);
-                res = fb.analyze();
-                if (Config::Analysis::model) {
-                    if (res == SmtResult::Sat) {
-                        its_model = fb.get_model();
-                    } else if (res == SmtResult::Unsat) {
-                        its_cex = fb.get_cex();
-                    }
-                    if (fb.is_forward()) {
-                        reverse.reset();
-                    } else {
-                        chc2its = reversed_chc2its;
-                        preprocessor = backward_preprocessor;
-                    }
                 }
             }
         } else {
@@ -435,7 +421,7 @@ int main(int argc, char *argv[]) {
                         *its,
                         [&](const ITSCpxCex &cex) {
                             if (Config::Analysis::complexity()) {
-                                std::cout << preprocessor->transform_cex(cex);
+                                std::cout << preprocessor->transform_cex(std::make_shared<ITSCpxCex>(cex));
                             }
                         }};
                     res = r.analyze();
@@ -513,7 +499,8 @@ int main(int argc, char *argv[]) {
         }
         std::cout << std::endl << std::endl;
     } else if (its_cex) {
-        its_cex = preprocessor->transform_cex(*its_cex);
+        its_cex = *std::static_pointer_cast<ITSSafetyCex>(
+            preprocessor->transform_cex(std::make_shared<ITSSafetyCex>(*its_cex)));
         assert(std::ranges::all_of(its_cex->get_orig(), [&](const auto& r) {
             return orig_transitions.contains(r);
         }));

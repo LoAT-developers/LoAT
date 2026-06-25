@@ -1,4 +1,6 @@
 #include "formulapreprocessing.hpp"
+
+#include "config.hpp"
 #include "subs.hpp"
 #include "impliedequivalences.hpp"
 #include "intfm.hpp"
@@ -20,6 +22,10 @@ ModelPtr EquivalencePropagator::transform_model(const ModelPtr &model) {
     return model->composeBackwards(subs);
 }
 
+Subs EquivalencePropagator::get_subs() const {
+    return subs;
+}
+
 EqualityPropagator::EqualityPropagator(const Bools::Expr &in, const std::function<bool(const Var&)>& allow): AbstractFormulaPreprocessor(in), allow(allow) {}
 
 Bools::Expr EqualityPropagator::process() {
@@ -32,6 +38,10 @@ Bools::Expr EqualityPropagator::process() {
 
 ModelPtr EqualityPropagator::transform_model(const ModelPtr &model) {
     return model->composeBackwards(subs);
+}
+
+Subs EqualityPropagator::get_subs() const {
+    return subs;
 }
 
 AndSimplifier::AndSimplifier(const Bools::Expr &in): AbstractFormulaPreprocessor(in) {}

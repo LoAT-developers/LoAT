@@ -11,7 +11,10 @@
 #include "realqe.hpp"
 #include "loopacceleration.hpp"
 
-TRL::TRL(const ITSPtr& its, const Config::TRPConfig &config) : TRPUtil(its, config) {
+TRL::TRL(const ITSPtr& its, const Config::TRPConfig &config) : TRPUtil(its, config) {}
+
+void TRL::init() {
+    TRPUtil::init();
     build_step();
 }
 

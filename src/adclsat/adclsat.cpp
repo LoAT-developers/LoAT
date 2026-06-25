@@ -11,7 +11,10 @@
 #include "realqe.hpp"
 #include "loopacceleration.hpp"
 
-ADCLSat::ADCLSat(const ITSPtr& its, const Config::TRPConfig &config): TRPUtil(its, config) {
+ADCLSat::ADCLSat(const ITSPtr& its, const Config::TRPConfig &config): TRPUtil(its, config) {}
+
+void ADCLSat::init() {
+    TRPUtil::init();
     std::unordered_map<Bools::Expr, Int> rev;
     for (const auto &[id,trans]: rule_map) {
         rev.emplace(trans, id);

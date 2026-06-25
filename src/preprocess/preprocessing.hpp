@@ -2,45 +2,31 @@
 
 #include "itsproblem.hpp"
 #include "itsmodel.hpp"
-#include "itssafetycex.hpp"
-#include "smt.hpp"
-#include "chain.hpp"
-#include "rulepreprocessor.hpp"
+#include "itscex.hpp"
 
-class Preprocessor {
+class AbstractITSPreprocessor {
 
-    bool success{false};
-
-    SmtResult status{SmtResult::Unknown};
+protected:
 
     ITSPtr its;
 
-    Chain chain;
+public:
+    explicit AbstractITSPreprocessor(ITSPtr);
+    virtual ~AbstractITSPreprocessor() = default;
+    virtual bool process() = 0;
+    virtual ITSModel transform_model(const ITSModel &) const = 0;
+    virtual std::shared_ptr<ITSCex> transform_cex(const std::shared_ptr<ITSCex> &cex) const = 0;
 
-    RulePreprocessor rule_preproc;
+};
 
-    ITSSafetyCex cex;
+class ITSPreprocessor : public AbstractITSPreprocessor {
+
+    std::vector<std::unique_ptr<AbstractITSPreprocessor>> procs;
 
 public:
-    explicit Preprocessor(const ITSPtr& its);
 
-    ITSModel transform_model(const ITSModel &) const;
-
-    template <class CEX>
-    CEX transform_cex(const CEX &cex) const {
-        auto transformed = rule_preproc.transform_cex(cex);
-        transformed = chain.transform_cex(transformed);
-        return transformed;
-    }
-
-    SmtResult preprocess();
-
-    bool successful() const;
-
-    static ITSModel get_model();
-
-    const ITSSafetyCex& get_cex() const;
-
-    std::optional<SmtResult> check_empty_clauses(const ITSPtr& its);
-
+    explicit ITSPreprocessor(const ITSPtr& its);
+    bool process() override;
+    ITSModel transform_model(const ITSModel &m) const override;
+    std::shared_ptr<ITSCex> transform_cex(const std::shared_ptr<ITSCex> &cex) const override;
 };

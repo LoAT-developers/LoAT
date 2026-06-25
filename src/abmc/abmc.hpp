@@ -61,6 +61,7 @@ public:
 
     ~ABMC() override = default;
     explicit ABMC(const ITSPtr& its);
+    void init() override;
     std::optional<SmtResult> do_step() override;
     ITSModel get_model() override;
     ITSSafetyCex get_cex() override;

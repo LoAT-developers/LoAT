@@ -62,32 +62,34 @@ std::ostream& operator<<(std::ostream &s, const ITSCpxCex &cex) {
 
 ITSCpxCex::ITSCpxCex(const linked_hash_set<RulePtr> &orig): ITSCex(orig) {}
 
-ITSCpxCex ITSCpxCex::replace_rules(const linked_hash_map<RulePtr, RulePtr> &map) const {
-    ITSCpxCex res{{}};
+std::shared_ptr<ITSCex> ITSCpxCex::replace_rules(
+    const linked_hash_map<RulePtr, RulePtr> &map,
+    const linked_hash_map<RulePtr, std::shared_ptr<RulePreprocessor>>& procs) const {
+    auto res = std::make_shared<ITSCpxCex>(linked_hash_set<RulePtr>());
     if (witness) {
         for (const auto& r: orig) {
-            res.add_orig(map.get(r).value_or(r));
+            res->add_orig(map.get(r).value_or(r));
         }
         for (const auto &[x, y] : implicants) {
-            res.add_implicant(map.get(y).value_or(y), map.get(x).value_or(x));
+            res->add_implicant(map.get(y).value_or(y), map.get(x).value_or(x));
         }
         for (const auto &[x, y] : accel) {
-            res.add_accel(map.get(y).value_or(y), map.get(x).value_or(x));
+            res->add_accel(map.get(y).value_or(y), map.get(x).value_or(x));
         }
         for (const auto &[x, ys] : resolvents) {
             std::vector<RulePtr> transformed;
             for (const auto &y : ys) {
                 transformed.emplace_back(map.get(y).value_or(y));
             }
-            res.add_resolvent(transformed, map.get(x).value_or(x));
+            res->add_resolvent(transformed, map.get(x).value_or(x));
         }
         for (const auto &[x, y] : recurrent_set) {
-            res.add_recurrent_set(map.get(y).value_or(y), map.get(x).value_or(x));
+            res->add_recurrent_set(map.get(y).value_or(y), map.get(x).value_or(x));
         }
         assert(!map.contains(*witness));
-        res.witness = witness;
-        res.valuation = valuation;
-        res.param = param;
+        res->witness = witness;
+        res->valuation = valuation;
+        res->param = param;
     }
     return res;
 }

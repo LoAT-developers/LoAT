@@ -99,15 +99,23 @@ std::vector<std::pair<RulePtr, ProofStepKind>> ITSSafetyCex::get_used_rules() co
     return ITSCex::get_used_rules(transitions);
 }
 
-ITSSafetyCex ITSSafetyCex::replace_rules(const linked_hash_map<RulePtr, RulePtr> &map) const {
-    ITSSafetyCex res{{}};
+std::shared_ptr<ITSCex> ITSSafetyCex::replace_rules(
+    const linked_hash_map<RulePtr, RulePtr> &map,
+    const linked_hash_map<RulePtr, std::shared_ptr<RulePreprocessor>>& procs) const {
+    auto res = std::make_shared<ITSSafetyCex>(linked_hash_set<RulePtr>());
     const auto get = [&](const auto& r) {
         return map.get(r).value_or(r);
+    };
+    const auto transform = [&](const auto& r, const ModelPtr& model) {
+        if (procs.contains(r)) {
+            return procs.at(r)->transform_model(model);
+        }
+        return model;
     };
     for (const auto &[r,k]: get_used_rules()) {
         switch (k) {
             case ProofStepKind::IMPLICANT: {
-                res.add_implicant(get(implicants.at(r)), get(r));
+                res->add_implicant(get(implicants.at(r)), get(r));
                 break;
             }
             case ProofStepKind::RESOLVENT: {
@@ -116,29 +124,29 @@ ITSSafetyCex ITSSafetyCex::replace_rules(const linked_hash_map<RulePtr, RulePtr>
                 for (const auto& r: orig) {
                     transformed.emplace_back(get(r));
                 }
-                res.add_resolvent(transformed, get(r));
+                res->add_resolvent(transformed, get(r));
                 break;
             }
             case ProofStepKind::RECURRENT_SET: {
-                res.add_recurrent_set(get(recurrent_set.at(r)), get(r));
+                res->add_recurrent_set(get(recurrent_set.at(r)), get(r));
                 break;
             }
             case ProofStepKind::ACCEL: {
-                res.add_accel(get(accel.at(r)), get(r));
+                res->add_accel(get(accel.at(r)), get(r));
                 break;
             }
             case ProofStepKind::ORIG: {
-                res.add_orig(get(r));
+                res->add_orig(get(r));
             }
         }
     }
-    res.set_initial_state(states.front());
+    res->set_initial_state(states.front());
     for (size_t i = 1; i < num_states(); ++i) {
         auto trans{transitions.at(i - 1)};
         auto state{states.at(i)};
-        res.do_step(get(trans), state);
+        res->do_step(get(trans), transform(trans, state));
     }
     const auto trans{transitions.back()};
-    res.add_final_transition(get(trans));
+    res->add_final_transition(get(trans));
     return res;
 }

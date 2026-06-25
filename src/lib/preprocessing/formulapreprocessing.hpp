@@ -28,6 +28,7 @@ public:
 
     Bools::Expr process() override;
     ModelPtr transform_model(const ModelPtr& model) override;
+    Subs get_subs() const;
 
 };
 
@@ -41,6 +42,7 @@ public:
 
     Bools::Expr process() override;
     ModelPtr transform_model(const ModelPtr& model) override;
+    Subs get_subs() const;
 
 };
 

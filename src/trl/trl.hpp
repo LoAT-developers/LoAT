@@ -27,6 +27,7 @@ class TRL final : public TRPUtil {
 public:
     ~TRL() override = default;
     explicit TRL(const ITSPtr& its, const Config::TRPConfig &config);
+    void init() override;
     std::optional<SmtResult> do_step() override;
     ITSModel get_model() override;
 

@@ -11,6 +11,8 @@
 
 #include <optional>
 
+#include "stepwise.hpp"
+
 /**
  * Possible improvements:
  * - remove original clauses that are subsumed by learned clauses
@@ -145,7 +147,7 @@ class Restart final: public LearningState {
     std::optional<Restart> restart() override;
 };
 
-class ADCL {
+class ADCL: public StepwiseAnalysis {
 
     ITSPtr chcs;
 
@@ -204,11 +206,6 @@ class ADCL {
     void update_cpx();
 
     static std::optional<RulePtr> instantiate(const ArithVarPtr& n, const RulePtr& rule);
-
-    /**
-     * initializes all data structures after preprocessing
-     */
-    void init();
 
     /**
      * finishes the analysis when we were able to prove unsat
@@ -306,11 +303,18 @@ class ADCL {
 
 public:
 
+    /**
+     * initializes all data structures after preprocessing
+     */
+    void init() override;
+
     ADCL(const ITSPtr&, const std::function<void(const ITSCpxCex&)> &print_cpx_cex);
 
-    SmtResult analyze();
+    std::optional<SmtResult> do_step() override;
 
-    ITSSafetyCex get_cex();
+    ITSSafetyCex get_cex() override;
+
+    ITSModel get_model() override;
 
 };
 

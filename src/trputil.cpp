@@ -36,7 +36,9 @@ TRPUtil::TRPUtil(
       its(its),
       trp(t.pre_to_post(), config),
       post_to_pre(t.pre_to_post().invert()),
-      last_orig_clause(t.trans().size() - 1) {
+      last_orig_clause(t.trans().size() - 1) {}
+
+void TRPUtil::init() {
     if (Config::Analysis::log) {
         std::cout << "safetyproblem:\n"
                   << t << std::endl;

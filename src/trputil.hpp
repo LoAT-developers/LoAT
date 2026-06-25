@@ -71,6 +71,7 @@ public:
     static const Config::TRPConfig forwardConfig;
     static const Config::TRPConfig backwardConfig;
 
+    void init() override;
     ITSSafetyCex get_cex() override;
 
 };

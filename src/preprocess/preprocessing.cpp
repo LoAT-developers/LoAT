@@ -8,86 +8,170 @@
 
 #include <unordered_set>
 #include <stack>
+#include <utility>
 
 #include "formulapreprocessing.hpp"
 
-Preprocessor::Preprocessor(const ITSPtr& its): its(its), chain(its), rule_preproc(its), cex(its->getAllTransitions()) {}
+AbstractITSPreprocessor::AbstractITSPreprocessor(ITSPtr its): its(std::move(its)) {}
 
-bool Preprocessor::successful() const {
-    return success;
-}
+class ITSRulePreprocessor : public AbstractITSPreprocessor {
 
-ITSModel Preprocessor::transform_model(const ITSModel &model) const {
-    return chain.transform_model(model);
-}
+    linked_hash_map<RulePtr, std::shared_ptr<RulePreprocessor>> procs;
+    linked_hash_map<RulePtr, RulePtr> back_map;
 
-ITSModel Preprocessor::get_model() {
-    ITSModel model;
-    model.set_invariant(ITSProblem::getInitialLocation(), top());
-    return model;
-}
+public:
 
-const ITSSafetyCex& Preprocessor::get_cex() const {
-    return cex;
-}
+    explicit ITSRulePreprocessor(const ITSPtr& its): AbstractITSPreprocessor(its) {}
 
-std::optional<SmtResult> remove_irrelevant_clauses(const ITSPtr& its, const bool forward) {
-    std::unordered_set<RulePtr> keep;
-    std::stack<RulePtr> todo;
-    for (const auto &x : forward ? its->getInitialTransitions() : its->getSinkTransitions()) {
-        todo.push(x);
-    }
-    if (todo.empty()) {
-        return SmtResult::Sat;
-    }
-    do {
-        const auto current {todo.top()};
-        todo.pop();
-        keep.insert(current);
-        for (const auto &p : forward ? its->getSuccessors(current) : its->getPredecessors(current)) {
-            if (!keep.contains(p)) {
-                todo.push(p);
+    bool process() override {
+        for (const auto& r: its->getAllTransitions()) {
+            auto proc = std::make_shared<RulePreprocessor>(r);
+            if (const auto res = proc->process(); res != r) {
+                procs.emplace(res, proc);
+                back_map.emplace(res, r);
             }
         }
-    } while (!todo.empty());
-    linked_hash_set<RulePtr> deleted;
-    for (const auto &r : its->getAllTransitions()) {
-        if (!keep.contains(r)) {
-            deleted.insert(r);
+        for (const auto &[x,y]: back_map) {
+            its->replaceRule(y, x);
+        }
+        return !back_map.empty();
+    }
+
+    ITSModel transform_model(const ITSModel &m) const override {
+        return m;
+    }
+
+    std::shared_ptr<ITSCex> transform_cex(const std::shared_ptr<ITSCex> &cex) const override {
+        return cex->replace_rules(back_map, procs);
+    }
+};
+
+class BotRemover : public AbstractITSPreprocessor {
+public:
+
+    explicit BotRemover(const ITSPtr& its): AbstractITSPreprocessor(its) {}
+
+    bool process() override {
+        std::vector<RulePtr> remove;
+        for (const auto& r: its->getAllTransitions()) {
+            if (r->getGuard() == bot()) {
+                remove.emplace_back(r);
+            }
+        }
+        for (const auto &r: remove) {
             its->removeRule(r);
         }
+        return !remove.empty();
     }
-    if (deleted.empty()) {
-        return std::nullopt;
-    }
-    if (Config::Analysis::doLogPreproc()) {
-        std::cout << "removed the following irrelevant transitions: " << deleted << std::endl;
-    }
-    return SmtResult::Unknown;
-}
 
-std::optional<SmtResult> remove_irrelevant_clauses(const ITSPtr& its) {
-    if (const auto res = remove_irrelevant_clauses(its, true); res && *res != SmtResult::Unknown) {
-        return res;
+    ITSModel transform_model(const ITSModel &m) const override {
+        return m;
     }
-    return remove_irrelevant_clauses(its, false);
-}
 
-bool remove_identity_clauses(const ITSPtr& its) {
-    linked_hash_set<RulePtr> remove;
-    if (Config::Analysis::mode == Config::Analysis::Safety) {
+    std::shared_ptr<ITSCex> transform_cex(const std::shared_ptr<ITSCex> &cex) const override {
+        return cex;
+    }
+};
 
-        for (const auto& r: its->getAllTransitions()) {
+class EmptyClauseRemover : public AbstractITSPreprocessor {
+public:
+
+    explicit EmptyClauseRemover(const ITSPtr& its): AbstractITSPreprocessor(its) {}
+
+    bool process() override {
+        std::vector<RulePtr> remove;
+        for (const auto& r: its->getInitialTransitions()) {
+            if (its->isSinkTransition(r) && SmtFactory::check(r->getGuard()) != SmtResult::Sat) {
+                remove.emplace_back(r);
+            }
+        }
+        for (const auto& r: remove) {
+            its->removeRule(r);
+        }
+        return !remove.empty();
+    }
+
+    ITSModel transform_model(const ITSModel &m) const override {
+        return m;
+    }
+
+    std::shared_ptr<ITSCex> transform_cex(const std::shared_ptr<ITSCex> &cex) const override {
+        return cex;
+    }
+};
+
+class IrrelevantRuleRemover : public AbstractITSPreprocessor {
+
+    bool forward;
+
+public:
+
+    IrrelevantRuleRemover(const ITSPtr& its, const bool forward): AbstractITSPreprocessor(its), forward(forward) {}
+
+    bool process() override {
+        if (!Config::Analysis::safety()) {
+            return false;
+        }
+        std::unordered_set<RulePtr> keep;
+        std::stack<RulePtr> todo;
+        for (const auto &x : forward ? its->getInitialTransitions() : its->getSinkTransitions()) {
+            todo.push(x);
+        }
+        while (!todo.empty()) {
+            const auto current {todo.top()};
+            todo.pop();
+            keep.insert(current);
+            for (const auto &p : forward ? its->getSuccessors(current) : its->getPredecessors(current)) {
+                if (!keep.contains(p)) {
+                    todo.push(p);
+                }
+            }
+        }
+        linked_hash_set<RulePtr> deleted;
+        for (const auto &r : its->getAllTransitions()) {
+            if (!keep.contains(r)) {
+                deleted.insert(r);
+            }
+        }
+        for (const auto& r: deleted) {
+            its->removeRule(r);
+        }
+        if (Config::Analysis::doLogPreproc() && !deleted.empty()) {
+            std::cout << "removed the following irrelevant transitions: " << deleted << std::endl;
+        }
+        return !deleted.empty();
+    }
+
+    ITSModel transform_model(const ITSModel &m) const override {
+        return m;
+    }
+
+    std::shared_ptr<ITSCex> transform_cex(const std::shared_ptr<ITSCex> &cex) const override {
+        return cex;
+    }
+};
+
+class IdentityRuleRemover : public AbstractITSPreprocessor {
+public:
+
+    explicit IdentityRuleRemover(const ITSPtr& its): AbstractITSPreprocessor(its) {}
+
+    bool process() override {
+        linked_hash_set<RulePtr> remove;
+        if (Config::Analysis::mode != Config::Analysis::Safety) {
+            return false;
+        }
+        for (const auto &r: its->getAllTransitions()) {
             if (!r->isDeterministic()) {
                 continue;
             }
             LitSet diseqs;
-            const auto subs = r->getUpdate().get<Arrays<Arith>>();
+            const auto subs = r->getUpdate().get<Arrays<Arith> >();
             if (subs.size() != r->getUpdate().size()) {
                 continue;
             }
             auto has_arrays = false;
-            for (const auto& [k,v]: subs) {
+            for (const auto &[k,v]: subs) {
                 if (k->dim() > 0) {
                     has_arrays = true;
                     break;
@@ -98,244 +182,222 @@ bool remove_identity_clauses(const ITSPtr& its) {
                 remove.insert(r);
             }
         }
-        for (const auto& r: remove) {
+        for (const auto &r: remove) {
             its->removeRule(r);
         }
         if (!remove.empty() && Config::Analysis::doLogPreproc()) {
             std::cout << "removed the following identity transitions: " << remove << std::endl;
         }
+        return !remove.empty();
     }
-    return !remove.empty();
-}
+
+    ITSModel transform_model(const ITSModel &m) const override {
+        return m;
+    }
+
+    std::shared_ptr<ITSCex> transform_cex(const std::shared_ptr<ITSCex> &cex) const override {
+        return cex;
+    }
+};
 
 /**
  * Motivating example: f(x,y) -> f(-x,z) :|: (y=0 /\ z=1) \/ (y=1 /\ z=0)
  * In contrast to its implicants, it can be unrolled to obtain simpler closed forms.
  */
-bool unroll(const ITSPtr& its) {
-    auto success{false};
-    for (const auto &r : its->getAllTransitions()) {
-        if (its->isSimpleLoop(r) && !r->getGuard()->isConjunction()) {
-            if (const auto [res, period] = LoopAcceleration::chain(r); period > 1) {
-                success = true;
-                if (Config::Analysis::doLogPreproc()) {
-                    std::cout
-                        << "unrolled the following rule " << period << " times:\n"
-                        << r
-                        << "\nresult:\n"
-                        << res << std::endl;
+class Unroller : public AbstractITSPreprocessor {
+
+    std::unordered_map<RulePtr, RulePtr> m_back_map;
+    std::unordered_map<RulePtr, unsigned> m_period;
+
+public:
+
+    explicit Unroller(const ITSPtr& its): AbstractITSPreprocessor(its) {}
+
+    bool process() override {
+        auto success{false};
+        for (const auto &r : its->getAllTransitions()) {
+            if (its->isSimpleLoop(r) && !r->getGuard()->isConjunction()) {
+                if (const auto [res, period] = LoopAcceleration::chain(r); period > 1) {
+                    success = true;
+                    if (Config::Analysis::doLogPreproc()) {
+                        std::cout
+                            << "unrolled the following rule " << period << " times:\n"
+                            << r
+                            << "\nresult:\n"
+                            << res << std::endl;
+                    }
+                    its->addRule(res, r, r);
+                    m_back_map.emplace(res, r);
+                    m_period.emplace(res, period);
                 }
-                its->addRule(res, r, r);
             }
         }
+        return success;
+    }
+
+    ITSModel transform_model(const ITSModel &m) const override {
+        return m;
+    }
+
+    std::shared_ptr<ITSCex> transform_cex(const std::shared_ptr<ITSCex> &cex) const override {
+        for (const auto& [x,y]: m_back_map) {
+            cex->undo_chaining(std::vector(m_period.at(x), y), x);
+        }
+        return cex;
+    }
+};
+
+class DGRefiner : public AbstractITSPreprocessor {
+
+public:
+
+    explicit DGRefiner(const ITSPtr& its): AbstractITSPreprocessor(its) {}
+
+    bool process() override {
+        const auto is_edge = [](const RulePtr& fst, const RulePtr& snd) {
+            return SmtFactory::check(Preprocess::chain({fst, snd->renameTmpVars()})->getGuard()) == SmtResult::Sat;
+        };
+        if (const auto removed{its->refineDependencyGraph(is_edge)}; removed.empty()) {
+            return false;
+        } else {
+            if (Config::Analysis::doLogPreproc()) {
+                std::cout << "removed the following edges from the dependency graph:" << std::endl;
+                for (const auto &[s,d]: removed) {
+                    std::cout << "(" << s->getId() << ", " << d->getId() << ")" << std::endl;
+                }
+            }
+            return true;
+        }
+    }
+
+    ITSModel transform_model(const ITSModel &m) const override {
+        return m;
+    }
+
+    std::shared_ptr<ITSCex> transform_cex(const std::shared_ptr<ITSCex> &cex) const override {
+        return cex;
+    }
+};
+
+class Chainer : public AbstractITSPreprocessor {
+
+    linked_hash_set<std::tuple<LocationIdx, RulePtr, LocationIdx>> removed;
+    linked_hash_map<RulePtr, std::pair<RulePtr, RulePtr>> chained;
+
+public:
+
+    explicit Chainer(const ITSPtr& its): AbstractITSPreprocessor(its) {}
+
+    bool process() override {
+        bool changed{false};
+        bool success{false};
+        do {
+            changed = false;
+            for (const auto &first : its->getAllTransitions()) {
+                if (const auto succ{its->getSuccessors(first)}; succ.size() == 1 && !succ.contains(first)) {
+                    if (const auto second_idx{*succ.begin()}; !its->isSimpleLoop(second_idx)) {
+                        const auto c{Preprocess::chain({first, second_idx->renameTmpVars()})};
+                        if (Config::Analysis::doLogPreproc()) {
+                            std::cout << "chaining\n\trule 1: " << *first << "\n\trule 2: " << *second_idx << "\n\tresult: " << *c << std::endl;
+                        }
+                        its->addRule(c, first, second_idx);
+                        if (Config::Analysis::model) {
+                            chained.emplace(c, std::pair{first, second_idx});
+                            removed.emplace(ITSProblem::getLhsLoc(first), first, ITSProblem::getRhsLoc(first));
+                        }
+                        its->removeRule(first);
+                        if (its->getPredecessors(second_idx).empty()) {
+                            if (Config::Analysis::model) {
+                                removed.emplace(ITSProblem::getLhsLoc(second_idx), second_idx, ITSProblem::getRhsLoc(second_idx));
+                            }
+                            its->removeRule(second_idx);
+                        }
+                        changed = true;
+                        success = true;
+                        break;
+                    }
+                }
+            }
+        } while (changed);
+        return success;
+    }
+
+    ITSModel transform_model(const ITSModel &m) const override {
+        ITSModel res {m};
+        for (const auto &[from,rule,to]: removed) {
+            const auto r {rule->renameTmpVars()};
+            res.set_invariant(to, res.get_invariant(to) || (r->getGuard() && res.get_invariant(from)->subs(r->getUpdate())));
+        }
+        return res;
+    }
+
+    std::shared_ptr<ITSCex> transform_cex(const std::shared_ptr<ITSCex> &cex) const override {
+        auto res {cex};
+        for (const auto &[c,p]: chained) {
+            res->undo_chaining(std::vector{p.first, p.second}, c);
+        }
+        return res;
+    }
+};
+
+ITSPreprocessor::ITSPreprocessor(const ITSPtr &its) : AbstractITSPreprocessor(its) {}
+
+bool ITSPreprocessor::process() {
+    if (Config::Analysis::doLogPreproc()) {
+        std::cout << "starting preprocessing..." << std::endl;
+    }
+    const Profile profile_preproc{"preprocessing"};
+    auto success = false;
+    const auto apply = [&]<class T, class... Args>(const std::string &message, const Args &... args) {
+        auto proc = std::make_unique<T>(args...);
+        if (Config::Analysis::doLogPreproc()) {
+            std::cout << message << "..." << std::endl;
+        }
+        const Profile profile{message};
+        const auto res = proc->process();
+        profile.end();
+        if (Config::Analysis::doLogPreproc()) {
+            std::cout << "done " << message << std::endl;
+        }
+        if (!res) {
+            return false;
+        }
+        success = true;
+        procs.emplace_back(std::move(proc));
+        return true;
+    };
+    apply.operator()<IrrelevantRuleRemover>("removing irrelevant rules (forward)", its, true);
+    apply.operator()<IrrelevantRuleRemover>("removing irrelevant rules (backward)", its, false);
+    apply.operator()<Chainer>("chaining", its);
+    apply.operator()<ITSRulePreprocessor>("preprocessing rules", its);
+    apply.operator()<BotRemover>("removing unsat rules", its);
+    apply.operator()<IdentityRuleRemover>("removing identity rules", its);
+    if (Config::Analysis::engine == Config::Analysis::ADCL) {
+        apply.operator()<Unroller>("unrolling", its);
+        if (its->size() <= 1000) {
+            apply.operator()<DGRefiner>("refining dependency graph", its);
+        }
+    }
+    apply.operator()<EmptyClauseRemover>("removing unsat empty clauses", its);
+    profile_preproc.end();
+    if (Config::Analysis::doLogPreproc()) {
+        std::cout << "done with preprocessing" << std::endl;
     }
     return success;
 }
 
-bool refine_dependency_graph(const ITSPtr& its) {
-    const auto is_edge = [](const RulePtr& fst, const RulePtr& snd) {
-        return SmtFactory::check(Preprocess::chain({fst, snd->renameTmpVars()})->getGuard()) == SmtResult::Sat;
-    };
-    if (const auto removed{its->refineDependencyGraph(is_edge)}; removed.empty()) {
-        return false;
-    } else {
-        if (Config::Analysis::doLogPreproc()) {
-            std::cout << "removed the following edges from the dependency graph:" << std::endl;
-            for (const auto &[s,d]: removed) {
-                std::cout << "(" << s->getId() << ", " << d->getId() << ")" << std::endl;
-            }
-        }
-        return true;
+ITSModel ITSPreprocessor::transform_model(const ITSModel &m) const {
+    auto res = m;
+    for (const auto &proc: procs | std::views::reverse) {
+        res = proc->transform_model(res);
     }
+    return res;
 }
 
-std::optional<SmtResult> Preprocessor::check_empty_clauses(const ITSPtr& its) {
-    std::vector<RulePtr> remove;
-    for (const auto &r: its->getInitialTransitions()) {
-        if (its->isSinkTransition(r)) {
-            const auto solver {SmtFactory::modelBuildingSolver(Smt::chooseLogic(r->getGuard()))};
-            solver->add(r->getGuard());
-            if (const auto smt_res {solver->check()}; smt_res == SmtResult::Sat) {
-                if (Config::Analysis::model) {
-                    cex.set_initial_state(solver->model());
-                    cex.add_final_transition(r);
-                }
-                return SmtResult::Unsat;
-            } else if (smt_res == SmtResult::Unsat) {
-                remove.emplace_back(r);
-            }
-        }
+std::shared_ptr<ITSCex> ITSPreprocessor::transform_cex(const std::shared_ptr<ITSCex> &cex) const {
+    auto res = cex;
+    for (const auto &proc: procs | std::views::reverse) {
+        res = proc->transform_cex(res);
     }
-    for (const auto &r: remove) {
-        its->removeRule(r);
-    }
-    if (its->isEmpty()) {
-        return SmtResult::Sat;
-    }
-    if (remove.empty()) {
-        return std::optional<SmtResult>{};
-    }
-    return SmtResult::Unknown;
-}
-
-std::optional<SmtResult> check_bot(const ITSPtr& its) {
-    std::vector<RulePtr> remove;
-    for (const auto &r: its->getAllTransitions()) {
-        if (r->getGuard() == bot()) {
-            remove.emplace_back(r);
-        }
-    }
-    for (const auto &r: remove) {
-        its->removeRule(r);
-    }
-    if (its->isEmpty()) {
-        return SmtResult::Sat;
-    }
-    if (remove.empty()) {
-        return std::optional<SmtResult>{};
-    }
-    return SmtResult::Unknown;
-}
-
-bool remove_irrelevant_vars(const ITSPtr& its) {
-    const auto vars{its->getVars()};
-    const auto trans{its->getAllTransitions()};
-    std::unordered_map<RulePtr, VarSet> guard_vars;
-    for (const auto& t : trans) {
-        guard_vars.emplace(t, t->getGuard()->vars());
-    }
-    Subs remove;
-    for (const auto& x : vars) {
-        theory::apply(x, [&](const auto& x) {
-            if (!x->isProgVar()) return;
-            if (std::ranges::any_of(trans, [&](const auto& t) {
-                return !t->isHavoced(x);
-            })) {
-                for (const auto& t : trans) {
-                    if (guard_vars.at(t).contains(x) || std::ranges::any_of(t->getUpdate(), [&](const auto& p) {
-                        return Subs::first(p) != Var(x) && theory::apply(Subs::second(p), [&](const auto& e) {
-                            return e->vars().contains(x);
-                        });
-                    })) {
-                        return;
-                    }
-                }
-            }
-            using T = decltype(theory::theory(x));
-            remove.put(x, T::varToExpr(T::next(x->dim())));
-            remove.put(x->postVar(), T::varToExpr(T::next(x->dim())));
-        });
-    }
-    if (remove.empty()) {
-        return false;
-    }
-    if (Config::Analysis::doLogPreproc()) {
-        std::cout << "removed the following irelevant variables: ";
-        for (const auto& [x,_]: remove) {
-            std::cout << " " << x;
-        }
-        std::cout << std::endl;
-    }
-    for (const auto& t: trans) {
-        its->replaceRule(t, Rule::mk(t->getGuard()->subs(remove), t->getUpdate().project([&](const auto& x) {
-            return !remove.contains(x);
-        })));
-    }
-    return true;
-}
-
-SmtResult Preprocessor::preprocess() {
-    const Profile profile_preproc {"preprocessing"};
-    if (Config::Analysis::doLogPreproc()) {
-        std::cout << "starting preprocesing..." << std::endl;
-    }
-    if (Config::Analysis::safety()) {
-        if (Config::Analysis::doLogPreproc()) {
-            std::cout << "removing irrelevant clauses..." << std::endl;
-        }
-        if (const auto satRes = remove_irrelevant_clauses(its)) {
-            if (satRes != SmtResult::Unknown) {
-                return *satRes;
-            }
-            success = true;
-        }
-        if (Config::Analysis::doLogPreproc()) {
-            std::cout << "finished removing irrelevant clauses" << std::endl;
-        }
-    }
-    if (Config::Analysis::doLogPreproc()) {
-        std::cout << "chaining linear paths..." << std::endl;
-    }
-
-    const Profile profile_chaining {"chaining"};
-    success |= chain.chainLinearPaths();
-    profile_chaining.end();
-    if (Config::Analysis::doLogPreproc()) {
-        std::cout << "finished chaining linear paths" << std::endl;
-    }
-    if (Config::Analysis::doLogPreproc()) {
-        std::cout << "checking empty clauses..." << std::endl;
-    }
-    auto sat_res {check_empty_clauses(its)};
-    if (Config::Analysis::doLogPreproc()) {
-        std::cout << "finished checking empty clauses" << std::endl;
-    }
-    if (sat_res && sat_res != SmtResult::Unknown) {
-        success = true;
-        return *sat_res;
-    }
-    if (Config::Analysis::doLogPreproc()) {
-        std::cout << "checking for unsat clauses..." << std::endl;
-    }
-    sat_res = check_bot(its);
-    if (Config::Analysis::doLogPreproc()) {
-        std::cout << "finished checking for unsat clauses" << std::endl;
-    }
-    if (sat_res && sat_res != SmtResult::Unknown) {
-        success = true;
-        return *sat_res;
-    }
-    success |= static_cast<bool>(sat_res);
-    if (Config::Analysis::doLogPreproc()) {
-        std::cout << "preprocessing rules..." << std::endl;
-    }
-    sat_res = rule_preproc.run();
-    if (sat_res) {
-        if (sat_res != SmtResult::Unknown) {
-            return *sat_res;
-        }
-        success = true;
-    }
-    if (Config::Analysis::doLogPreproc()) {
-        std::cout << "finished preprocessing rules" << std::endl;
-    }
-    if (Config::Analysis::doLogPreproc()) {
-        std::cout << "checking identity clauses..." << std::endl;
-    }
-    remove_identity_clauses(its);
-    if (Config::Analysis::doLogPreproc()) {
-        std::cout << "finished checking identity clauses" << std::endl;
-    }
-    if (Config::Analysis::engine == Config::Analysis::ADCL) {
-        if (Config::Analysis::doLogPreproc()) {
-            std::cout << "unrolling..." << std::endl;
-        }
-        success |= unroll(its);
-        if (Config::Analysis::doLogPreproc()) {
-            std::cout << "finished unrolling" << std::endl;
-        }
-        if (its->size() <= 1000) {
-            if (Config::Analysis::doLogPreproc()) {
-                std::cout << "refining the dependency graph..." << std::endl;
-            }
-            const Profile profile_dg {"DG refinement"};
-            success |= refine_dependency_graph(its);
-            profile_dg.end();
-            if (Config::Analysis::doLogPreproc()) {
-                std::cout << "finished refining the dependency graph" << std::endl;
-            }
-        }
-    }
-    profile_preproc.end();
-    return SmtResult::Unknown;
+    return res;
 }

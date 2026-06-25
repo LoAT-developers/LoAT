@@ -21,7 +21,9 @@ public:
     void add_final_transition(const RulePtr& trans);
     size_t num_states() const;
     ModelPtr get_state(size_t i) const;
-    ITSSafetyCex replace_rules(const linked_hash_map<RulePtr, RulePtr>&) const;
+    std::shared_ptr<ITSCex> replace_rules(
+        const linked_hash_map<RulePtr, RulePtr>&,
+        const linked_hash_map<RulePtr, std::shared_ptr<RulePreprocessor>>&) const override;
     std::vector<std::pair<RulePtr, ProofStepKind>> get_used_rules() const;
 
 };
