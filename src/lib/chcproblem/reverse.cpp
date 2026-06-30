@@ -36,7 +36,11 @@ CHCPtr Reverse::reverse() {
 }
 
 CHCModel Reverse::transform_model(const CHCModel &model) {
-    // TODO
+    auto chcs = std::make_shared<CHCProblem>();
+    for (const auto& c: model.chcs()->get_clauses()) {
+        chcs->add_clause(rev(c));
+    }
+    return {chcs, model.k()};
 }
 
 CHCCex Reverse::transform_cex(const CHCCex &cex) {

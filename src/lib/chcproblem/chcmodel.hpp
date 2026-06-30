@@ -14,5 +14,7 @@ class CHCModel {
 public:
 
     CHCModel(CHCPtr, unsigned);
+    CHCPtr chcs() const;
+    unsigned k() const;
 
 };

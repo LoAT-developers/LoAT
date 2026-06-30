@@ -7,10 +7,6 @@
 ITSToSafety::ITSToSafety(ITSPtr its)
     : its(std::move(its)) {}
 
-ITSModel ITSToSafety::transform_model(const SafetyModel &e) const {
-    // TODO
-}
-
 Bools::Expr ITSToSafety::rule_to_formula(const RulePtr& r) {
     Subs subs;
     std::vector<Bools::Expr> conjuncts;

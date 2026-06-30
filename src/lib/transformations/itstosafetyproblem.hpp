@@ -24,8 +24,6 @@ public:
 
     RulePtr formula_to_rule(const Bools::Expr&);
 
-    ITSModel transform_model(const SafetyModel&) const;
-
     ITSSafetyCex transform_cex(const SafetyCex &) const;
 
     SafetyProblem transform();

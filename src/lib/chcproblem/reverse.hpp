@@ -10,7 +10,7 @@ class Reverse {
     std::unordered_map<ClausePtr, ClausePtr> rev_map;
 
 public:
-    explicit Reverse(CHCPtr );
+    explicit Reverse(CHCPtr);
 
     CHCPtr reverse();
     CHCCex transform_cex(const CHCCex&);
