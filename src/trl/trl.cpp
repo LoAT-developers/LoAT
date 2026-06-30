@@ -189,5 +189,5 @@ std::optional<SmtResult> TRL::do_step() {
 }
 
 ITSModel TRL::get_model() {
-    // TODO
+    return {its, depth};
 }

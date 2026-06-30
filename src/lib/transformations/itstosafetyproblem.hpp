@@ -15,11 +15,14 @@ class ITSToSafety {
     std::unordered_map<Bools::Expr, RulePtr> rev_init_map;
     std::unordered_map<Bools::Expr, RulePtr> rev_err_map;
     Renaming post_to_pre;
+    VarSet prog_vars;
 
 public:
     explicit ITSToSafety(ITSPtr its);
 
-    Bools::Expr rule_to_formula(const RulePtr& r, const VarSet &prog_vars);
+    Bools::Expr rule_to_formula(const RulePtr& r);
+
+    RulePtr formula_to_rule(const Bools::Expr&);
 
     ITSModel transform_model(const SafetyModel&) const;
 

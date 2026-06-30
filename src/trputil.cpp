@@ -222,6 +222,7 @@ Int TRPUtil::add_learned_clause(const Range &range, const Bools::Expr &accel) {
     }
     const auto id = next_id;
     ++next_id;
+    auto learned = accel;
     if (Config::Analysis::abstraction_refinement) {
         concretization.emplace(id, accel);
         BoolExprSet lits;
@@ -234,9 +235,13 @@ Int TRPUtil::add_learned_clause(const Range &range, const Bools::Expr &accel) {
                 lits.emplace(c);
             }
         }
-        rule_map.emplace(id, bools::mkAnd(lits));
-    } else {
-        rule_map.emplace(id, accel);
+        learned = bools::mkAnd(lits);
+    }
+    rule_map.emplace(id, learned);
+    if (Config::Analysis::model) {
+        auto fst = its2safety.formula_to_rule(rule_map.at(trace.at(range.start()).id));
+        auto last = its2safety.formula_to_rule(rule_map.at(trace.at(range.end()).id));
+        its->addRule(its2safety.formula_to_rule(learned), fst, last);
     }
     std::vector<std::pair<Int, Bools::Expr>> loop;
     for (size_t i = range.start(); i <= range.end(); ++i) {
@@ -572,6 +577,9 @@ bool TRPUtil::refine_abstraction(const Range& range) {
                         }
                         refined.insert(id);
                         const auto t = current && refinement;
+                        if (Config::Analysis::model) {
+                            its->replaceRule(its2safety.formula_to_rule(rule_map.at(id)), its2safety.formula_to_rule(t));
+                        }
                         rule_map.put(id, t);
                         projections.erase(id);
                         add_projection(id, t->subs(Subs::build(trp.get_n(), arith::one())));

@@ -12,5 +12,7 @@ class ITSModel {
 public:
 
     ITSModel(ITSPtr, unsigned);
+    ITSPtr its() const;
+    unsigned k() const;
 
 };

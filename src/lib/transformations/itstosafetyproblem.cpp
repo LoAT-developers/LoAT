@@ -11,7 +11,7 @@ ITSModel ITSToSafety::transform_model(const SafetyModel &e) const {
     // TODO
 }
 
-Bools::Expr ITSToSafety::rule_to_formula(const RulePtr& r, const VarSet &prog_vars) {
+Bools::Expr ITSToSafety::rule_to_formula(const RulePtr& r) {
     Subs subs;
     std::vector<Bools::Expr> conjuncts;
     conjuncts.push_back(r->getGuard());
@@ -57,6 +57,28 @@ Bools::Expr ITSToSafety::rule_to_formula(const RulePtr& r, const VarSet &prog_va
     return res;
 }
 
+RulePtr ITSToSafety::formula_to_rule(const Bools::Expr& t) {
+    if (rev_map.contains(t)) {
+        return rev_map.at(t);
+    }
+    Subs post_to_tmp;
+    Subs up;
+    for (const auto& pre: prog_vars) {
+        Var post = theory::postVar(pre);
+        theory::apply(
+            post,
+            [&](const auto &post) {
+                using T = decltype(theory::theory(post));
+                const auto tmp = T::varToExpr(T::next(post->dim()));
+                up.put(std::get<typename T::Var>(pre), tmp);
+                post_to_tmp.put(post, tmp);
+            });
+    }
+    auto res = Preprocess::preprocessRule(Rule::mk(t->subs(post_to_tmp), up));
+    rev_map.emplace(t, res);
+    return res;
+}
+
 SafetyProblem ITSToSafety::transform() {
     SafetyProblem sp;
     for (const auto &x: its->getVars()) {
@@ -65,6 +87,7 @@ SafetyProblem ITSToSafety::transform() {
             sp.add_post_var(theory::postVar(x));
         }
     }
+    prog_vars = sp.pre_vars();
     for (const auto& y : sp.post_vars()) {
         theory::apply(
             y,
@@ -80,7 +103,7 @@ SafetyProblem ITSToSafety::transform() {
     linked_hash_map<RulePtr, Bools::Expr> map;
     for (const auto &r: its->getAllTransitions()) {
         if (its->isInitialTransition(r)) {
-            const auto b {Preprocess::preprocessFormula(rule_to_formula(r, sp.pre_vars())->renameVars(post_to_pre))};
+            const auto b {Preprocess::preprocessFormula(rule_to_formula(r)->renameVars(post_to_pre))};
             init.emplace_back(b);
             if (Config::Analysis::model) {
                 rev_init_map.emplace(b, r);
@@ -94,7 +117,7 @@ SafetyProblem ITSToSafety::transform() {
             }
         }
         if (!its->isInitialTransition(r) && !its->isSinkTransition(r)) {
-            const auto t {rule_to_formula(r, sp.pre_vars())};
+            const auto t {rule_to_formula(r)};
 
             map.emplace(r, t);
             sp.add_transition(t);

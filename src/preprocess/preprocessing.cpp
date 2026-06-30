@@ -287,7 +287,23 @@ public:
     }
 
     ITSModel transform_model(const ITSModel &m) const override {
-        // TODO
+        auto its = m.its();
+        for (const auto &[chained,p]: chained) {
+            const auto &[fst, snd] = p;
+            ITSProblem::RuleProperties props {
+                .is_loop = false,
+                .is_initial = its->isInitialTransition(chained),
+                .is_sink = false
+            };
+            its = its->addRule(fst, props, its->getPredecessors(chained), {});
+            props = {
+                .is_loop = false,
+                .is_initial = false,
+                .is_sink = its->isSinkTransition(chained)
+            };
+            its = its->addRule(fst, props, {fst}, its->getSuccessors(chained));
+        }
+        return ITSModel(its, m.k());
     }
 
     std::shared_ptr<ITSCex> transform_cex(const std::shared_ptr<ITSCex> &cex) const override {
