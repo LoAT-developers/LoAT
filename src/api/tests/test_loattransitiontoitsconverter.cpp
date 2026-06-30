@@ -127,6 +127,6 @@ TEST(LoatTransitionToITSConverterTest, SingleTransitionToITS)
     EXPECT_EQ(update.size(), 2u);
 
     // Check that the location variable appears in the update
-    const auto locVar = its->getLocVar()->var();
+    const auto locVar = its->loc_var()->var();
     EXPECT_TRUE(update.contains(locVar));
 }

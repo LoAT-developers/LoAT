@@ -22,7 +22,6 @@ public:
 
     explicit ITSCex(const linked_hash_set<RulePtr>& orig);
 
-    LocationIdx get_lhs_loc(const RulePtr&) const;
     void add_orig(const RulePtr& rule);
     void undo_chaining(const std::vector<RulePtr> &rules, const RulePtr& res);
     void add_accel(const RulePtr& loop, const RulePtr& res);

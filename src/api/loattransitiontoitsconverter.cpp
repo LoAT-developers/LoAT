@@ -1,85 +1,52 @@
 #include "loattransitiontoitsconverter.hpp"
 
-ITSPtr LoatTransitionToITSConverter::convertTransitionsToITS(const std::vector<LoatTransition> &transitions, const LoatLocation &start, const std::optional<LoatLocation> &sink)
-{
-    // Create empty ITS
-    auto its = std::make_shared<ITSProblem>();
+#include "chctoitsproblem.hpp"
 
-    // Transfer start location
-    ITSProblem::nameInitialLocation(start.getName());
-
-    // Transfer sink location
-    if (sink)
-    {
-        ITSProblem::nameSink(sink.value().getName());
+CHCPtr LoatTransitionToITSConverter::convertTransitionsToITS(const std::vector<LoatTransition> &transitions, const LoatLocation &start, const std::optional<LoatLocation> &sink) {
+    auto chcs = std::make_shared<CHCProblem>();
+    for (const LoatTransition &transition : transitions) {
+        chcs->add_clause(convert(transition));
     }
-
-    // Get location var
-    ArithVarPtr locVar = ITSProblem::loc_var();
-
-    // Loop through all transitions
-    for (const LoatTransition &transition : transitions)
-    {
-        // Extract start, target and the formula
-        const LoatLocation &source = transition.getSourceLocation();
-        const LoatLocation &target = transition.getTargetLocation();
-
-        // Convert Rule
-        RulePtr rule = convert(transition);
-
-        // Get the index values to the source and target locations
-        LocationIdx sourceIdx = ITSProblem::getOrAddLocation(source.getName());
-        LocationIdx targetIdx = ITSProblem::getOrAddLocation(target.getName());
-
-        // New Guard: locVar == srcIdx && old Guard
-        Arith::Expr curLoc = locVar;
-        Bools::Expr locGuard = bools::mkLit(arith::mkEq(curLoc, arith::mkConst(sourceIdx)));
-        BoolExprSet conjuncts;
-        conjuncts.insert(rule->getGuard());
-        conjuncts.insert(locGuard);
-        Bools::Expr combinedGuard = bools::mkAnd(conjuncts);
-
-        // Update loc var after transition
-        Subs update = rule->getUpdate();
-        update.update(locVar, arith::mkConst(targetIdx));
-
-        // Create new rule and insert this into the ITS
-        RulePtr ruleWithLoc = Rule::mk(combinedGuard, update);
-        its->addRule(ruleWithLoc, sourceIdx);
-    }
-
-    return its;
+    return chcs;
 }
 
-RulePtr LoatTransitionToITSConverter::convert(const LoatTransition &transition)
+ClausePtr LoatTransitionToITSConverter::convert(const LoatTransition &transition)
 {
     // Clear used variables of last transitions
     m_arithVarsUsed.clear();
     m_boolVarsUsed.clear();
 
-    // Save refrence to formula
+    // Save reference to formula
     const LoatBoolExprPtr &formula = transition.getFormula();
 
     // Convert Formula
     const Bools::Expr guard = convertBool(formula);
 
     // Create subs (x = x' etc.)
-    Subs subs;
-    for (const auto& name : m_arithVarsUsed)
+    std::vector<std::string> arith {m_arithVarsUsed.begin(), m_arithVarsUsed.end()};
+    std::ranges::sort(arith);
+    std::vector<std::string> bools {m_boolVarsUsed.begin(), m_boolVarsUsed.end()};
+    std::ranges::sort(bools);
+    std::vector<Expr> lhs_args;
+    std::vector<Expr> rhs_args;
+    for (const auto& name :arith)
     {
         const ArithVarPtr pre = getArithVar(name, false);
         const ArithVarPtr post = getArithVar(name, true);
-        subs.update(pre, post);
+        lhs_args.emplace_back(pre->var());
+        rhs_args.emplace_back(arrays::writeConst(post));
     }
     for (const auto& name : m_boolVarsUsed)
     {
         Bools::Var pre = getBoolVar(name, false);
         Bools::Var post = getBoolVar(name, true);
-        subs.put(pre, Bools::varToExpr(post));
+        rhs_args.emplace_back(bools::mkLit(bools::mk(pre)));
+        rhs_args.emplace_back(bools::mkLit(bools::mk(post)));
     }
-
+    auto lhs = FunApp::mk(transition.getSourceLocation().getName(), lhs_args);
+    auto rhs = FunApp::mk(transition.getTargetLocation().getName(), rhs_args);
     // Create the internal its transition/rule
-    return Rule::mk(guard, subs);
+    return Clause::mk({lhs}, guard, arith::one(), {rhs});
 }
 
 Arith::Expr LoatTransitionToITSConverter::convertArith(const LoatIntExprPtr &expr)

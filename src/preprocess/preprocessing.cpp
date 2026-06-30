@@ -23,7 +23,7 @@ public:
 
     explicit ITSRulePreprocessor(const ITSPtr& its): AbstractITSPreprocessor(its) {}
 
-    bool process() override {
+    ITSPtr process() override {
         for (const auto& r: its->getAllTransitions()) {
             auto proc = std::make_shared<RulePreprocessor>(r);
             if (const auto res = proc->process(); res != r) {
@@ -32,9 +32,9 @@ public:
             }
         }
         for (const auto &[x,y]: back_map) {
-            its->replaceRule(y, x);
+            its = its->replaceRule(y, x);
         }
-        return !back_map.empty();
+        return its;
     }
 
     ITSModel transform_model(const ITSModel &m) const override {
@@ -51,7 +51,7 @@ public:
 
     explicit BotRemover(const ITSPtr& its): AbstractITSPreprocessor(its) {}
 
-    bool process() override {
+    ITSPtr process() override {
         std::vector<RulePtr> remove;
         for (const auto& r: its->getAllTransitions()) {
             if (r->getGuard() == bot()) {
@@ -59,36 +59,9 @@ public:
             }
         }
         for (const auto &r: remove) {
-            its->removeRule(r);
+            its = its->removeRule(r);
         }
-        return !remove.empty();
-    }
-
-    ITSModel transform_model(const ITSModel &m) const override {
-        return m;
-    }
-
-    std::shared_ptr<ITSCex> transform_cex(const std::shared_ptr<ITSCex> &cex) const override {
-        return cex;
-    }
-};
-
-class EmptyClauseRemover : public AbstractITSPreprocessor {
-public:
-
-    explicit EmptyClauseRemover(const ITSPtr& its): AbstractITSPreprocessor(its) {}
-
-    bool process() override {
-        std::vector<RulePtr> remove;
-        for (const auto& r: its->getInitialTransitions()) {
-            if (its->isSinkTransition(r) && SmtFactory::check(r->getGuard()) != SmtResult::Sat) {
-                remove.emplace_back(r);
-            }
-        }
-        for (const auto& r: remove) {
-            its->removeRule(r);
-        }
-        return !remove.empty();
+        return its;
     }
 
     ITSModel transform_model(const ITSModel &m) const override {
@@ -108,9 +81,9 @@ public:
 
     IrrelevantRuleRemover(const ITSPtr& its, const bool forward): AbstractITSPreprocessor(its), forward(forward) {}
 
-    bool process() override {
+    ITSPtr process() override {
         if (!Config::Analysis::safety()) {
-            return false;
+            return its;
         }
         std::unordered_set<RulePtr> keep;
         std::stack<RulePtr> todo;
@@ -134,12 +107,12 @@ public:
             }
         }
         for (const auto& r: deleted) {
-            its->removeRule(r);
+            its = its->removeRule(r);
         }
         if (Config::Analysis::doLogPreproc() && !deleted.empty()) {
             std::cout << "removed the following irrelevant transitions: " << deleted << std::endl;
         }
-        return !deleted.empty();
+        return its;
     }
 
     ITSModel transform_model(const ITSModel &m) const override {
@@ -156,10 +129,10 @@ public:
 
     explicit IdentityRuleRemover(const ITSPtr& its): AbstractITSPreprocessor(its) {}
 
-    bool process() override {
+    ITSPtr process() override {
         linked_hash_set<RulePtr> remove;
         if (Config::Analysis::mode != Config::Analysis::Safety) {
-            return false;
+            return its;
         }
         for (const auto &r: its->getAllTransitions()) {
             if (!r->isDeterministic()) {
@@ -183,12 +156,12 @@ public:
             }
         }
         for (const auto &r: remove) {
-            its->removeRule(r);
+            its = its->removeRule(r);
         }
         if (!remove.empty() && Config::Analysis::doLogPreproc()) {
             std::cout << "removed the following identity transitions: " << remove << std::endl;
         }
-        return !remove.empty();
+        return its;
     }
 
     ITSModel transform_model(const ITSModel &m) const override {
@@ -213,12 +186,10 @@ public:
 
     explicit Unroller(const ITSPtr& its): AbstractITSPreprocessor(its) {}
 
-    bool process() override {
-        auto success{false};
+    ITSPtr process() override {
         for (const auto &r : its->getAllTransitions()) {
             if (its->isSimpleLoop(r) && !r->getGuard()->isConjunction()) {
                 if (const auto [res, period] = LoopAcceleration::chain(r); period > 1) {
-                    success = true;
                     if (Config::Analysis::doLogPreproc()) {
                         std::cout
                             << "unrolled the following rule " << period << " times:\n"
@@ -226,13 +197,13 @@ public:
                             << "\nresult:\n"
                             << res << std::endl;
                     }
-                    its->addRule(res, r, r);
+                    its = its->addRule(res, r, r);
                     m_back_map.emplace(res, r);
                     m_period.emplace(res, period);
                 }
             }
         }
-        return success;
+        return its;
     }
 
     ITSModel transform_model(const ITSModel &m) const override {
@@ -253,12 +224,12 @@ public:
 
     explicit DGRefiner(const ITSPtr& its): AbstractITSPreprocessor(its) {}
 
-    bool process() override {
+    ITSPtr process() override {
         const auto is_edge = [](const RulePtr& fst, const RulePtr& snd) {
             return SmtFactory::check(Preprocess::chain({fst, snd->renameTmpVars()})->getGuard()) == SmtResult::Sat;
         };
-        if (const auto removed{its->refineDependencyGraph(is_edge)}; removed.empty()) {
-            return false;
+        if (const auto [new_its,removed]{its->refineDependencyGraph(is_edge)}; removed.empty()) {
+            return its;
         } else {
             if (Config::Analysis::doLogPreproc()) {
                 std::cout << "removed the following edges from the dependency graph:" << std::endl;
@@ -266,7 +237,7 @@ public:
                     std::cout << "(" << s->getId() << ", " << d->getId() << ")" << std::endl;
                 }
             }
-            return true;
+            return new_its;
         }
     }
 
@@ -281,16 +252,14 @@ public:
 
 class Chainer : public AbstractITSPreprocessor {
 
-    linked_hash_set<std::tuple<LocationIdx, RulePtr, LocationIdx>> removed;
     linked_hash_map<RulePtr, std::pair<RulePtr, RulePtr>> chained;
 
 public:
 
     explicit Chainer(const ITSPtr& its): AbstractITSPreprocessor(its) {}
 
-    bool process() override {
+    ITSPtr process() override {
         bool changed{false};
-        bool success{false};
         do {
             changed = false;
             for (const auto &first : its->getAllTransitions()) {
@@ -300,35 +269,25 @@ public:
                         if (Config::Analysis::doLogPreproc()) {
                             std::cout << "chaining\n\trule 1: " << *first << "\n\trule 2: " << *second_idx << "\n\tresult: " << *c << std::endl;
                         }
-                        its->addRule(c, first, second_idx);
+                        its = its->addRule(c, first, second_idx);
                         if (Config::Analysis::model) {
                             chained.emplace(c, std::pair{first, second_idx});
-                            removed.emplace(ITSProblem::getLhsLoc(first), first, ITSProblem::getRhsLoc(first));
                         }
-                        its->removeRule(first);
+                        its = its->removeRule(first);
                         if (its->getPredecessors(second_idx).empty()) {
-                            if (Config::Analysis::model) {
-                                removed.emplace(ITSProblem::getLhsLoc(second_idx), second_idx, ITSProblem::getRhsLoc(second_idx));
-                            }
-                            its->removeRule(second_idx);
+                            its = its->removeRule(second_idx);
                         }
                         changed = true;
-                        success = true;
                         break;
                     }
                 }
             }
         } while (changed);
-        return success;
+        return its;
     }
 
     ITSModel transform_model(const ITSModel &m) const override {
-        ITSModel res {m};
-        for (const auto &[from,rule,to]: removed) {
-            const auto r {rule->renameTmpVars()};
-            res.set_invariant(to, res.get_invariant(to) || (r->getGuard() && res.get_invariant(from)->subs(r->getUpdate())));
-        }
-        return res;
+        // TODO
     }
 
     std::shared_ptr<ITSCex> transform_cex(const std::shared_ptr<ITSCex> &cex) const override {
@@ -342,14 +301,13 @@ public:
 
 ITSPreprocessor::ITSPreprocessor(const ITSPtr &its) : AbstractITSPreprocessor(its) {}
 
-bool ITSPreprocessor::process() {
+ITSPtr ITSPreprocessor::process() {
     if (Config::Analysis::doLogPreproc()) {
         std::cout << "starting preprocessing..." << std::endl;
     }
     const Profile profile_preproc{"preprocessing"};
-    auto success = false;
     const auto apply = [&]<class T, class... Args>(const std::string &message, const Args &... args) {
-        auto proc = std::make_unique<T>(args...);
+        auto proc = std::make_unique<T>(its, args...);
         if (Config::Analysis::doLogPreproc()) {
             std::cout << message << "..." << std::endl;
         }
@@ -359,31 +317,30 @@ bool ITSPreprocessor::process() {
         if (Config::Analysis::doLogPreproc()) {
             std::cout << "done " << message << std::endl;
         }
-        if (!res) {
+        if (res == its) {
             return false;
         }
-        success = true;
+        its = res;
         procs.emplace_back(std::move(proc));
         return true;
     };
-    apply.operator()<IrrelevantRuleRemover>("removing irrelevant rules (forward)", its, true);
-    apply.operator()<IrrelevantRuleRemover>("removing irrelevant rules (backward)", its, false);
-    apply.operator()<Chainer>("chaining", its);
-    apply.operator()<ITSRulePreprocessor>("preprocessing rules", its);
-    apply.operator()<BotRemover>("removing unsat rules", its);
-    apply.operator()<IdentityRuleRemover>("removing identity rules", its);
+    apply.operator()<IrrelevantRuleRemover>("removing irrelevant rules (forward)", true);
+    apply.operator()<IrrelevantRuleRemover>("removing irrelevant rules (backward)", false);
+    apply.operator()<Chainer>("chaining");
+    apply.operator()<ITSRulePreprocessor>("preprocessing rules");
+    apply.operator()<BotRemover>("removing unsat rules");
+    apply.operator()<IdentityRuleRemover>("removing identity rules");
     if (Config::Analysis::engine == Config::Analysis::ADCL) {
-        apply.operator()<Unroller>("unrolling", its);
+        apply.operator()<Unroller>("unrolling");
         if (its->size() <= 1000) {
-            apply.operator()<DGRefiner>("refining dependency graph", its);
+            apply.operator()<DGRefiner>("refining dependency graph");
         }
     }
-    apply.operator()<EmptyClauseRemover>("removing unsat empty clauses", its);
     profile_preproc.end();
     if (Config::Analysis::doLogPreproc()) {
         std::cout << "done with preprocessing" << std::endl;
     }
-    return success;
+    return its;
 }
 
 ITSModel ITSPreprocessor::transform_model(const ITSModel &m) const {

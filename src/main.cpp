@@ -492,7 +492,7 @@ int main(int argc, char *argv[]) {
             if (reverse) {
                 chc_model = reverse->transform_model(chc_model);
             }
-            std::cout << chc_model.to_smtlib().toString();
+            std::cout << chc_model;
         } else {
             std::cout << *its_model;
         }

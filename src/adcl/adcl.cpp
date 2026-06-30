@@ -422,10 +422,10 @@ std::pair<RulePtr, ModelPtr> ADCL::build_loop(const Range& range) const {
     return {loop, model};
 }
 
-void ADCL::add_learned_clause(const RulePtr& accel, const Range& range) const {
+void ADCL::add_learned_clause(const RulePtr& accel, const Range& range) {
     const auto fst = trace.at(range.start()).clause_idx;
     const auto last = trace.at(range.end()).clause_idx;
-    chcs->addLearnedRule(accel, fst, last);
+    chcs = chcs->addLearnedRule(accel, fst, last);
 }
 
 bool ADCL::is_learned_clause(const RulePtr& idx) const {
@@ -508,7 +508,8 @@ std::unique_ptr<LearningState> ADCL::learn_clause(const RulePtr& rule, const Mod
     LearnedClauses res{.res = {}, .prefix = prefix, .period = period};
     if (nonterm_succeeded) {
         const auto simplified = Preprocess::preprocessFormula(nonterm);
-        const auto query {chcs->addQuery(simplified, trace.at(range.start()).clause_idx)};
+        const auto [new_chcs,query] = chcs->addQuery(simplified, trace.at(range.start()).clause_idx);
+        chcs = new_chcs;
         res.res.emplace_back(query);
         if (Config::Analysis::model) {
             the_cex()->add_recurrent_set(rule_for_cex, query);
@@ -794,13 +795,13 @@ std::optional<SmtResult> ADCL::do_step() {
     if (all_failed) {
         backtrack();
         print_state();
-        return SmtResult::Unknown;
+        return {};
     }
     if (try_to_finish()) {
         // check whether a query is applicable after every step and, importantly, before acceleration (which might approximate)
         return SmtResult::Unsat;
     }
-    return SmtResult::Unknown;
+    return {};
 }
 
 }

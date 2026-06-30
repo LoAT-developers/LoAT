@@ -12,6 +12,7 @@ class BMC: public StepwiseAnalysis {
         BMC, BKIND, KIND
     };
 
+    ITSPtr m_its;
     ITSToSafety m_to_safety;
     SafetyProblem sp;
     Bools::Expr m_init;

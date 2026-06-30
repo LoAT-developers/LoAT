@@ -242,7 +242,7 @@ class ADCL: public StepwiseAnalysis {
     /**
      * adds a learned clause to all relevant data structures
      */
-    void add_learned_clause(const RulePtr& accel, const Range&) const;
+    void add_learned_clause(const RulePtr& accel, const Range&);
 
     /**
      * tries to accelerate the given clause

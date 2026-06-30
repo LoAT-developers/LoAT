@@ -7,15 +7,8 @@
 ITSToSafety::ITSToSafety(ITSPtr its)
     : its(std::move(its)) {}
 
-ITSModel ITSToSafety::transform_model(const Bools::Expr &e) const {
-    ITSModel res;
-    const auto loc_var {ITSProblem::loc_var()};
-    for (const auto &x : its->getLocations()) {
-        Subs s{Subs::build(loc_var, arith::mkConst(x))};
-        res.set_invariant(x, e->subs(s));
-    }
-    res.set_invariant(ITSProblem::getInitialLocation(), top());
-    return res;
+ITSModel ITSToSafety::transform_model(const SafetyModel &e) const {
+    // TODO
 }
 
 Bools::Expr ITSToSafety::rule_to_formula(const RulePtr& r, const VarSet &prog_vars) {

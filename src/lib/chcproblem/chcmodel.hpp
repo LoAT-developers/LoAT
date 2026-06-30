@@ -6,14 +6,13 @@
 
 class CHCModel {
 
-    friend std::ostream& operator<<(std::ostream &s, const CHCModel &m);
+    friend std::ostream& operator<<(std::ostream&, const CHCModel&);
 
-    linked_hash_map<std::string, std::pair<std::vector<Var>, Bools::Expr>> interpretations;
+    CHCPtr m_chcs;
+    unsigned m_k;
 
 public:
 
-    void set_interpretation(const std::string &f, const std::vector<Var> &args, const Bools::Expr& interp);
-    linked_hash_map<std::string, std::pair<std::vector<Var>, Bools::Expr>> get_interpretations() const;
-    sexpresso::Sexp to_smtlib() const;
+    CHCModel(CHCPtr, unsigned);
 
 };

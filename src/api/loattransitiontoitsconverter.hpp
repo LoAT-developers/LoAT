@@ -14,6 +14,7 @@
 #include "rule.hpp"
 #include "arith.hpp"
 #include "bools.hpp"
+#include "chcproblem.hpp"
 #include "optional.hpp"
 
 template <>
@@ -44,10 +45,10 @@ public:
     LoatTransitionToITSConverter() = default;
 
     // Convert transitions to its
-    ITSPtr convertTransitionsToITS(const std::vector<LoatTransition> &transitions, const LoatLocation &start, const std::optional<LoatLocation> &sink);
+    CHCPtr convertTransitionsToITS(const std::vector<LoatTransition> &transitions, const LoatLocation &start, const std::optional<LoatLocation> &sink);
 
     // Converts a LoatTransition to internal Rule
-    RulePtr convert(const LoatTransition &transition);
+    ClausePtr convert(const LoatTransition &transition);
 
     // Converts a LoatExpression into internal Expression
     Arith::Expr convertArith(const LoatIntExprPtr &expr);

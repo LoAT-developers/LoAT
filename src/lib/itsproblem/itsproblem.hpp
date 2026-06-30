@@ -4,69 +4,50 @@
 #include "dependencygraph.hpp"
 #include "linkedhashset.hpp"
 
-#include <optional>
-
 using LocationIdx = unsigned int;
 
-class ITSProblem {
+class ITSProblem;
+
+using ITSPtr = std::shared_ptr<const ITSProblem>;
+
+class ITSProblem: public std::enable_shared_from_this<ITSProblem> {
 
 public:
 
     using DG = DependencyGraph<RulePtr>;
 
-    // Creates an empty ITS problem. The initialLocation is set to 0
-    ITSProblem() = default;
+    ITSProblem();
+    ITSProblem(const DG& p_graph);
 
     // True iff there are no rules
     bool isEmpty() const;
 
-    static LocationIdx getInitialLocation();
-    static void nameInitialLocation(const std::string& name);
-    static bool isInitialLocation(LocationIdx loc) ;
-    static LocationIdx getSink() ;
-    static void nameSink(const std::string& name);
-    static std::optional<LocationIdx> getLocationIdx(const std::string &name);
-
     const linked_hash_set<RulePtr>& getAllTransitions() const;
-    linked_hash_set<RulePtr> getSuccessors(const RulePtr& loc) const;
-    linked_hash_set<RulePtr> getPredecessors(const RulePtr& loc) const;
-    bool areAdjacent(const RulePtr& first, const RulePtr& second) const;
+    linked_hash_set<RulePtr> getSuccessors(const RulePtr& p_rule) const;
+    linked_hash_set<RulePtr> getPredecessors(const RulePtr& p_rule) const;
+    bool areAdjacent(const RulePtr& p_first, const RulePtr& p_second) const;
 
     // Mutation of Rules
-    void removeRule(const RulePtr& transition);
+    ITSPtr removeRule(const RulePtr& p_transition) const;
 
     bool hasArrays() const;
 
-private:
+    struct RuleProperties {
+        bool is_loop;
+        bool is_initial;
+        bool is_sink;
+    };
 
-    RulePtr addRule(const RulePtr& rule, LocationIdx start, LocationIdx target, const linked_hash_set<RulePtr> &preds, const linked_hash_set<RulePtr> &succs);
-
-public:
-
-    void addRule(const RulePtr& rule, const RulePtr& same_preds, const RulePtr& same_succs);
-    void addLearnedRule(const RulePtr& rule, const RulePtr& same_preds, const RulePtr& same_succs);
-    void addRule(const RulePtr& rule, LocationIdx start);
-    RulePtr addQuery(const Bools::Expr& guard, const RulePtr& same_preds);
-    void replaceRule(const RulePtr& toReplace, const RulePtr& replacement);
-
-    // Mutation for Locations
-    static LocationIdx addLocation();
-    static LocationIdx addNamedLocation(const std::string& name);
-    static LocationIdx getOrAddLocation(const std::string &name);
-
-    // Required for printing (see ITSExport)
-    linked_hash_set<LocationIdx> getLocations() const;
-
-    static std::string getPrintableLocationName(LocationIdx idx); // returns "[idx]" if there is no name
+    ITSPtr addRule(const RulePtr& p_rule, const RuleProperties& p_props, const linked_hash_set<RulePtr> &p_preds, const linked_hash_set<RulePtr> &p_succs) const;
+    ITSPtr addRule(const RulePtr& p_rule, const RulePtr& p_same_preds, const RulePtr& p_same_succs) const;
+    ITSPtr addLearnedRule(const RulePtr& p_rule, const RulePtr& p_same_preds, const RulePtr& p_same_succs) const;
+    std::pair<ITSPtr, RulePtr> addQuery(const Bools::Expr& p_err, const RulePtr& p_same_preds) const;
+    ITSPtr replaceRule(const RulePtr& p_to_replace, const RulePtr& p_replacement) const;
 
     VarSet getVars() const;
     CellSet getCells() const;
 
     static Arith::Expr getCost(const RulePtr& rule) ;
-
-    static LocationIdx getLhsLoc(const RulePtr& idx);
-
-    static LocationIdx getRhsLoc(const RulePtr& idx);
 
     const linked_hash_set<RulePtr>& getInitialTransitions() const;
 
@@ -80,7 +61,7 @@ public:
 
     const DG& getDependencyGraph() const;
 
-    linked_hash_set<DG::Edge> refineDependencyGraph(const std::function<bool(const RulePtr&, const RulePtr&)> &is_edge);
+    std::pair<ITSPtr, linked_hash_set<DG::Edge>> refineDependencyGraph(const std::function<bool(const RulePtr&, const RulePtr&)> &is_edge) const;
 
     size_t size() const;
 
@@ -89,16 +70,8 @@ public:
 
 protected:
 
-    DG graph {};
-    linked_hash_set<RulePtr> rules {};
-    static std::unordered_map<LocationIdx, std::string> locationNames;
-    static linked_hash_map<RulePtr, std::pair<LocationIdx, LocationIdx>> startAndTargetLocations;
-    static LocationIdx nextUnusedLocation;
-    static LocationIdx initialLocation;
-    static LocationIdx sink;
+    const DG graph {};
 
 };
-
-using ITSPtr = std::shared_ptr<ITSProblem>;
 
 std::ostream& operator<<(std::ostream &s, const ITSPtr& its);

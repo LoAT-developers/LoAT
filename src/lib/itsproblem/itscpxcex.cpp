@@ -10,8 +10,6 @@
 std::ostream& operator<<(std::ostream &s, const ITSCpxCex &cex) {
     if (cex.witness) {
         const auto derived {cex.get_used_rules({*cex.witness})};
-        s << "init: " << ITSProblem::loc_var() << " = " << ITSProblem::getInitialLocation();
-        s << "\n\nerr: " << ITSProblem::loc_var() << " = " << ITSProblem::getSink();
         if (!derived.empty()) {
             s << "\n\nrules:" << std::endl;
             for (const auto &[t,kind]: derived) {

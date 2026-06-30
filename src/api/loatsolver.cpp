@@ -62,7 +62,7 @@ void LoatSolver::produceITS()
         throw std::invalid_argument("Sink location must be defined in safety mode (use setSinkLocation(location))");
     }
     // Convert values to its
-    m_its = m_converter.convertTransitionsToITS(m_transitions, m_start.value(), m_sink);
+    m_chcs = m_converter.convertTransitionsToITS(m_transitions, m_start.value(), m_sink);
 }
 
 LoatResult LoatSolver::check()
@@ -86,11 +86,13 @@ LoatResult LoatSolver::check()
 
     // Produce the its
     produceITS();
+    CHCToITS chc_converter{m_chcs};
+    const auto its = chc_converter.transform();
 
     if (Config::Analysis::log)
     {
         std::cout << "Initial ITS" << std::endl
-                  << m_its << std::endl;
+                  << its << std::endl;
     }
 
     // Init yices
@@ -105,18 +107,18 @@ LoatResult LoatSolver::check()
     std::optional<ITSSafetyCex> its_cex;
 
     // Create and apply preprocessor
-    const auto preprocessor = std::make_shared<ITSPreprocessor>(m_its);
+    const auto preprocessor = std::make_shared<ITSPreprocessor>(its);
     std::cout << "[LoAT] Running preprocessor..." << std::endl;
     auto preproc_successful = preprocessor->process();
 
     // Dispatch requested method, if preprocessor did not solve the problem
     if (preproc_successful && Config::Analysis::log) {
         std::cout << "[LoAT] Simplified ITS:\n"
-                << m_its << "\n";
+                << its << "\n";
     }
 
     // check if the problem is trivial
-    auto trivial_solver = TrivialAnalysis(m_its);
+    auto trivial_solver = TrivialAnalysis(its);
     auto res = trivial_solver.analyze();
     if (res != SmtResult::Unknown) {
         std::cout << "[LoAT] Trivial Analysis result: "
@@ -145,7 +147,7 @@ LoatResult LoatSolver::check()
             case Config::Analysis::ADCL:
                 std::cout << "ADCL\n";
             {
-                adcl::ADCL r(m_its, [&](const ITSCpxCex &) {
+                adcl::ADCL r(its, [&](const ITSCpxCex &) {
                 });
                 res = r.analyze();
                 std::cout << "[LoAT] ADCL result: " << static_cast<int>(res) << "\n";
@@ -162,7 +164,7 @@ LoatResult LoatSolver::check()
             case Config::Analysis::KIND:
                 std::cout << (Config::Analysis::engine == Config::Analysis::KIND ? "KIND\n" : "BMC\n");
             {
-                BMC bmc(m_its, Config::Analysis::engine == Config::Analysis::KIND);
+                BMC bmc(its, Config::Analysis::engine == Config::Analysis::KIND);
                 res = bmc.analyze();
                 std::cout << "[LoAT] BMC/KIND result: " << static_cast<int>(res) << "\n";
 
@@ -182,7 +184,7 @@ LoatResult LoatSolver::check()
             case Config::Analysis::ABMC:
                 std::cout << "ABMC\n";
             {
-                ABMC abmc(m_its);
+                ABMC abmc(its);
                 res = abmc.analyze();
                 std::cout << "[LoAT] ABMC result: " << static_cast<int>(res) << "\n";
 
@@ -202,7 +204,7 @@ LoatResult LoatSolver::check()
             case Config::Analysis::TRL:
                 std::cout << "TRL\n";
             {
-                TRL trl(m_its, Config::trp);
+                TRL trl(its, Config::trp);
                 res = trl.analyze();
                 std::cout << "[LoAT] TRL result: " << static_cast<int>(res) << "\n";
 
@@ -222,7 +224,7 @@ LoatResult LoatSolver::check()
             case Config::Analysis::ADCLSAT:
                 std::cout << "ADCLSAT\n";
             {
-                ADCLSat adcl(m_its, Config::trp);
+                ADCLSat adcl(its, Config::trp);
                 res = adcl.analyze();
                 std::cout << "[LoAT] ADCLSAT result: " << static_cast<int>(res) << "\n";
 
@@ -249,7 +251,7 @@ LoatResult LoatSolver::check()
             std::cout << "[LoAT] Transforming ITS model" << std::endl;
         }
 
-        m_its_model = LoatModel(preprocessor->transform_model(*its_model));
+        m_its_model = LoatModel(chc_converter.transform_model(preprocessor->transform_model(*its_model)));
     }
     // Check if we have a cex
     else if (its_cex.has_value())

@@ -6,6 +6,7 @@
 #include "safetycex.hpp"
 #include "itssafetycex.hpp"
 #include "formulapreprocessing.hpp"
+#include "safetymodel.hpp"
 
 class ITSToSafety {
 
@@ -20,7 +21,7 @@ public:
 
     Bools::Expr rule_to_formula(const RulePtr& r, const VarSet &prog_vars);
 
-    ITSModel transform_model(const Bools::Expr&) const;
+    ITSModel transform_model(const SafetyModel&) const;
 
     ITSSafetyCex transform_cex(const SafetyCex &) const;
 

@@ -229,6 +229,18 @@ public:
         return succ.contains(node);
     }
 
+    bool empty() const {
+        return nodes.empty();
+    }
+
+    bool isRoot(const Node& node) const {
+        return roots.contains(node);
+    }
+
+    bool isSink(const Node& node) const {
+        return sinks.contains(node);
+    }
+
 private:
 
     linked_hash_set<Node> roots {};

@@ -36,12 +36,7 @@ CHCPtr Reverse::reverse() {
 }
 
 CHCModel Reverse::transform_model(const CHCModel &model) {
-    CHCModel res;
-    for (const auto &[f,p]: model.get_interpretations()) {
-        const auto &[args, i] {p};
-        res.set_interpretation(f, args, !i);
-    }
-    return res;
+    // TODO
 }
 
 CHCCex Reverse::transform_cex(const CHCCex &cex) {

@@ -1,12 +1,6 @@
 #include "itsproblem.hpp"
 #include "config.hpp"
 
-std::unordered_map<LocationIdx, std::string> ITSProblem::locationNames {};
-linked_hash_map<RulePtr, std::pair<LocationIdx, LocationIdx>> ITSProblem::startAndTargetLocations {};
-LocationIdx ITSProblem::nextUnusedLocation {1};
-LocationIdx ITSProblem::initialLocation {0};
-LocationIdx ITSProblem::sink {addNamedLocation("LoAT_sink")};
-
 ArithVarPtr ITSProblem::loc_var() {
     const auto static res = arrays::nextProgConst<Arith>();
     return res;
@@ -17,159 +11,81 @@ ArithVarPtr ITSProblem::cost_var() {
     return res;
 }
 
+ITSProblem::ITSProblem() {}
+
+ITSProblem::ITSProblem(const DG &p_graph): graph(p_graph) {}
+
 bool ITSProblem::isEmpty() const {
-    return rules.empty();
-}
-
-LocationIdx ITSProblem::getInitialLocation() {
-    return initialLocation;
-}
-
-void ITSProblem::nameInitialLocation(const std::string &name) {
-    locationNames[initialLocation] = name;
-}
-
-bool ITSProblem::isInitialLocation(const LocationIdx loc) {
-    return loc == initialLocation;
-}
-
-LocationIdx ITSProblem::getSink() {
-    return sink;
-}
-
-void ITSProblem::nameSink(const std::string &name) {
-    locationNames[sink] = name;
+    return graph.empty();
 }
 
 const linked_hash_set<RulePtr>& ITSProblem::getAllTransitions() const {
-    return rules;
+    return graph.getNodes();
 }
 
-linked_hash_set<RulePtr> ITSProblem::getSuccessors(const RulePtr& loc) const {
-    return graph.getSuccessors(loc);
+linked_hash_set<RulePtr> ITSProblem::getSuccessors(const RulePtr& p_rule) const {
+    return graph.getSuccessors(p_rule);
 }
 
-linked_hash_set<RulePtr> ITSProblem::getPredecessors(const RulePtr& loc) const {
-    return graph.getPredecessors(loc);
+linked_hash_set<RulePtr> ITSProblem::getPredecessors(const RulePtr& p_rule) const {
+    return graph.getPredecessors(p_rule);
 }
 
-bool ITSProblem::areAdjacent(const RulePtr& first, const RulePtr& second) const {
-    return graph.hasEdge(first, second);
+bool ITSProblem::areAdjacent(const RulePtr& p_first, const RulePtr& p_second) const {
+    return graph.hasEdge(p_first, p_second);
 }
 
-void ITSProblem::removeRule(const RulePtr& transition) {
-    graph.removeNode(transition);
-    rules.erase(transition);
+ITSPtr ITSProblem::removeRule(const RulePtr& p_transition) const {
+    auto new_graph = graph;
+    new_graph.removeNode(p_transition);
+    return std::make_shared<ITSProblem>(new_graph);
 }
 
-RulePtr ITSProblem::addRule(const RulePtr& rule, const LocationIdx start, const LocationIdx target, const linked_hash_set<RulePtr> &preds, const linked_hash_set<RulePtr> &succs) {
-    const auto [idx, changed] {rules.emplace(rule)};
-    if (changed) {
-        startAndTargetLocations.emplace(*idx, std::pair(start, target));
-        graph.addNode(*idx, preds, succs, start == target);
-        if (start == initialLocation) {
-            graph.markRoot(*idx);
-        }
-        if (target == sink) {
-            graph.markSink(*idx);
-        }
+ITSPtr ITSProblem::addRule(const RulePtr& p_rule, const RuleProperties& p_props, const linked_hash_set<RulePtr> &p_preds, const linked_hash_set<RulePtr> &p_succs) const {
+    auto new_graph = graph;
+    new_graph.addNode(p_rule, p_preds, p_succs, p_props.is_loop);
+    if (p_props.is_initial) {
+        new_graph.markRoot(p_rule);
     }
-    return *idx;
-}
-
-void ITSProblem::addRule(const RulePtr& rule, const RulePtr& same_preds, const RulePtr& same_succs) {
-    const auto start = getLhsLoc(same_preds);
-    const auto target = getRhsLoc(same_succs);
-    const auto preds = graph.getPredecessors(same_preds);
-    const auto succs = graph.getSuccessors(same_succs);
-    addRule(rule, start, target, preds, succs);
-}
-
-void ITSProblem::addLearnedRule(const RulePtr& rule, const RulePtr& same_preds, const RulePtr& same_succs) {
-    addRule(rule, same_preds, same_succs);
-    graph.removeEdge(rule, rule);
-}
-
-RulePtr ITSProblem::addQuery(const Bools::Expr& guard, const RulePtr& same_preds) {
-    const auto start = getLhsLoc(same_preds);
-    const auto preds = graph.getPredecessors(same_preds);
-    const auto res {Rule::mk(guard, Subs::build(loc_var(), arith::mkConst(sink)))};
-    addRule(res, start, sink, preds, {});
-    return res;
-}
-
-void ITSProblem::addRule(const RulePtr& rule, const LocationIdx start) {
-    const auto target {rule->getUpdate().getConst(loc_var())->isInt().value_or(start).convert_to<LocationIdx>()};
-    linked_hash_set<RulePtr> preds, succs;
-    for (const auto & r: rules) {
-        const auto [s,t] = startAndTargetLocations.at(r);
-        if (s == target) {
-            succs.insert(r);
-        }
-        if (t == start) {
-            preds.insert(r);
-        }
+    if (p_props.is_sink) {
+        new_graph.markSink(p_rule);
     }
-    addRule(rule, start, target, preds, succs);
+    return std::make_shared<ITSProblem>(new_graph);
 }
 
-void ITSProblem::replaceRule(const RulePtr& toReplace, const RulePtr& replacement) {
-    if (toReplace == replacement) {
-        return;
+ITSPtr ITSProblem::addRule(const RulePtr &p_rule, const RulePtr &p_same_preds, const RulePtr &p_same_succs) const {
+    const auto preds = graph.getPredecessors(p_same_preds);
+    const auto succs = graph.getSuccessors(p_same_succs);
+    RuleProperties props {.is_loop = succs.contains(p_same_preds), .is_initial = graph.isRoot(p_same_preds), .is_sink = graph.isSink(p_same_succs)};
+    return addRule(p_rule, props, preds, succs);
+}
+
+ITSPtr ITSProblem::addLearnedRule(const RulePtr& p_rule, const RulePtr& p_same_preds, const RulePtr& p_same_succs) const {
+    const auto preds = graph.getPredecessors(p_same_preds);
+    const auto succs = graph.getSuccessors(p_same_succs);
+    RuleProperties props {.is_loop = false, .is_initial = graph.isRoot(p_same_preds), .is_sink = graph.isSink(p_same_succs)};
+    return addRule(p_rule, props, preds, succs);
+}
+
+std::pair<ITSPtr, RulePtr> ITSProblem::addQuery(const Bools::Expr& p_err, const RulePtr& p_same_preds) const {
+    const auto preds = graph.getPredecessors(p_same_preds);
+    const auto res {Rule::mk(p_err, Subs())};
+    RuleProperties props {.is_loop = false, .is_initial = graph.isRoot(p_same_preds), .is_sink = true};
+    return {addRule(res, props, preds, {}), res};
+}
+
+ITSPtr ITSProblem::replaceRule(const RulePtr& p_to_replace, const RulePtr& p_replacement) const {
+    if (p_to_replace == p_replacement) {
+        return shared_from_this();
     }
-    rules.emplace(replacement);
-    startAndTargetLocations.emplace(replacement, startAndTargetLocations[toReplace]);
-    graph.replaceNode(toReplace, replacement);
-    rules.erase(toReplace);
-}
-
-LocationIdx ITSProblem::addLocation() {
-    const LocationIdx loc = nextUnusedLocation++;
-    return loc;
-}
-
-LocationIdx ITSProblem::addNamedLocation(const std::string& name) {
-    LocationIdx loc = addLocation();
-    locationNames.emplace(loc, name);
-    return loc;
-}
-
-LocationIdx ITSProblem::getOrAddLocation(const std::string &name) {
-    if (const auto res {getLocationIdx(name)}) {
-        return *res;
-    }
-    return addNamedLocation(name);
-}
-
-linked_hash_set<LocationIdx> ITSProblem::getLocations() const {
-    linked_hash_set<LocationIdx> res;
-    for (const auto& r: rules) {
-        const auto &[s,t] = startAndTargetLocations.at(r);
-        res.insert(s);
-        res.insert(t);
-    }
-    return res;
-}
-
-std::optional<LocationIdx> ITSProblem::getLocationIdx(const std::string &name) {
-    for (const auto & [loc, n]: locationNames) {
-        if (n == name) {
-            return loc;
-        }
-    }
-    return {};
-}
-
-std::string ITSProblem::getPrintableLocationName(const LocationIdx idx) {
-    if (const auto it = locationNames.find(idx); it != locationNames.end()) {
-        return it->second;
-    }
-    return (std::stringstream() << "[" << idx << "]").str();
+    auto new_graph = graph;
+    new_graph.replaceNode(p_to_replace, p_replacement);
+    return std::make_shared<ITSProblem>(new_graph);
 }
 
 VarSet ITSProblem::getVars() const {
     VarSet res;
-    for (const auto &r: rules) {
+    for (const auto &r: graph.getNodes()) {
         r->collectVars(res);
     }
     return res;
@@ -177,7 +93,7 @@ VarSet ITSProblem::getVars() const {
 
 CellSet ITSProblem::getCells() const {
     CellSet res;
-    for (const auto &r: rules) {
+    for (const auto &r: graph.getNodes()) {
         r->collectCells(res);
     }
     return res;
@@ -185,16 +101,6 @@ CellSet ITSProblem::getCells() const {
 
 Arith::Expr ITSProblem::getCost(const RulePtr& rule) {
     return rule->getUpdate().getConst(cost_var()) - cost_var();
-}
-
-LocationIdx ITSProblem::getLhsLoc(const RulePtr& idx) {
-    assert(startAndTargetLocations.contains(idx));
-    return startAndTargetLocations.at(idx).first;
-}
-
-LocationIdx ITSProblem::getRhsLoc(const RulePtr& idx) {
-    assert(startAndTargetLocations.contains(idx));
-    return startAndTargetLocations.at(idx).second;
 }
 
 const linked_hash_set<RulePtr>& ITSProblem::getInitialTransitions() const {
@@ -221,8 +127,11 @@ const ITSProblem::DG& ITSProblem::getDependencyGraph() const {
     return graph;
 }
 
-linked_hash_set<ITSProblem::DG::Edge> ITSProblem::refineDependencyGraph(const std::function<bool(const RulePtr&, const RulePtr&)> &is_edge) {
-    return graph.refine(is_edge);
+std::pair<ITSPtr, linked_hash_set<ITSProblem::DG::Edge>> ITSProblem::refineDependencyGraph(const std::function<bool(const RulePtr&, const RulePtr&)> &is_edge) const {
+    auto new_graph = graph;
+    const auto deleted = new_graph.refine(is_edge);
+    const auto new_its = std::make_shared<ITSProblem>(new_graph);
+    return {new_its, deleted};
 }
 
 size_t ITSProblem::size() const {
@@ -241,13 +150,14 @@ bool ITSProblem::hasArrays() const {
 }
 
 std::ostream& operator<<(std::ostream &s, const ITSPtr& its) {
-    s << "Start location: ";
-    s << ITSProblem::getPrintableLocationName(ITSProblem::getInitialLocation()) << "\n\n";
-    if (!its->getLocations().empty()) {
-        s << "Location map:" << std::endl;
-        for (const auto p: its->getLocations()) {
-            s << ITSProblem::getPrintableLocationName(p);
-            s << " -> " << p << std::endl;
+    s << "Initial Rules:\n";
+    if (its->getInitialTransitions().empty()) {
+        s << "  <empty>\n";
+    } else {
+        for (const auto &idx : its->getInitialTransitions()) {
+            s << std::setw(4);
+            s << *idx;
+            s << std::endl;
         }
     }
     s << "\n\nRules:\n";
@@ -255,6 +165,18 @@ std::ostream& operator<<(std::ostream &s, const ITSPtr& its) {
         s << "  <empty>\n";
     } else {
         for (const auto &idx : its->getAllTransitions()) {
+            if (!its->isInitialTransition(idx) && !its->isSinkTransition(idx)) {
+                s << std::setw(4);
+                s << *idx;
+                s << std::endl;
+            }
+        }
+    }
+    s << "Sink Rules:\n";
+    if (its->getSinkTransitions().empty()) {
+        s << "  <empty>\n";
+    } else {
+        for (const auto &idx : its->getSinkTransitions()) {
             s << std::setw(4);
             s << *idx;
             s << std::endl;

@@ -6,6 +6,7 @@
 #include "intmbp.hpp"
 
 BMC::BMC(const ITSPtr& p_its, const bool p_do_kind) :
+    m_its(p_its),
     m_to_safety(p_its),
     sp(m_to_safety.transform()),
     m_init(p_do_kind ? mbp::int_qe(sp.init()) : sp.init()),
@@ -120,34 +121,13 @@ std::optional<SmtResult> BMC::do_step() {
 }
 
 ITSModel BMC::get_model() {
-    const auto step {bools::mkOr(sp.trans())};
     switch (m_winner) {
-        case Winner::BMC: {
-            std::vector res{sp.init()};
-            Bools::Expr last{sp.init()};
-            for (unsigned i = 0; i + 1 < m_depth; ++i) {
-                const auto &s1{m_renamings.at(i)};
-                last = last && step->renameVars(s1);
-                Renaming s2;
-                for (const auto &p: m_pre_to_post) {
-                    theory::apply(
-                        p,
-                        [&](const auto& p) {
-                            const auto& [pre, post] {p};
-                            using T = decltype(theory::theory(pre));
-                            if (pre->isProgVar()) {
-                                s2.insert(s1.get(post), pre);
-                                s2.insert(pre, T::next(pre->dim()));
-                            }
-                        });
-                }
-                res.push_back(last->renameVars(s2));
-            }
-            return m_to_safety.transform_model(bools::mkOr(res));
+        case Winner::BMC:
+        case Winner::KIND: {
+            return {m_its, m_depth};
         }
-        case Winner::KIND:
         case Winner::BKIND: {
-            throw std::invalid_argument("models for k-induction are not yet supported");
+            throw std::invalid_argument("models for backward k-induction are not yet supported");
         }
     }
     throw std::logic_error("model requested, but SAT was neither proved by BMC nor by k-induction");

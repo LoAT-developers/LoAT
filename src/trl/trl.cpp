@@ -50,7 +50,7 @@ TRL::LoopStatus TRL::handle_loop(const Range &range) {
             return LoopStatus::Failure;
         }
     }
-    if (TRPUtil::add_blocking_clauses(range, model)) {
+    if (add_blocking_clauses(range, model)) {
         return LoopStatus::Success;
     }
     auto ti = kind == TRP::Transitive ? loop : trp.compute(loop_non_bool, loop_bool, model);
@@ -189,25 +189,5 @@ std::optional<SmtResult> TRL::do_step() {
 }
 
 ITSModel TRL::get_model() {
-    std::vector res{t.init()};
-    Bools::Expr last{t.init()};
-    for (unsigned i = 0; i < trace.size(); ++i) {
-        const auto s1{get_subs(i, 1)};
-        last = last && step->renameVars(s1);
-        Renaming s2;
-        for (const auto& x : vars) {
-            theory::apply(
-                x,
-                [&](const auto& x) {
-                    using T = decltype(theory::theory(x));
-                    if (x->isProgVar()) {
-                        s2.insert(s1.get(x->postVar()), x);
-                        s2.insert(x, T::next(x->dim()));
-                    }
-                });
-        }
-        res.push_back(last->renameVars(s2));
-    }
-    const auto sp_model{bools::mkOr(res)};
-    return its2safety.transform_model(sp_model);
+    // TODO
 }

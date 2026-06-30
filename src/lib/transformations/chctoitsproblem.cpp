@@ -6,42 +6,10 @@
 CHCToITS::CHCToITS(CHCPtr chcs): chcs(std::move(chcs)) {}
 
 CHCModel CHCToITS::transform_model(const ITSModel& its_m) const {
-    CHCModel chc_m;
-    const auto signature {chcs->get_signature()};
-    for (const auto loc : its->getLocations()) {
-        if (ITSProblem::getInitialLocation() == loc || ITSProblem::getSink() == loc) {
-            continue;
-        }
-        const auto inv{its_m.get_invariant(loc)};
-        const auto pred{ITSProblem::getPrintableLocationName(loc)};
-        const auto& sig{signature.at(pred)};
-        unsigned next_int_var{0};
-        std::unordered_map<size_t, unsigned> next_arr_var;
-        unsigned next_bool_var{0};
-        std::vector<Var> args;
-        for (const auto& [base, dim] : sig) {
-            switch (base) {
-            case theory::BaseType::Int:
-                if (dim == 0) {
-                    args.emplace_back(vars.at(next_int_var)->var());
-                    ++next_int_var;
-                } else {
-                    args.emplace_back(avars.at(dim).at(next_int_var));
-                    ++next_arr_var.emplace(dim, 0).first->second;
-                }
-                break;
-            case theory::BaseType::Bool:
-                args.emplace_back(bvars.at(next_bool_var));
-                ++next_bool_var;
-                break;
-            }
-        }
-        chc_m.set_interpretation(pred, args, inv);
-    }
-    return chc_m;
+    // TODO
 }
 
-ClausePtr CHCToITS::rule_to_clause(const LocationIdx lhs_loc, const RulePtr& rule, const ClausePtr& prototype) const {
+ClausePtr CHCToITS::rule_to_clause(const RulePtr& rule, const ClausePtr& prototype) const {
     std::vector<FunAppPtr> premise;
     std::optional<FunAppPtr> conclusion;
     for (const auto& prem: prototype->get_premise()) {
@@ -100,21 +68,20 @@ ClausePtr CHCToITS::rule_to_clause(const LocationIdx lhs_loc, const RulePtr& rul
         conclusion = FunApp::mk((*conc)->get_pred(), args);
     }
     Subs subs;
-    subs.writeConst(ITSProblem::loc_var()->var(), arith::mkConst(lhs_loc));
+    subs.update(ITSProblem::loc_var(), arith::mkConst(premise.empty() ? init_loc : loc_map.at(premise.front()->get_pred())));
     return Clause::mk(premise, rule->getGuard(), ITSProblem::getCost(rule), conclusion)->subs(subs);
 }
 
 CHCCex CHCToITS::transform_cex(const ITSSafetyCex &cex) {
     CHCCex res {chcs};
     for (const auto &[rule, kind]: cex.get_used_rules()) {
-        const auto lhs = cex.get_lhs_loc(rule);
         switch (kind) {
             case ProofStepKind::IMPLICANT: {
                 const auto orig {cex.get_implicants().at(rule)};
                 const auto it{clause_map.find(orig)};
                 assert(it != clause_map.end());
                 const auto orig_clause{it->second};
-                const auto clause{rule_to_clause(lhs, rule, orig_clause)};
+                const auto clause{rule_to_clause(rule, orig_clause)};
                 clause_map.emplace(rule, clause);
                 res.add_implicant(orig_clause, clause);
                 break;
@@ -124,7 +91,7 @@ CHCCex CHCToITS::transform_cex(const ITSSafetyCex &cex) {
                 const auto it{clause_map.find(orig)};
                 assert(it != clause_map.end());
                 const auto orig_clause{it->second};
-                const auto clause{rule_to_clause(lhs, rule, orig_clause)};
+                const auto clause{rule_to_clause(rule, orig_clause)};
                 clause_map.emplace(rule, clause);
                 res.add_accel(orig_clause, clause);
                 break;
@@ -134,7 +101,7 @@ CHCCex CHCToITS::transform_cex(const ITSSafetyCex &cex) {
                 const auto it{clause_map.find(orig)};
                 assert(it != clause_map.end());
                 const auto orig_clause{it->second};
-                const auto clause{rule_to_clause(lhs, rule, orig_clause)};
+                const auto clause{rule_to_clause(rule, orig_clause)};
                 clause_map.emplace(rule, clause);
                 res.add_recurrent_set(orig_clause, clause);
                 break;
@@ -146,7 +113,7 @@ CHCCex CHCToITS::transform_cex(const ITSSafetyCex &cex) {
                     orig_clauses.emplace_back(clause_map.at(o));
                 }
                 const auto prototype {Clause::mk(orig_clauses.front()->get_premise(), top(), arith::one(), orig_clauses.back()->get_conclusion())};
-                const auto resolvent{rule_to_clause(lhs, rule, prototype)};
+                const auto resolvent{rule_to_clause(rule, prototype)};
                 clause_map.emplace(rule, resolvent);
                 res.add_resolvent(orig_clauses, resolvent);
                 break;
@@ -186,6 +153,15 @@ ITSPtr CHCToITS::transform() {
             }
         }
     }
+    std::unordered_map<LocationIdx, linked_hash_set<RulePtr>> src;
+    std::unordered_map<LocationIdx, linked_hash_set<RulePtr>> dst;
+    const auto get_loc = [&](const auto& name) {
+        const auto &[it,b] = loc_map.emplace(name, next_loc);
+        if (b) {
+            ++next_loc;
+        }
+        return it->second;
+    };
     for (const auto &c: chcs->get_clauses()) {
         if (!c->is_linear()) {
             throw std::invalid_argument("non-linear clauses cannot be transformed to transition systems");
@@ -193,7 +169,7 @@ ITSPtr CHCToITS::transform() {
         Renaming renaming;
         const auto premise = c->get_premise();
         std::vector constraints{c->get_constraint()};
-        const auto lhs_loc = premise.empty() ? ITSProblem::getInitialLocation() : ITSProblem::getOrAddLocation(premise.front()->get_pred());
+        const auto lhs_loc = premise.empty() ? init_loc : get_loc(premise.front()->get_pred());
         constraints.emplace_back(Arith::mkEq(ITSProblem::loc_var(), arith::mkConst(lhs_loc)));
         // replace the arguments of the body predicate with the corresponding program variables
         unsigned bool_premise_arity{0};
@@ -272,7 +248,7 @@ ITSPtr CHCToITS::transform() {
                 up.put(bvars[i], bools::mkLit(bools::mk(BoolVar::next())));
             }
         }
-        const auto rhs_loc = c->get_conclusion() ? ITSProblem::getOrAddLocation((*c->get_conclusion())->get_pred()) : ITSProblem::getSink();
+        const auto rhs_loc = c->get_conclusion() ? err_loc : get_loc((*c->get_conclusion())->get_pred());
         const auto loc_var {ITSProblem::loc_var()->var()};
         up.writeConst(loc_var, arith::mkConst(rhs_loc));
         up.update(ITSProblem::cost_var(), ITSProblem::cost_var()+ c->get_cost());
@@ -281,7 +257,16 @@ ITSPtr CHCToITS::transform() {
             clause_map.emplace(rule, c);
             renamings.emplace(rule, renaming);
         }
-        its->addRule(rule, lhs_loc);
+        src.emplace(lhs_loc, linked_hash_set<RulePtr>()).first->second.insert(rule);
+        dst.emplace(rhs_loc, linked_hash_set<RulePtr>()).first->second.insert(rule);
+        const auto preds = dst.emplace(lhs_loc, linked_hash_set<RulePtr>()).first->second;
+        const auto succs = src.emplace(rhs_loc, linked_hash_set<RulePtr>()).first->second;
+        const ITSProblem::RuleProperties props = {
+            .is_loop = lhs_loc == rhs_loc,
+            .is_initial = lhs_loc == init_loc,
+            .is_sink = rhs_loc == err_loc
+        };
+        its = its->addRule(rule, props, preds, succs);
     }
     return its;
 }

@@ -12,12 +12,14 @@
 #include <any>
 #include <vector>
 
+#include "chctoitsproblem.hpp"
+
 class LoatSolver
 {
     LoatConfig m_config;
     std::vector<LoatTransition> m_transitions;
     LoatTransitionToITSConverter m_converter;
-    ITSPtr m_its;
+    CHCPtr m_chcs;
 
     std::optional<LoatLocation> m_start;
     std::optional<LoatLocation> m_sink;

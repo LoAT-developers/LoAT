@@ -13,7 +13,7 @@ protected:
 public:
     explicit AbstractITSPreprocessor(ITSPtr);
     virtual ~AbstractITSPreprocessor() = default;
-    virtual bool process() = 0;
+    virtual ITSPtr process() = 0;
     virtual ITSModel transform_model(const ITSModel &) const = 0;
     virtual std::shared_ptr<ITSCex> transform_cex(const std::shared_ptr<ITSCex> &cex) const = 0;
 
@@ -26,7 +26,7 @@ class ITSPreprocessor : public AbstractITSPreprocessor {
 public:
 
     explicit ITSPreprocessor(const ITSPtr& its);
-    bool process() override;
+    ITSPtr process() override;
     ITSModel transform_model(const ITSModel &m) const override;
     std::shared_ptr<ITSCex> transform_cex(const std::shared_ptr<ITSCex> &cex) const override;
 };

@@ -4,14 +4,13 @@
 
 class ITSModel {
 
-    friend std::ostream& operator<<(std::ostream &s, const ITSModel &);
+    friend std::ostream& operator<<(std::ostream &, const ITSModel &);
 
-    linked_hash_map<LocationIdx, Bools::Expr> invariants;
+    ITSPtr m_its;
+    unsigned m_k;
 
 public:
 
-    Bools::Expr get_invariant(LocationIdx) const;
-
-    void  set_invariant(LocationIdx loc, const Bools::Expr& inv);
+    ITSModel(ITSPtr, unsigned);
 
 };

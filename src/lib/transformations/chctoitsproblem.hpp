@@ -6,6 +6,7 @@
 #include "chcproblem.hpp"
 #include "itsmodel.hpp"
 #include "itsproblem.hpp"
+#include "itsproblem.hpp"
 
 class CHCToITS {
 
@@ -16,13 +17,17 @@ class CHCToITS {
     std::vector<Bools::Var> bvars;
     std::unordered_map<RulePtr, ClausePtr> clause_map;
     std::unordered_map<RulePtr, Renaming> renamings;
+    std::unordered_map<std::string, LocationIdx> loc_map;
+    static constexpr LocationIdx init_loc = 0;
+    static constexpr LocationIdx err_loc = 1;
+    LocationIdx next_loc = 2;
 
 public:
     explicit CHCToITS(CHCPtr  chcs);
 
     CHCModel transform_model(const ITSModel &) const;
 
-    ClausePtr rule_to_clause(LocationIdx lhs_loc, const RulePtr& rule, const ClausePtr& prototype) const;
+    ClausePtr rule_to_clause(const RulePtr& rule, const ClausePtr& prototype) const;
 
     CHCCex transform_cex(const ITSSafetyCex &);
 

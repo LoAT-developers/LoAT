@@ -9,25 +9,22 @@ void ITSSafetyCex::do_step(const RulePtr& trans, const ModelPtr &next) {
     if (!is_known(trans)) {
         throw std::logic_error("adding unknown rule " + toString(trans->getId()) + " to cex");
     }
-    states.push_back(next);
-    transitions.push_back(trans);
+    m_states.push_back(next);
+    m_transitions.push_back(trans);
 }
 
 void ITSSafetyCex::set_initial_state(const ModelPtr &m) {
-    assert(transitions.empty());
-    states.clear();
-    states.push_back(m);
+    assert(m_transitions.empty());
+    m_states.clear();
+    m_states.push_back(m);
 }
 
 void ITSSafetyCex::add_final_transition(const RulePtr& trans) {
-    assert(trans->getUpdate().getConst(ITSProblem::loc_var()) == arith::mkConst(ITSProblem::getSink()));
-    transitions.push_back(trans);
+    m_transitions.push_back(trans);
 }
 
 std::ostream& operator<<(std::ostream &s, const ITSSafetyCex &cex) {
     const auto derived {cex.get_used_rules()};
-    s << "init: " << ITSProblem::loc_var() << " = " << ITSProblem::getInitialLocation();
-    s << "\n\nerr: " << ITSProblem::loc_var() << " = " << ITSProblem::getSink();
     if (!derived.empty()) {
         s << "\n\nrules:" << std::endl;
         for (const auto &[t,kind]: derived) {
@@ -67,10 +64,10 @@ std::ostream& operator<<(std::ostream &s, const ITSSafetyCex &cex) {
         }
         s << "\ncounterexample:" << std::endl;
         VarSet prog_vars;
-        for (size_t i = 0; i < cex.transitions.size(); ++i) {
-            const auto &trans{cex.transitions.at(i)};
+        for (size_t i = 0; i < cex.m_transitions.size(); ++i) {
+            const auto &trans{cex.m_transitions.at(i)};
             auto vars{trans->vars()};
-            s << "\t" << cex.states.at(i)->toString(prog_vars) << "\n\t-" << trans->getId() << "->\n";
+            s << "\t" << cex.m_states.at(i)->toString(prog_vars) << "\n\t-" << trans->getId() << "->\n";
         }
         s << "\terr";
     }
@@ -78,25 +75,25 @@ std::ostream& operator<<(std::ostream &s, const ITSSafetyCex &cex) {
 }
 
 size_t ITSSafetyCex::num_states() const {
-    return states.size();
+    return m_states.size();
 }
 
 ModelPtr ITSSafetyCex::get_state(const size_t i) const {
-    return states.at(i);
+    return m_states.at(i);
 }
 
-ITSSafetyCex::ITSSafetyCex(const linked_hash_set<RulePtr> &orig): ITSCex(orig) {}
+ITSSafetyCex::ITSSafetyCex(const linked_hash_set<RulePtr> &p_orig): ITSCex(p_orig) {}
 
 size_t ITSSafetyCex::num_transitions() const {
-    return transitions.size();
+    return m_transitions.size();
 }
 
 RulePtr ITSSafetyCex::get_transition(const size_t i) const {
-    return transitions.at(i);
+    return m_transitions.at(i);
 }
 
 std::vector<std::pair<RulePtr, ProofStepKind>> ITSSafetyCex::get_used_rules() const {
-    return ITSCex::get_used_rules(transitions);
+    return ITSCex::get_used_rules(m_transitions);
 }
 
 std::shared_ptr<ITSCex> ITSSafetyCex::replace_rules(
@@ -140,13 +137,13 @@ std::shared_ptr<ITSCex> ITSSafetyCex::replace_rules(
             }
         }
     }
-    res->set_initial_state(states.front());
+    res->set_initial_state(m_states.front());
     for (size_t i = 1; i < num_states(); ++i) {
-        auto trans{transitions.at(i - 1)};
-        auto state{states.at(i)};
+        auto trans{m_transitions.at(i - 1)};
+        auto state{m_states.at(i)};
         res->do_step(get(trans), transform(trans, state));
     }
-    const auto trans{transitions.back()};
+    const auto trans{m_transitions.back()};
     res->add_final_transition(get(trans));
     return res;
 }

@@ -39,7 +39,6 @@ void ABMC::init() {
     }
     std::vector<Bools::Expr> inits;
     for (const auto &idx: its->getInitialTransitions()) {
-        assert(!its->isSinkTransition(idx));
         inits.push_back(encode_transition(idx));
     }
     solver->add(bools::mkOr(inits));
@@ -179,7 +178,7 @@ Bools::Expr ABMC::build_blocking_clause(const int backlink, const Loop &loop) {
 }
 
 void ABMC::add_learned_clause(const RulePtr& accel, const unsigned backlink) {
-    its->addLearnedRule(accel, trace.at(backlink).first, trace.back().first);
+    its = its->addLearnedRule(accel, trace.at(backlink).first, trace.back().first);
     rule_map.emplace(accel->getId(), accel);
 }
 
@@ -222,7 +221,8 @@ std::optional<ABMC::Loop> ABMC::handle_loop(const unsigned backlink, const std::
     auto success{false};
     const auto nonterm_to_query = [&](const acceleration::Result& accel_res) {
         if (Config::Analysis::tryNonterm() && accel_res.nonterm != bot()) {
-            const auto q{its->addQuery(accel_res.nonterm, trace.at(backlink).first)};
+            const auto [new_its,q] = its->addQuery(accel_res.nonterm, trace.at(backlink).first);
+            its = new_its;
             rule_map.emplace(q->getId(), q);
             if (Config::Analysis::model) {
                 cex.add_recurrent_set(loop_for_proof, q);
@@ -474,61 +474,7 @@ std::optional<SmtResult> ABMC::do_step() {
 }
 
 ITSModel ABMC::get_model() {
-    std::vector<Bools::Expr> inits;
-    Renaming post_to_pre;
-    Renaming init_renaming;
-    for (const auto& x : its->getVars()) {
-        theory::apply(
-            x,
-            [&](const auto& x) {
-                using T = decltype(theory::theory(x));
-                if (x->isProgVar()) {
-                    init_renaming.insert(x, T::next(x->dim()));
-                }
-            });
-    }
-    for (const auto &t: its->getInitialTransitions()) {
-        std::vector conjuncts {t->getGuard()->renameVars(init_renaming)};
-        const auto &up {t->getUpdate()};
-        for (const auto& [x,_] : init_renaming) {
-            theory::apply(x, [&](const auto& x) {
-                using Th = decltype(theory::theory(x));
-                conjuncts.emplace_back(Th::mkEq(Th::varToExpr(x), up.get(x)->renameVars(init_renaming)));
-            });
-        }
-        inits.emplace_back(bools::mkAnd(conjuncts));
-    }
-    const auto init {bools::mkOr(inits)};
-    std::vector res{init};
-    Bools::Expr last{init};
-    for (unsigned i = 0; i + 1 < depth; ++i) {
-        const auto s1{subs.at(i)};
-        last = last && transitions.at(i)->renameVars(s1);
-        Renaming s2;
-        for (const auto& p : pre_to_post) {
-            theory::apply(
-                p,
-                [&](const auto& p) {
-                    const auto& [pre, post]{p};
-                    using T = decltype(theory::theory(pre));
-                    if (pre->isProgVar()) {
-                        s2.insert(s1.get(post), pre);
-                        s2.insert(pre, T::next(pre->dim()));
-                    }
-                });
-        }
-        res.push_back(last->renameVars(s2));
-    }
-    ITSModel model;
-    const auto m {bools::mkOr(res)};
-    for (const auto &l: its->getLocations()) {
-        model.set_invariant(
-            l,
-            m->subs(
-                Subs::build(ITSProblem::loc_var()->var(), arrays::update(ITSProblem::loc_var(), arith::mkConst(l)))));
-    }
-    model.set_invariant(its->getInitialLocation(), top());
-    return model;
+    return {its, depth};
 }
 
 ITSSafetyCex ABMC::get_cex() {

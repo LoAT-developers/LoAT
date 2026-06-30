@@ -1,28 +1,20 @@
 #pragma once
 
-#include "itsmodel.hpp"
-#include "boolexpr.hpp"
+#include <utility>
 
-class LoatModel
-{
-private:
-    ITSModel m_model;
+#include "chcmodel.hpp"
+
+class LoatModel {
+    CHCModel m_model;
 
 public:
-    explicit LoatModel(const ITSModel &model) : m_model(model) {}
+    explicit LoatModel(CHCModel model) : m_model(std::move(model)) {}
 
-    Bools::Expr getInvariant(LocationIdx loc) const
-    {
-        return m_model.get_invariant(loc);
-    }
-
-    const ITSModel &raw() const
-    {
+    const CHCModel &raw() const {
         return m_model;
     }
 
-    friend std::ostream &operator<<(std::ostream &os, const LoatModel &model)
-    {
+    friend std::ostream &operator<<(std::ostream &os, const LoatModel &model) {
         return os << model.m_model;
     }
 };

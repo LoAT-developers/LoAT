@@ -12,25 +12,6 @@ bool ITSCex::is_known(const RulePtr &rule) const {
 
 ITSCex::ITSCex(const linked_hash_set<RulePtr> &orig): orig(orig) {}
 
-LocationIdx ITSCex::get_lhs_loc(const RulePtr &rule) const {
-    if (accel.contains(rule)) {
-        return get_lhs_loc(accel.at(rule));
-    }
-    if (implicants.contains(rule)) {
-        return get_lhs_loc(implicants.at(rule));
-    }
-    if (recurrent_set.contains(rule)) {
-        return get_lhs_loc(recurrent_set.at(rule));
-    }
-    if (resolvents.contains(rule)) {
-        return get_lhs_loc(resolvents.at(rule).front());
-    }
-    if (orig.contains(rule)) {
-        return ITSProblem::getLhsLoc(rule);
-    }
-    assert(false);
-}
-
 void ITSCex::add_orig(const RulePtr &rule) {
     orig.insert(rule);
 }
