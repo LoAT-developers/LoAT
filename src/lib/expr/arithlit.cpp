@@ -93,21 +93,20 @@ bool ArithLit::isLinear(const std::optional<linked_hash_set<ArithVarPtr>> &vars)
 
 bool ArithLit::getBounds(const ArithVarPtr& n, linked_hash_set<Bound> &res) const {
     if (kind != Kind::Neq) {
-        const auto t = kind == Kind::Eq ? l : l - arith::one();
-        if (const auto optSolved{t->solve(n)}) {
+        if (const auto optSolved{l->solve(n)}) {
             switch (kind) {
             case Kind::Eq:
                 res.emplace(*optSolved, BoundKind::Equality);
                 return true;
             case Kind::Gt: {
-                const auto coeff{*t->coeff(n)};
+                const auto coeff{*l->coeff(n)};
                 if (const auto r{***coeff->isRational()}) {
                     if (r > 0) {
-                        res.emplace(*optSolved, BoundKind::Lower);
+                        res.emplace(*optSolved + arith::one(), BoundKind::Lower);
                         return true;
                     }
                     if (r < 0) {
-                        res.emplace(*optSolved, BoundKind::Upper);
+                        res.emplace(*optSolved - arith::one(), BoundKind::Upper);
                         return true;
                     }
                 }
