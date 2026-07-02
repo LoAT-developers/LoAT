@@ -24,7 +24,12 @@ public:
         if (Config::Analysis::doLogPreproc()) {
             std::cout << "propagated equivalences: " << subs << std::endl;
         }
-        return Rule::mk(new_guard, in->getUpdate().concat(subs));
+        auto last = in->withGuard(new_guard);
+        auto current = last->subs(subs);
+        while (last != current) {
+            current = last->subs(subs);
+        }
+        return current;
     }
 
     ModelPtr transform_model(const ModelPtr& cex) const override {
@@ -92,7 +97,12 @@ public:
         if (Config::Analysis::doLogPreproc()) {
             std::cout << "extracted implied equalities: " << subs << std::endl;
         }
-        return Rule::mk(new_guard, in->getUpdate().concat(subs));
+        auto last = in->withGuard(new_guard);
+        auto current = last->subs(subs);
+        while (last != current) {
+            current = last->subs(subs);
+        }
+        return current;
     }
 
     ModelPtr transform_model(const ModelPtr& cex) const override {
@@ -136,7 +146,7 @@ RulePtr RulePreprocessor::process() {
         current = current->withGuard(g);
     }
     auto changed = false;
-    const auto apply = [&]<class T, class... Args>(Args... args) {
+    const auto apply = [&]<class T, class... Args>(Args&... args) {
         auto proc = std::make_unique<T>(args...);
         const auto next = proc->process();
         if (next == current) {

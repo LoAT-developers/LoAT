@@ -4,7 +4,7 @@
 #include "dependencygraph.hpp"
 #include "linkedhashset.hpp"
 
-using LocationIdx = unsigned int;
+using LocationIdx = Int;
 
 class ITSProblem;
 

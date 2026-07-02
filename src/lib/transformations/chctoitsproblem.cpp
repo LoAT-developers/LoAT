@@ -2,11 +2,62 @@
 
 #include <utility>
 #include "config.hpp"
+#include "formulapreprocessing.hpp"
+
+const LocationIdx CHCToITS::init_loc = 0;
+const LocationIdx CHCToITS::err_loc = 1;
 
 CHCToITS::CHCToITS(CHCPtr chcs): chcs(std::move(chcs)) {}
 
-CHCModel CHCToITS::transform_model(const ITSModel& its_m) const {
-    // TODO
+CHCModel CHCToITS::transform_model(const ITSModel& m) {
+    const auto mk_fun_app = [&](const std::string& name) {
+        const auto sig = chcs->get_signature().at(name);
+        std::vector<Expr> args;
+        for (const auto& t: sig) {
+            switch (t.base) {
+                case theory::BaseType::Bool: {
+                    args.emplace_back(bools::mkLit(bools::mk(Bools::next(t.dim))));
+                }
+                case theory::BaseType::Int: {
+                    args.emplace_back(Arrays<Arith>::next(t.dim));
+                }
+                default: throw std::invalid_argument("unknown type");
+            }
+        }
+        return FunApp::mk(name, args);
+    };
+    auto res = std::make_shared<CHCProblem>();
+    auto loc_var = Var(ITSProblem::loc_var()->var());
+    for (const auto& r: m.its()->getAllTransitions()) {
+        EqualityPropagator prop {r->getGuard(), [&](const auto &x) {
+            return x == loc_var;
+        }};
+        prop.process();
+        const auto subs = prop.get_subs();
+        if (!subs.contains(loc_var)) {
+            throw std::logic_error("propagating loc_var failed");
+        }
+        const auto lhs_loc = *ITSProblem::loc_var()->subs(subs)->isInt();
+        const auto rhs_loc = *ITSProblem::loc_var()->subs(r->getUpdate())->isInt();
+        std::vector<FunAppPtr> premise;
+        if (lhs_loc != init_loc) {
+            const auto lhs = rev_loc_map.at(lhs_loc);
+            premise.emplace_back(mk_fun_app(lhs));
+        }
+        std::optional<FunAppPtr> conclusion;
+        if (rhs_loc != err_loc) {
+            const auto rhs = rev_loc_map.at(rhs_loc);
+            conclusion = mk_fun_app(rhs);
+        }
+        const auto prototype = Clause::mk(premise, top(), arith::one(), conclusion);
+        const auto it = clause_map.find(r);
+        const auto clause = it == clause_map.end() ? rule_to_clause(r, prototype) : it->second;
+        if (it == clause_map.end()) {
+            clause_map.emplace(r, clause);
+        }
+        chcs->add_clause(clause);
+    }
+    return {chcs, m.k()};
 }
 
 ClausePtr CHCToITS::rule_to_clause(const RulePtr& rule, const ClausePtr& prototype) const {
@@ -158,6 +209,7 @@ ITSPtr CHCToITS::transform() {
     const auto get_loc = [&](const auto& name) {
         const auto &[it,b] = loc_map.emplace(name, next_loc);
         if (b) {
+            rev_loc_map.emplace(next_loc, name);
             ++next_loc;
         }
         return it->second;
