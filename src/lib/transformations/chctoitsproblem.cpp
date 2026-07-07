@@ -300,7 +300,7 @@ ITSPtr CHCToITS::transform() {
                 up.put(bvars[i], bools::mkLit(bools::mk(BoolVar::next())));
             }
         }
-        const auto rhs_loc = c->get_conclusion() ? err_loc : get_loc((*c->get_conclusion())->get_pred());
+        const auto rhs_loc = c->get_conclusion() ? get_loc((*c->get_conclusion())->get_pred()): err_loc;
         const auto loc_var {ITSProblem::loc_var()->var()};
         up.writeConst(loc_var, arith::mkConst(rhs_loc));
         up.update(ITSProblem::cost_var(), ITSProblem::cost_var()+ c->get_cost());

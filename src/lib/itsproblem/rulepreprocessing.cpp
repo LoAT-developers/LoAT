@@ -27,6 +27,7 @@ public:
         auto last = in->withGuard(new_guard);
         auto current = last->subs(subs);
         while (last != current) {
+            last = current;
             current = last->subs(subs);
         }
         return current;
@@ -100,6 +101,7 @@ public:
         auto last = in->withGuard(new_guard);
         auto current = last->subs(subs);
         while (last != current) {
+            last = current;
             current = last->subs(subs);
         }
         return current;

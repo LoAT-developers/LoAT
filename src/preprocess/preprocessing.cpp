@@ -262,7 +262,8 @@ public:
         bool changed{false};
         do {
             changed = false;
-            for (const auto &first : its->getAllTransitions()) {
+            // do not turn this into a reference, the shared pointer dies when 'its' gets overwritten
+            for (const auto first : its->getAllTransitions()) {
                 if (const auto succ{its->getSuccessors(first)}; succ.size() == 1 && !succ.contains(first)) {
                     if (const auto second_idx{*succ.begin()}; !its->isSimpleLoop(second_idx)) {
                         const auto c{Preprocess::chain({first, second_idx->renameTmpVars()})};
