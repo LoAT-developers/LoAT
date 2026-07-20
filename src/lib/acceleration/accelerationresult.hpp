@@ -4,6 +4,8 @@
 
 #include <optional>
 
+#include "itscex.hpp"
+
 namespace acceleration {
 
 enum Status {
@@ -25,7 +27,7 @@ struct Result {
     std::optional<Accel> accel {};
     Bools::Expr nonterm {bot()};
     unsigned prefix {0};
-    unsigned period {1};
+    std::optional<ITSCex::ResolventInfo> chaining_info;
 
 };
 

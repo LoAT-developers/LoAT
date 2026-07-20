@@ -153,7 +153,7 @@ void TRP::recurrent_cycles(const Bools::Expr& loop, const linked_hash_set<ArithV
     }
 }
 
-void TRP::recurrent_bounds(const Bools::Expr& loop, const linked_hash_set<ArithVarPtr>& pre_cells, const ModelPtr& model) {
+void TRP::recurrent_bounds(const Bools::Expr& loop, const linked_hash_set<ArithVarPtr>& pre_cells, ModelPtr model) {
     if (!config.recurrent_bounds) {
         return;
     }
@@ -168,7 +168,7 @@ void TRP::recurrent_bounds(const Bools::Expr& loop, const linked_hash_set<ArithV
         const auto d{arrays::nextConst<Arith>()};
         const auto diff{post - pre};
         delta_eqs.insert(bools::mkLit(arith::mkEq(d, diff)));
-        model->put(d, model->eval(post - pre));
+        model = model->put(d, model->eval(post - pre));
         subs.put(d->var(), arrays::update(d, diff));
         deltas.emplace(d, pre);
         zeros.put(d->var(), arrays::update(d, arith::zero()));

@@ -22,7 +22,7 @@ std::ostream& operator<<(std::ostream &s, const ITSCpxCex &cex) {
                         break;
                     }
                     case ProofStepKind::IMPLICANT: {
-                        s << "-" << t << "-> is subset of -" << cex.implicants.at(t) << "->\n";
+                        s << "-" << t << "-> is subset of -" << cex.implicants.at(t).in() << "->\n";
                         break;
                     }
                     case ProofStepKind::ACCEL: {
@@ -32,7 +32,7 @@ std::ostream& operator<<(std::ostream &s, const ITSCpxCex &cex) {
                     case ProofStepKind::RESOLVENT: {
                         s << "chain(";
                         auto first{true};
-                        for (const auto &r : cex.resolvents.at(t)) {
+                        for (const auto &r : cex.resolvents.at(t).in()) {
                             if (first) {
                                 s << r;
                                 first = false;
@@ -59,38 +59,6 @@ std::ostream& operator<<(std::ostream &s, const ITSCpxCex &cex) {
 }
 
 ITSCpxCex::ITSCpxCex(const linked_hash_set<RulePtr> &orig): ITSCex(orig) {}
-
-std::shared_ptr<ITSCex> ITSCpxCex::replace_rules(
-    const linked_hash_map<RulePtr, RulePtr> &map,
-    const linked_hash_map<RulePtr, std::shared_ptr<RulePreprocessor>>& procs) const {
-    auto res = std::make_shared<ITSCpxCex>(linked_hash_set<RulePtr>());
-    if (witness) {
-        for (const auto& r: orig) {
-            res->add_orig(map.get(r).value_or(r));
-        }
-        for (const auto &[x, y] : implicants) {
-            res->add_implicant(map.get(y).value_or(y), map.get(x).value_or(x));
-        }
-        for (const auto &[x, y] : accel) {
-            res->add_accel(map.get(y).value_or(y), map.get(x).value_or(x));
-        }
-        for (const auto &[x, ys] : resolvents) {
-            std::vector<RulePtr> transformed;
-            for (const auto &y : ys) {
-                transformed.emplace_back(map.get(y).value_or(y));
-            }
-            res->add_resolvent(transformed, map.get(x).value_or(x));
-        }
-        for (const auto &[x, y] : recurrent_set) {
-            res->add_recurrent_set(map.get(y).value_or(y), map.get(x).value_or(x));
-        }
-        assert(!map.contains(*witness));
-        res->witness = witness;
-        res->valuation = valuation;
-        res->param = param;
-    }
-    return res;
-}
 
 void ITSCpxCex::set_witness(const RulePtr& witness, const ModelPtr &valuation, const ArithVarPtr &param) {
     this->witness = witness;

@@ -35,7 +35,7 @@ std::ostream& operator<<(std::ostream &s, const ITSSafetyCex &cex) {
                     break;
                 }
                 case ProofStepKind::IMPLICANT: {
-                    s << "\t\t-" << t << "-> is subset of -" << cex.implicants.at(t) << "->\n";
+                    s << "\t\t-" << t << "-> is subset of -" << cex.implicants.at(t).in() << "->\n";
                     break;
                 }
                 case ProofStepKind::ACCEL: {
@@ -45,7 +45,7 @@ std::ostream& operator<<(std::ostream &s, const ITSSafetyCex &cex) {
                 case ProofStepKind::RESOLVENT: {
                     s << "\t\t" << "chain(";
                     auto first{true};
-                    for (const auto &r : cex.resolvents.at(t)) {
+                    for (const auto &r : cex.resolvents.at(t).in()) {
                         if (first) {
                             s << r;
                             first = false;
@@ -94,56 +94,4 @@ RulePtr ITSSafetyCex::get_transition(const size_t i) const {
 
 std::vector<std::pair<RulePtr, ProofStepKind>> ITSSafetyCex::get_used_rules() const {
     return ITSCex::get_used_rules(m_transitions);
-}
-
-std::shared_ptr<ITSCex> ITSSafetyCex::replace_rules(
-    const linked_hash_map<RulePtr, RulePtr> &map,
-    const linked_hash_map<RulePtr, std::shared_ptr<RulePreprocessor>>& procs) const {
-    auto res = std::make_shared<ITSSafetyCex>(linked_hash_set<RulePtr>());
-    const auto get = [&](const auto& r) {
-        return map.get(r).value_or(r);
-    };
-    const auto transform = [&](const auto& r, const ModelPtr& model) {
-        if (procs.contains(r)) {
-            return procs.at(r)->transform_model(model);
-        }
-        return model;
-    };
-    for (const auto &[r,k]: get_used_rules()) {
-        switch (k) {
-            case ProofStepKind::IMPLICANT: {
-                res->add_implicant(get(implicants.at(r)), get(r));
-                break;
-            }
-            case ProofStepKind::RESOLVENT: {
-                const auto orig = resolvents.at(r);
-                std::vector<RulePtr> transformed;
-                for (const auto& r: orig) {
-                    transformed.emplace_back(get(r));
-                }
-                res->add_resolvent(transformed, get(r));
-                break;
-            }
-            case ProofStepKind::RECURRENT_SET: {
-                res->add_recurrent_set(get(recurrent_set.at(r)), get(r));
-                break;
-            }
-            case ProofStepKind::ACCEL: {
-                res->add_accel(get(accel.at(r)), get(r));
-                break;
-            }
-            case ProofStepKind::ORIG: {
-                res->add_orig(get(r));
-            }
-        }
-    }
-    res->set_initial_state(m_states.front());
-    for (size_t i = 1; i < num_states(); ++i) {
-        auto trans{m_transitions.at(i - 1)};
-        auto state{m_states.at(i)};
-        res->do_step(get(trans), transform(trans, state));
-    }
-    const auto trans{m_transitions.back()};
-    res->add_final_transition(get(trans));
-    return res;
 }

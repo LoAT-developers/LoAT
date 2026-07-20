@@ -73,7 +73,7 @@ public:
 
     bool hasNonTrivialNondeterminism() const;
 
-    RulePtr renameTmpVars() const;
+    std::pair<RulePtr, Renaming> renameTmpVars() const;
 
     bool isHavoced(const Var&) const;
 

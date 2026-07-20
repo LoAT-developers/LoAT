@@ -19,12 +19,12 @@ public:
         return m_cex->get_accel();
     }
 
-    const linked_hash_map<RulePtr, RulePtr> &getImplicants() const
+    const linked_hash_map<RulePtr, ITSCex::TransformationInfo> &getImplicants() const
     {
         return m_cex->get_implicants();
     }
 
-    const linked_hash_map<RulePtr, std::vector<RulePtr>> &getResolvents() const
+    const linked_hash_map<RulePtr, ITSCex::ResolventInfo> &getResolvents() const
     {
         return m_cex->get_resolvents();
     }

@@ -4,8 +4,6 @@
 
 class Model;
 
-using ModelPtr = cpp::not_null<std::shared_ptr<Model>>;
-
 class Model: public std::enable_shared_from_this<Model> {
 
 public:
@@ -16,7 +14,7 @@ public:
     Arith::Const get(const ArithVarPtr&);
     Bools::Const get(const Bools::Var&);
 
-    void put(const ArithVarPtr&, const Arith::Const&);
+    ModelPtr put(const ArithVarPtr&, const Arith::Const&) const;
 
     bool eval(const Lit&);
     Bools::Const eval(const Bools::Expr&);

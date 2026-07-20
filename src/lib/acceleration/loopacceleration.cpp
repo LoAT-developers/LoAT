@@ -13,26 +13,27 @@ LoopAcceleration::LoopAcceleration(
     AccelConfig config)
     : rule(std::move(rule)), sample_point(sample_point), config(std::move(config)) {}
 
-std::pair<RulePtr, unsigned> LoopAcceleration::chain(const RulePtr& rule) {
+ITSCex::ResolventInfo LoopAcceleration::chain(const RulePtr& rule) {
     auto changed {false};
     auto res {rule};
-    unsigned period {1};
+    std::vector<Renaming> renamings;
+    renamings.emplace_back();
     do {
         changed = false;
-        if (const auto chained{Preprocess::chain({res, res->renameTmpVars()})};
-            LoopComplexity::compute(res) > LoopComplexity::compute(chained)) {
+        const auto [renamed, ren] = rule->renameTmpVars();
+        if (const auto chained = Preprocess::chain({res, renamed}); LoopComplexity::compute(res) > LoopComplexity::compute(chained)) {
             res = chained;
-            period *= 2;
+            renamings.emplace_back(ren);
             changed = true;
         }
     } while (changed);
-    return {res, period};
+    const std::vector rules {renamings.size(), rule};
+    return {rules, renamings, res};
 }
 
 void LoopAcceleration::chain() {
-    const auto &[chained, period] {chain(rule)};
-    rule = chained;
-    res.period = period;
+    res.chaining_info = chain(rule);
+    rule = res.chaining_info->out();
 }
 
 void LoopAcceleration::store_nonterm(const AccelerationProblem::Accelerator &accel) {
@@ -227,7 +228,7 @@ void LoopAcceleration::run() {
         res.status = acceleration::Arrays;
     } else {
         chain();
-        switch (SmtFactory::check(Preprocess::chain({rule, rule->renameTmpVars()})->getGuard())) {
+        switch (SmtFactory::check(Preprocess::chain({rule, rule->renameTmpVars().first})->getGuard())) {
             case SmtResult::Unsat:
                 res.status = acceleration::PseudoLoop;
                 return;

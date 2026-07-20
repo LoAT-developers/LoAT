@@ -18,7 +18,7 @@ Bools::Expr EquivalencePropagator::process() {
     return in->subs(subs);
 }
 
-ModelPtr EquivalencePropagator::transform_model(const ModelPtr &model) {
+ModelPtr EquivalencePropagator::transform_model(ModelPtr model) {
     return model->composeBackwards(subs);
 }
 
@@ -36,7 +36,7 @@ Bools::Expr EqualityPropagator::process() {
     return in->subs(subs);
 }
 
-ModelPtr EqualityPropagator::transform_model(const ModelPtr &model) {
+ModelPtr EqualityPropagator::transform_model(ModelPtr model) {
     return model->composeBackwards(subs);
 }
 
@@ -55,7 +55,7 @@ Bools::Expr AndSimplifier::process() {
     return in;
 }
 
-ModelPtr AndSimplifier::transform_model(const ModelPtr &model) {
+ModelPtr AndSimplifier::transform_model(ModelPtr model) {
     return model;
 }
 
@@ -70,7 +70,7 @@ Bools::Expr OrSimplifier::process() {
     return in;
 }
 
-ModelPtr OrSimplifier::transform_model(const ModelPtr &model) {
+ModelPtr OrSimplifier::transform_model(ModelPtr model) {
     return model;
 }
 
@@ -82,7 +82,7 @@ Bools::Expr IntegerFourierMotzkin::process() {
     return res;
 }
 
-ModelPtr IntegerFourierMotzkin::transform_model(const ModelPtr &model) {
+ModelPtr IntegerFourierMotzkin::transform_model(ModelPtr model) {
     for (const auto& [x,lbs]: lower_bound_map | std::views::reverse) {
         auto max_val = model->eval(lbs.front());
         for (const auto& lb: lbs) {
@@ -91,7 +91,7 @@ ModelPtr IntegerFourierMotzkin::transform_model(const ModelPtr &model) {
                 max_val = val;
             }
         }
-        model->put(x, max_val);
+        model = model->put(x, max_val);
     }
     return model;
 }
@@ -127,7 +127,7 @@ Bools::Expr FormulaPreprocessor::process() {
     return current;
 }
 
-ModelPtr FormulaPreprocessor::transform_model(const ModelPtr &model) {
+ModelPtr FormulaPreprocessor::transform_model(ModelPtr model) {
     ModelPtr res = model;
     for (const auto& proc: procs | std::views::reverse) {
         res = proc->transform_model(res);

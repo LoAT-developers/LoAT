@@ -3,6 +3,7 @@
 #include <utility>
 #include "formulapreprocessing.hpp"
 #include "config.hpp"
+#include "rulepreprocessing.hpp"
 
 ITSToSafety::ITSToSafety(ITSPtr its)
     : its(std::move(its)) {}

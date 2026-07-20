@@ -489,7 +489,7 @@ void TRPUtil::add_blocking_clauses(unsigned depth) {
     }
 }
 
-std::optional<Int> TRPUtil::add_blocking_clauses(const Range &range, const ModelPtr& model) {
+std::optional<Int> TRPUtil::add_blocking_clauses(const Range &range, ModelPtr model) {
     const auto n {trp.get_n()};
     for (const auto &[id, b] : rule_map) {
         const auto is_orig_clause {id <= last_orig_clause};
@@ -510,7 +510,7 @@ std::optional<Int> TRPUtil::add_blocking_clauses(const Range &range, const Model
             for (const auto &bound: bounds) {
                 const auto c = model->evalToRational(bound.bound);
                 if (mp::denominator(c) == 1) {
-                    model->put(n, mp::numerator(c));
+                    model = model->put(n, mp::numerator(c));
                     if (model->eval(b)) {
                         Bools::Expr projected{
                             mbp::int_mbp(b, model, mbp_kind, [&](const auto &x) {

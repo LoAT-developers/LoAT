@@ -13,8 +13,8 @@ class ABMC final : public StepwiseAnalysis {
 
     struct Loop {
         RulePtr idx;
-        unsigned prefix;
-        unsigned period;
+        size_t prefix;
+        size_t period;
         Bools::Expr covered;
     };
 

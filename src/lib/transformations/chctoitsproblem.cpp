@@ -129,7 +129,7 @@ CHCCex CHCToITS::transform_cex(const ITSSafetyCex &cex) {
         switch (kind) {
             case ProofStepKind::IMPLICANT: {
                 const auto orig {cex.get_implicants().at(rule)};
-                const auto it{clause_map.find(orig)};
+                const auto it{clause_map.find(orig.in())};
                 assert(it != clause_map.end());
                 const auto orig_clause{it->second};
                 const auto clause{rule_to_clause(rule, orig_clause)};
@@ -160,7 +160,7 @@ CHCCex CHCToITS::transform_cex(const ITSSafetyCex &cex) {
             case ProofStepKind::RESOLVENT: {
                 const auto origs {cex.get_resolvents().at(rule)};
                 std::vector<ClausePtr> orig_clauses;
-                for (const auto &o: origs) {
+                for (const auto &o: origs.in()) {
                     orig_clauses.emplace_back(clause_map.at(o));
                 }
                 const auto prototype {Clause::mk(orig_clauses.front()->get_premise(), top(), arith::one(), orig_clauses.back()->get_conclusion())};

@@ -113,7 +113,6 @@ std::optional<Renaming> FunApp::unify(const FunAppPtr& that) const {
                 const auto var = x->isVar();
                 assert(var);
                 assert((*var)->dim() == 0);
-                using Th = decltype(theory::theory(x));
                 const auto other_var = std::get<Arith::Expr>(that->args.at(i))->isVar();
                 assert(other_var);
                 subs.insert((*var)->var(), (*other_var)->var());

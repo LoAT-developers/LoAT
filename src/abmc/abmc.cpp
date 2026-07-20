@@ -65,7 +65,7 @@ bool ABMC::is_orig_clause(const RulePtr& idx) const {
     return idx->getId() <= last_orig_clause;
 }
 
-bool ends_with_square(const std::vector<int> &w) {
+static bool ends_with_square(const std::vector<int> &w) {
     const auto start{w.rbegin()};
     const auto size{w.size()};
     const auto max_length{size / 2};
@@ -199,12 +199,6 @@ std::optional<ABMC::Loop> ABMC::handle_loop(const unsigned backlink, const std::
         }
     };
     auto [loop, sample_point] {build_loop(backlink)};
-    auto loop_for_proof{loop};
-    // if it's a loop of length 1, then undo the reanming of temporary variables that's performed by
-    // build_loop to get a cleaner proof
-    if (Config::Analysis::model && backlink + 1 == trace.size()) {
-        loop_for_proof = loop->renameVars(subsTmp.at(backlink).invert());
-    }
     auto& map{cache.emplace(lang, std::unordered_map<Bools::Expr, std::optional<Loop>>()).first->second};
     for (const auto& [imp, loop] : map) {
         if (sample_point->eval(imp)) {
@@ -217,7 +211,8 @@ std::optional<ABMC::Loop> ABMC::handle_loop(const unsigned backlink, const std::
             return {};
         }
     }
-    auto simp{Preprocess::preprocessRule(loop)};
+    auto loop_to_simp = std::make_shared<RulePreprocessor>(loop);
+    auto simp= loop_to_simp->process();
     auto success{false};
     const auto nonterm_to_query = [&](const acceleration::Result& accel_res) {
         if (Config::Analysis::tryNonterm() && accel_res.nonterm != bot()) {
@@ -225,7 +220,7 @@ std::optional<ABMC::Loop> ABMC::handle_loop(const unsigned backlink, const std::
             its = new_its;
             rule_map.emplace(q->getId(), q);
             if (Config::Analysis::model) {
-                cex.add_recurrent_set(loop_for_proof, q);
+                cex.add_recurrent_set(simp, q);
             }
             success = true;
             query = query || encode_transition(q);
@@ -258,12 +253,13 @@ std::optional<ABMC::Loop> ABMC::handle_loop(const unsigned backlink, const std::
         const auto accel_res{LoopAcceleration::accelerate(simp, sample_point, config)};
         nonterm_to_query(accel_res);
         if (accel_res.accel) {
-            if (auto simplified{Preprocess::preprocessRule(accel_res.accel->rule)}; simplified->getUpdate() != simp->
-                getUpdate()) {
+            auto accel_to_simplified = std::make_shared<RulePreprocessor>(accel_res.accel->rule);
+            if (auto simplified = accel_to_simplified->process(); simplified->getUpdate() != simp->getUpdate()) {
                 success = true;
                 add_learned_clause(simplified, backlink);
                 if (Config::Analysis::model) {
-                    cex.add_accel(loop_for_proof, simplified);
+                    cex.add_accel(simp, accel_res.accel->rule);
+                    cex.add_implicant(ITSCex::TransformationInfo(accel_res.accel->rule, accel_to_simplified, simplified));
                 }
                 shortcut = simplified;
                 history.emplace(next, lang);
@@ -272,7 +268,7 @@ std::optional<ABMC::Loop> ABMC::handle_loop(const unsigned backlink, const std::
                 res = {
                     .idx = simplified,
                     .prefix = accel_res.prefix,
-                    .period = accel_res.period,
+                    .period = accel_res.chaining_info->size(),
                     .covered = accel_res.accel->covered
                 };
                 covered = accel_res.accel->covered;
@@ -285,21 +281,26 @@ std::optional<ABMC::Loop> ABMC::handle_loop(const unsigned backlink, const std::
     }
     if (success) {
         if (Config::Analysis::model) {
+            if (simp != loop) {
+                cex.add_implicant(ITSCex::TransformationInfo(loop, loop_to_simp, simp));
+            }
             if (backlink + 1 == trace.size()) {
-                if (const auto rule{trace.back().first}; rule != loop_for_proof) {
-                    cex.add_implicant(rule, loop_for_proof);
+                if (const auto rule{trace.back().first}; rule != loop) {
+                    cex.add_implicant(ITSCex::TransformationInfo(rule, loop));
                 }
             } else {
                 std::vector<RulePtr> rules;
+                std::vector<Renaming> subs;
                 for (size_t i = backlink; i < trace.size(); ++i) {
                     if (const auto& [rule, imp]{trace.at(i)}; rule == imp) {
                         rules.emplace_back(rule);
                     } else {
-                        cex.add_implicant(rule, imp);
+                        cex.add_implicant(ITSCex::TransformationInfo(rule, imp));
                         rules.emplace_back(imp);
                     }
+                    subs.emplace_back(subsTmp.at(i));
                 }
-                cex.add_resolvent(rules, loop);
+                cex.add_resolvent(ITSCex::ResolventInfo(rules, subs, loop));
             }
         }
         map.emplace(covered, res);

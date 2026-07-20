@@ -4,7 +4,6 @@
 #include "redundanceviaautomata.hpp"
 #include "complexity.hpp"
 #include "smt.hpp"
-#include "smtfactory.hpp"
 #include "itssafetycex.hpp"
 #include "itscpxcex.hpp"
 #include "range.hpp"
@@ -90,8 +89,8 @@ public:
 
 struct LearnedClauses {
     std::vector<RulePtr> res;
-    const unsigned prefix;
-    const unsigned period;
+    const size_t prefix;
+    const size_t period;
 };
 
 class Succeeded final: public LearningState {
@@ -108,6 +107,7 @@ public:
 };
 
 class Covered final: public LearningState {
+public:
     std::optional<Covered> covered() override;
 };
 
@@ -144,6 +144,7 @@ public:
 };
 
 class Restart final: public LearningState {
+public:
     std::optional<Restart> restart() override;
 };
 
@@ -228,16 +229,14 @@ class ADCL: public StepwiseAnalysis {
 
     /**
      * computes (an approximation of) the language associated with the clause that can be learned
-     * from the looping suffix of the trace
-     * @param backlink the start of the looping suffix of the trace
+     * from the looping infix of the trace
      */
     Automaton build_language(const Range& range) const;
 
     /**
-     * computes a clause that is equivalent to the looping suffix of the trace
-     * @param backlink the start of the looping suffix of the trace
+     * computes a clause that is equivalent to the looping infix of the trace
      */
-    std::pair<RulePtr, ModelPtr> build_loop(const Range& range) const;
+    RulePtr build_loop(const Range& range) const;
 
     /**
      * adds a learned clause to all relevant data structures
@@ -247,7 +246,7 @@ class ADCL: public StepwiseAnalysis {
     /**
      * tries to accelerate the given clause
      */
-    std::unique_ptr<LearningState> learn_clause(const RulePtr& rule, const ModelPtr& model, const Range& range);
+    std::unique_ptr<LearningState> learn_clause(const RulePtr& rule, const Range& range);
 
     bool check_consistency() const;
 
@@ -285,7 +284,7 @@ class ADCL: public StepwiseAnalysis {
 
     void add_to_trace(const Step &step);
 
-    RulePtr compute_resolvent(const RulePtr& idx, const Bools::Expr& implicant) const;
+    RulePtr compute_resolvent(const RulePtr& idx, const Bools::Expr& implicant);
 
     /**
      * Assumes that the trace can be resolved with the given clause.

@@ -185,6 +185,20 @@ RecurrentSet CHCCex::to_recurrent_set() const {
         return f->subs(subs);
     };
 
+    const auto instantiate_tmp = [](const Bools::Expr& b, const ModelPtr& m) {
+        Subs subs;
+        for (const auto& x: b->cells()) {
+            if (theory::isTempCell(x)) {
+                theory::apply(x,[&](const Bools::Var& x) {
+                    subs.put(x, m->get(x) ? top() : bot());
+                }, [&](const ArrayReadPtr<Arith>& x) {
+                    subs.update(x, arith::mkConst(m->eval(x)));
+                });
+            }
+        }
+        return b->subs(subs);
+    };
+
     RecurrentSet res;
 
     for (unsigned i = 0; i < transitions.size(); ++i) {
@@ -192,7 +206,7 @@ RecurrentSet CHCCex::to_recurrent_set() const {
         const auto from = states.at(i);
         if (recurrent_set.contains(t)) {
             const auto premise = t->get_premise().front();
-            res.add(premise, t->get_constraint());
+            res.add(premise, instantiate_tmp(t->get_constraint(), from));
         } else {
             const auto to = states.at(i+1);
             if (accel.contains(t)) {
@@ -201,10 +215,11 @@ RecurrentSet CHCCex::to_recurrent_set() const {
                 const auto conc = renamed->get_conclusion().value();
                 const auto spec = instantiate(transitions.at(i+1)->get_premise().front(), to);
                 const auto unif = FunApp::unify(conc, spec);
+                const auto constr = instantiate_tmp(renamed->get_constraint(), from);
                 // the final value is in the recurrent set
                 res.add(conc, unif);
                 // all values that can reach the final value are in the recurrent set
-                res.add(premise, unif && renamed->get_constraint());
+                res.add(premise, unif && constr);
             } else {
                 if (!t->is_fact()) {
                     const auto premise = t->get_premise().front();

@@ -20,10 +20,12 @@ Bools::Const Model::get(const Bools::Var &var) {
     return eval(bools::mk(var));
 }
 
-void Model::put(const ArithVarPtr& x, const Arith::Const& c) {
+ModelPtr Model::put(const ArithVarPtr& x, const Arith::Const& c) const {
     const auto var {x->var()};
     const auto old {subs.get(var)};
-    subs.put(var, arrays::mkArrayWrite(old, x->indices(), arith::mkConst(c)));
+    auto new_subs = subs;
+    new_subs.put(var, arrays::mkArrayWrite(old, x->indices(), arith::mkConst(c)));
+    return withSubs(new_subs);
 }
 
 bool Model::eval(const Lit& lit) {

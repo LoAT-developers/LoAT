@@ -14,10 +14,6 @@ friend std::ostream& operator<<(std::ostream &s, const ITSCpxCex &);
 public:
     explicit ITSCpxCex(const linked_hash_set<RulePtr> &orig);
 
-    std::shared_ptr<ITSCex> replace_rules(
-        const linked_hash_map<RulePtr, RulePtr>&,
-        const linked_hash_map<RulePtr, std::shared_ptr<RulePreprocessor>>&) const override;
-
     void set_witness(const RulePtr& witness, const ModelPtr &valuation, const ArithVarPtr &param);
 
     VarSet vars() const;

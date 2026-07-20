@@ -202,7 +202,7 @@ size_t hash_value(const Rule &r) {
     return r.hash();
 }
 
-RulePtr Rule::renameTmpVars() const {
+std::pair<RulePtr, Renaming> Rule::renameTmpVars() const {
     Renaming s;
     for (const auto &x: vars()) {
         theory::apply(
@@ -214,7 +214,7 @@ RulePtr Rule::renameTmpVars() const {
                 }
             });
     }
-    return renameVars(s);
+    return {renameVars(s), s};
 }
 
 bool Rule::isHavoced(const Var& x) const {

@@ -17,7 +17,7 @@ class TRP {
     void recurrent_exps(const Bools::Expr& loop, const ModelPtr &model);
     void recurrent_pseudo_divisibility(const Bools::Expr& loop, const ModelPtr &model);
     void recurrent_cycles(const Bools::Expr& loop, const linked_hash_set<ArithVarPtr>& pre_cells);
-    void recurrent_bounds(const Bools::Expr& loop, const linked_hash_set<ArithVarPtr>& pre_cells, const ModelPtr& model);
+    void recurrent_bounds(const Bools::Expr& loop, const linked_hash_set<ArithVarPtr>& pre_cells, ModelPtr model);
     Bools::Expr recurrent(const Bools::Expr& loop, const ModelPtr &model);
     Bools::Expr handle_bool(const Bools::Expr& loop_bool);
 

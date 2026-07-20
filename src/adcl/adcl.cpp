@@ -14,6 +14,7 @@
 #include <utility>
 
 #include "formulapreprocessing.hpp"
+#include "smtfactory.hpp"
 
 namespace adcl {
 
@@ -117,7 +118,7 @@ std::optional<Range> ADCL::has_looping_infix(const int start) const {
     const auto last_clause = trace.at(end).clause_idx;
     for (int pos = start; pos >= 0; --pos) {
         if (const Step &step = trace[pos]; chcs->areAdjacent(last_clause, step.clause_idx)) {
-            if (auto upos = static_cast<unsigned>(pos); pos < end || is_orig_clause(step.clause_idx)) {
+            if (const auto upos = static_cast<unsigned>(pos); pos < end || is_orig_clause(step.clause_idx)) {
                 return Range::from_interval(upos, end);
             }
         }
@@ -206,17 +207,6 @@ void ADCL::add_to_trace(const Step &step) {
 }
 
 void ADCL::set_cpx_witness(const RulePtr& witness, const ModelPtr &subs, const ArithVarPtr &param) {
-    if (trace.size() > 1) {
-        std::vector<RulePtr> rules;
-        for (const auto &t: trace) {
-            rules.emplace_back(t.implicant);
-        }
-        cpx_cex.add_resolvent(rules, witness);
-    } else {
-        if (const auto &t {trace.back()}; t.implicant != t.clause_idx) {
-            cpx_cex.add_implicant(t.clause_idx, t.implicant);
-        }
-    }
     cpx_cex.set_witness(witness, subs, param);
     std::cout << std::endl;
     print_cpx_cex(cpx_cex);
@@ -244,17 +234,29 @@ void ADCL::update_cpx() {
     }
 }
 
-RulePtr ADCL::compute_resolvent(const RulePtr& idx, const Bools::Expr& implicant) const {
+RulePtr ADCL::compute_resolvent(const RulePtr& idx, const Bools::Expr& implicant) {
     static auto dummy {Rule::mk(top(), Subs())};
     if (!Config::Analysis::complexity()) {
         return dummy;
     }
     const auto tmp_var_renaming = trace.empty() ? Renaming() : trace.back().tmp_var_renaming;
-    auto resolvent = idx->withGuard(implicant)->renameVars(tmp_var_renaming);
-    if (!trace.empty()) {
-        resolvent = Preprocess::chain({trace.back().resolvent, resolvent});
+    const auto last = idx->withGuard(implicant)->renameVars(tmp_var_renaming);
+    if (trace.empty()) {
+        if (Config::Analysis::model) {
+            the_cex()->add_implicant(ITSCex::TransformationInfo(idx, last));
+        }
+        return last;
     }
-    return Preprocess::preprocessRule(resolvent);
+    const auto resolvent = Preprocess::chain({trace.back().resolvent, last});
+    const auto resolvent_to_res = std::make_shared<RulePreprocessor>(resolvent);
+    const auto res = resolvent_to_res->process();
+    if (Config::Analysis::model) {
+        const std::vector rules {trace.back().resolvent, last};
+        const std::vector renamings {Renaming(), tmp_var_renaming};
+        the_cex()->add_resolvent(ITSCex::ResolventInfo(rules, renamings, resolvent));
+        the_cex()->add_implicant(ITSCex::TransformationInfo(resolvent, resolvent_to_res, res));
+    }
+    return res;
 }
 
 bool ADCL::store_step(const RulePtr& idx, const RulePtr& implicant) {
@@ -406,20 +408,16 @@ Automaton ADCL::build_language(const Range& range) const {
     return lang;
 }
 
-std::pair<RulePtr, ModelPtr> ADCL::build_loop(const Range& range) const {
+RulePtr ADCL::build_loop(const Range& range) const {
     std::vector<RulePtr> rules;
     for (size_t i = range.start(); i <= range.end(); ++i) {
         rules.emplace_back(trace[i].implicant->renameVars(trace[i].tmp_var_renaming));
     }
     const auto loop {Preprocess::chain(rules)};
-    const auto s {trace[range.start()].var_renaming};
-    auto vars {loop->vars()};
-    s.collectCoDomainVars(vars);
-    auto model {solver->model()->composeBackwards(s)};
     if (Config::Analysis::log) {
         std::cout << "found loop at " << range << ":\n" << *loop << std::endl;
     }
-    return {loop, model};
+    return loop;
 }
 
 void ADCL::add_learned_clause(const RulePtr& accel, const Range& range) {
@@ -455,7 +453,7 @@ ITSCex* ADCL::the_cex() {
     return &cex;
 }
 
-std::unique_ptr<LearningState> ADCL::learn_clause(const RulePtr& rule, const ModelPtr &model, const Range& range) {
+std::unique_ptr<LearningState> ADCL::learn_clause(const RulePtr& rule, const Range& range) {
     const auto simp {Preprocess::preprocessRule(rule)};
     if (Config::Analysis::safety() && simp->getUpdate().isIdempotent()) {
         // The learned clause would be trivially redundant w.r.t. the looping suffix (but not necessarily w.r.t. a single clause).
@@ -480,32 +478,40 @@ std::unique_ptr<LearningState> ADCL::learn_clause(const RulePtr& rule, const Mod
         Config::Accel::arrays,
         n,
         chcs->getCost(simp)};
-    const auto [status, accel, nonterm, prefix, period] {LoopAcceleration::accelerate(simp, config)};
+    const auto [
+        status,
+        accel,
+        nonterm,
+        prefix,
+        chaining_info] = LoopAcceleration::accelerate(simp, config);
     if (status == acceleration::PseudoLoop) {
         return std::make_unique<Unroll>();
     }
     const bool nonterm_succeeded = Config::Analysis::tryNonterm() && nonterm != bot();
     auto rule_for_cex = rule;
     if (Config::Analysis::model && (nonterm_succeeded || accel)) {
-        std::vector<RulePtr> rules;
-        for (unsigned i = range.start(); i <= range.end(); ++i) {
-            const auto e = trace.at(i);
-            const auto imp = e.implicant->renameVars(e.tmp_var_renaming);
-            if (is_orig_clause(e.clause_idx) && imp != e.clause_idx) {
-                the_cex()->add_implicant(e.clause_idx, imp);
-                rules.emplace_back(imp);
-            } else {
-                rules.emplace_back(e.clause_idx);
+        if (range.length() > 1) {
+            std::vector<RulePtr> rules;
+            std::vector<Renaming> subs;
+            for (unsigned i = range.start(); i <= range.end(); ++i) {
+                const auto e = trace.at(i);
+                if (is_orig_clause(e.clause_idx) && e.implicant != e.clause_idx) {
+                    the_cex()->add_implicant(ITSCex::TransformationInfo(e.clause_idx, e.implicant));
+                    rules.emplace_back(e.implicant);
+                } else {
+                    rules.emplace_back(e.clause_idx);
+                }
+                subs.emplace_back(e.tmp_var_renaming);
             }
-        }
-        if (rules.size() > 1) {
-            the_cex()->add_resolvent(rules, rule);
+            the_cex()->add_resolvent(ITSCex::ResolventInfo(rules, subs, rule));
         } else {
             // if it's a loop of length 1, use the implicant from the trace, where the variables haven't been renamed
-            rule_for_cex = trace.at(range.start()).implicant;
+            const auto e = trace.at(range.start());
+            the_cex()->add_implicant(ITSCex::TransformationInfo(e.clause_idx, e.implicant));
+            rule_for_cex = e.implicant;
         }
     }
-    LearnedClauses res{.res = {}, .prefix = prefix, .period = period};
+    LearnedClauses res{.res = {}, .prefix = prefix, .period = chaining_info->size()};
     if (nonterm_succeeded) {
         const auto simplified = Preprocess::preprocessFormula(nonterm);
         const auto [new_chcs,query] = chcs->addQuery(simplified, trace.at(range.start()).clause_idx);
@@ -588,8 +594,8 @@ std::unique_ptr<LearningState> ADCL::handle_loop(const Range& range) {
         std::cout << "learning clause for the following language:" << std::endl;
         std::cout << closure << std::endl;
     }
-    const auto [loop, model] {build_loop(range)};
-    auto state {learn_clause(loop, model, range)};
+    const auto loop = build_loop(range);
+    auto state {learn_clause(loop, range)};
     redundancy->mark_as_accelerated(closure);
     if (!state->succeeded()) {
         if (state->unroll()) {
@@ -656,7 +662,7 @@ bool ADCL::try_to_finish() {
                 }
                 add_to_trace(Step(q, *implicant, Renaming(), Renaming(), Rule::mk(top(), Subs())));
                 if (Config::Analysis::model) {
-                    the_cex()->add_implicant(q, *implicant);
+                    the_cex()->add_implicant(ITSCex::TransformationInfo(q, *implicant));
                 }
                 print_state();
                 unsat();

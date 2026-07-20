@@ -1,141 +1,149 @@
 #include "rulepreprocessing.hpp"
+
+#include <utility>
 #include "theory.hpp"
 #include "formulapreprocessing.hpp"
 #include "config.hpp"
 #include "impliedequivalences.hpp"
 
-AbstractRulePreprocessor::AbstractRulePreprocessor(const RulePtr &in): in(in) {}
+AbstractRulePreprocessor::AbstractRulePreprocessor(RulePtr in): in(std::move(in)) {}
 
-class RuleEquivalencePropagator : public AbstractRulePreprocessor {
+namespace {
+    class RuleEquivalencePropagator : public AbstractRulePreprocessor {
 
-    std::unique_ptr<EquivalencePropagator> prop;
+        std::unique_ptr<EquivalencePropagator> prop;
 
-public:
-    explicit RuleEquivalencePropagator(const RulePtr &in): AbstractRulePreprocessor(in) {}
+    public:
+        explicit RuleEquivalencePropagator(const RulePtr in): AbstractRulePreprocessor(in) {}
 
-    RulePtr process() override {
-        const auto guard = in->getGuard();
-        prop = std::make_unique<EquivalencePropagator>(guard);
-        const auto new_guard = prop->process();
-        if (new_guard == guard) {
-            return in;
+        RulePtr process() override {
+            const auto guard = in->getGuard();
+            prop = std::make_unique<EquivalencePropagator>(guard);
+            const auto new_guard = prop->process();
+            if (new_guard == guard) {
+                return in;
+            }
+            const auto subs = prop->get_subs();
+            if (Config::Analysis::doLogPreproc()) {
+                std::cout << "propagated equivalences: " << subs << std::endl;
+            }
+            auto last = in->withGuard(new_guard);
+            auto current = last->subs(subs);
+            while (last != current) {
+                last = current;
+                current = last->subs(subs);
+            }
+            return current;
         }
-        const auto subs = prop->get_subs();
-        if (Config::Analysis::doLogPreproc()) {
-            std::cout << "propagated equivalences: " << subs << std::endl;
+
+        ModelPtr transform_model(const ModelPtr cex) override {
+            return prop->transform_model(cex);
         }
-        auto last = in->withGuard(new_guard);
-        auto current = last->subs(subs);
-        while (last != current) {
-            last = current;
-            current = last->subs(subs);
+
+    };
+}
+
+namespace {
+    class IdentityEliminator : public AbstractRulePreprocessor {
+
+    public:
+        explicit IdentityEliminator(const RulePtr &in): AbstractRulePreprocessor(in) {}
+
+        RulePtr process() override {
+            VarSet remove;
+            for (const auto& p : in->getUpdate()) {
+                theory::apply(
+                    p,
+                    [&](const std::pair<Bools::Var, Bools::Expr>& p) {
+                        if (bools::mkLit(bools::mk(p.first)) == p.second) {
+                            remove.insert(p.first);
+                        }
+                    },
+                    [&](const std::pair<Arrays<Arith>::Var, Arrays<Arith>::Expr>& p) {
+                        if ((p.first->dim() == 0 && arrays::readConst(p.first) == arrays::readConst(p.second)) || p.first == p.second) {
+                            remove.insert(p.first);
+                        }
+                    });
+            }
+            if (remove.empty()) {
+                return in;
+            }
+            auto new_update{in->getUpdate()};
+            new_update.erase(remove);
+            auto res{in->withUpdate(new_update)};
+            if (Config::Analysis::doLogPreproc()) {
+                std::cout << "removed identity updates: " << res << std::endl;
+            }
+            return res;
         }
-        return current;
-    }
 
-    ModelPtr transform_model(const ModelPtr& cex) const override {
-        return prop->transform_model(cex);
-    }
+        ModelPtr transform_model(ModelPtr cex) override {
+            return cex;
+        }
 
-};
+    };
+}
 
-class IdentityEliminator : public AbstractRulePreprocessor {
+namespace {
+    class RuleEqualityPropagator : public AbstractRulePreprocessor {
 
-public:
-    explicit IdentityEliminator(const RulePtr &in): AbstractRulePreprocessor(in) {}
+        std::unique_ptr<EqualityPropagator> prop;
 
-    RulePtr process() override {
-        VarSet remove;
-        for (const auto& p : in->getUpdate()) {
-            theory::apply(
-                p,
-                [&](const std::pair<Bools::Var, Bools::Expr>& p) {
-                    if (bools::mkLit(bools::mk(p.first)) == p.second) {
-                        remove.insert(p.first);
-                    }
-                },
-                [&](const std::pair<Arrays<Arith>::Var, Arrays<Arith>::Expr>& p) {
-                    if (p.first->dim() == 0 && arrays::readConst(p.first) == arrays::readConst(p.second)) {
-                        remove.insert(p.first);
-                    } else if (p.first == p.second) {
-                        remove.insert(p.first);
-                    }
+    public:
+        explicit RuleEqualityPropagator(const RulePtr &in): AbstractRulePreprocessor(in) {}
+
+        RulePtr process() override {
+            const auto guard = in->getGuard();
+            prop = std::make_unique<EqualityPropagator>(guard, theory::isTempVar);
+            const auto new_guard = prop->process();
+            if (new_guard == guard) {
+                return in;
+            }
+            const auto subs = prop->get_subs();
+            if (Config::Analysis::doLogPreproc()) {
+                std::cout << "extracted implied equalities: " << subs << std::endl;
+            }
+            auto last = in->withGuard(new_guard);
+            auto current = last->subs(subs);
+            while (last != current) {
+                last = current;
+                current = last->subs(subs);
+            }
+            return current;
+        }
+
+        ModelPtr transform_model(const ModelPtr cex) override {
+            return prop->transform_model(cex);
+        }
+
+    };
+}
+
+namespace {
+    class RuleIntegerFourierMotzkin : public AbstractRulePreprocessor {
+
+        std::unique_ptr<IntegerFourierMotzkin> prop;
+
+    public:
+        explicit RuleIntegerFourierMotzkin(const RulePtr &in): AbstractRulePreprocessor(in) {}
+
+        RulePtr process() override {
+            const auto varsInUpdate{in->getUpdate().coDomainVars()};
+            auto isTempOnlyInGuard = [&](const Var &sym) {
+                return theory::apply(sym, [&](const auto& sym) {
+                    return sym->isTempVar() && !varsInUpdate.contains(sym);
                 });
+            };
+            prop = std::make_unique<IntegerFourierMotzkin>(in->getGuard(), isTempOnlyInGuard);
+            return in->withGuard(prop->process());
         }
-        if (remove.empty()) {
-            return in;
+
+        ModelPtr transform_model(const ModelPtr cex) override {
+            return prop->transform_model(cex);
         }
-        auto new_update{in->getUpdate()};
-        new_update.erase(remove);
-        auto res{in->withUpdate(new_update)};
-        if (Config::Analysis::doLogPreproc()) {
-            std::cout << "removed identity updates: " << res << std::endl;
-        }
-        return res;
-    }
 
-    ModelPtr transform_model(const ModelPtr& cex) const override {
-        return cex;
-    }
-
-};
-
-class RuleEqualityPropagator : public AbstractRulePreprocessor {
-
-    std::unique_ptr<EqualityPropagator> prop;
-
-public:
-    explicit RuleEqualityPropagator(const RulePtr &in): AbstractRulePreprocessor(in) {}
-
-    RulePtr process() override {
-        const auto guard = in->getGuard();
-        prop = std::make_unique<EqualityPropagator>(guard, theory::isTempVar);
-        const auto new_guard = prop->process();
-        if (new_guard == guard) {
-            return in;
-        }
-        const auto subs = prop->get_subs();
-        if (Config::Analysis::doLogPreproc()) {
-            std::cout << "extracted implied equalities: " << subs << std::endl;
-        }
-        auto last = in->withGuard(new_guard);
-        auto current = last->subs(subs);
-        while (last != current) {
-            last = current;
-            current = last->subs(subs);
-        }
-        return current;
-    }
-
-    ModelPtr transform_model(const ModelPtr& cex) const override {
-        return prop->transform_model(cex);
-    }
-
-};
-
-class RuleIntegerFourierMotzkin : public AbstractRulePreprocessor {
-
-    std::unique_ptr<IntegerFourierMotzkin> prop;
-
-public:
-    explicit RuleIntegerFourierMotzkin(const RulePtr &in): AbstractRulePreprocessor(in) {}
-
-    RulePtr process() override {
-        const auto varsInUpdate{in->getUpdate().coDomainVars()};
-        auto isTempOnlyInGuard = [&](const Var &sym) {
-            return theory::apply(sym, [&](const auto& sym) {
-                return sym->isTempVar() && !varsInUpdate.contains(sym);
-            });
-        };
-        prop = std::make_unique<IntegerFourierMotzkin>(in->getGuard(), isTempOnlyInGuard);
-        return in->withGuard(prop->process());
-    }
-
-    ModelPtr transform_model(const ModelPtr& cex) const override {
-        return prop->transform_model(cex);
-    }
-
-};
+    };
+}
 
 RulePreprocessor::RulePreprocessor(const RulePtr &in) : AbstractRulePreprocessor(in) {}
 
@@ -176,7 +184,7 @@ RulePtr RulePreprocessor::process() {
     return current;
 }
 
-ModelPtr RulePreprocessor::transform_model(const ModelPtr &cex) const {
+ModelPtr RulePreprocessor::transform_model(const ModelPtr cex) {
     ModelPtr res = cex;
     for (const auto &proc: procs | std::views::reverse) {
         res = proc->transform_model(res);
@@ -191,7 +199,7 @@ RulePtr Preprocess::preprocessRule(const RulePtr &rule) {
 RulePtr Preprocess::chain(const std::vector<RulePtr> &rules) {
     std::vector<Bools::Expr> guards;
     Subs up;
-    for (const auto &r: rules) {
+    for (const auto r: rules) {
         guards.push_back(r->getGuard()->subs(up));
         up = r->getUpdate().compose(up);
     }

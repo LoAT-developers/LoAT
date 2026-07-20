@@ -5,6 +5,7 @@
 #include "accelconfig.hpp"
 #include "recurrence.hpp"
 #include "accelerationproblem.hpp"
+#include "itscex.hpp"
 
 class LoopAcceleration {
 public:
@@ -13,7 +14,7 @@ public:
 
     static acceleration::Result accelerate(const RulePtr& rule, const AccelConfig &config);
 
-    static std::pair<RulePtr, unsigned> chain(const RulePtr& rule);
+    static ITSCex::ResolventInfo chain(const RulePtr& rule);
 
 private:
 
