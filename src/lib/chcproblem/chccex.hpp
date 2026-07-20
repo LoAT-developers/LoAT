@@ -14,6 +14,7 @@ class CHCCex {
     linked_hash_map<ClausePtr, ClausePtr> implicants;
     linked_hash_map<ClausePtr, ClausePtr> recurrent_set;
     linked_hash_map<ClausePtr, std::vector<ClausePtr>> resolvents;
+    std::vector<std::pair<ClausePtr, ProofStepKind>> used_clauses;
     std::vector<ClausePtr> transitions;
     std::vector<ModelPtr> states;
 
@@ -26,12 +27,12 @@ public:
     void add_recurrent_set(const ClausePtr &loop, const ClausePtr &res);
     void add_resolvent(const std::vector<ClausePtr> &rules, const ClausePtr &res);
     void add_implicant(const ClausePtr &rule, const ClausePtr &imp);
+    void add_used_clause(ClausePtr, ProofStepKind);
     const linked_hash_map<ClausePtr, ClausePtr>& get_accel() const;
     const linked_hash_map<ClausePtr, ClausePtr>& get_implicants() const;
     const linked_hash_map<ClausePtr, std::vector<ClausePtr>>& get_resolvents() const;
     const std::vector<ClausePtr>& get_transitions() const;
     const std::vector<ModelPtr>& get_states() const;
-    std::vector<std::pair<ClausePtr, ProofStepKind>> get_used_clauses() const;
     void complete_recurrent_set(RecurrentSet& rs, const ClausePtr& clause, bool with_start) const;
     RecurrentSet to_recurrent_set() const;
 

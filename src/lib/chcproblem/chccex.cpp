@@ -45,58 +45,11 @@ void CHCCex::add_implicant(const ClausePtr &rule, const ClausePtr &imp) {
     }
 }
 
-std::vector<std::pair<ClausePtr, ProofStepKind>> CHCCex::get_used_clauses() const {
-    linked_hash_set<ClausePtr> done;
-    std::stack<ClausePtr> todo;
-    std::vector<std::pair<ClausePtr, ProofStepKind>> derived;
-    for (const auto & transition : std::ranges::reverse_view(transitions)) {
-        todo.push(transition);
-    }
-    while (!todo.empty()) {
-        const auto t{todo.top()};
-        auto ready {true};
-        if (!done.contains(t)) {
-            if (const auto loop{accel.get(t)}) {
-                if ((ready = done.contains(*loop))) {
-                    derived.emplace_back(t, ProofStepKind::ACCEL);
-                } else {
-                    todo.push(*loop);
-                }
-            } else if (const auto orig{recurrent_set.get(t)}) {
-                if ((ready = done.contains(*orig))) {
-                    derived.emplace_back(t, ProofStepKind::RECURRENT_SET);
-                } else {
-                    todo.push(*orig);
-                }
-            } else if (const auto orig{implicants.get(t)}) {
-                if ((ready = done.contains(*orig))) {
-                    derived.emplace_back(t, ProofStepKind::IMPLICANT);
-                } else {
-                    todo.push(*orig);
-                }
-            } else if (const auto rules{resolvents.get(t)}) {
-                for (const auto &r : *rules) {
-                    if (!done.contains(r)) {
-                        todo.push(r);
-                        ready = false;
-                    }
-                }
-                if (ready) {
-                    derived.emplace_back(t, ProofStepKind::RESOLVENT);
-                }
-            } else {
-                derived.emplace_back(t, ProofStepKind::ORIG);
-            }
-        }
-        if (ready) {
-            done.insert(t);
-            todo.pop();
-        }
-    }
-    return derived;
+void CHCCex::add_used_clause(const ClausePtr c, const ProofStepKind kind) {
+    used_clauses.emplace_back(c, kind);
 }
 
-ClausePtr rename_clause(const ClausePtr &c) {
+static ClausePtr rename_clause(const ClausePtr &c) {
     Renaming ren;
     VarSet vars;
     c->collect_vars(vars);
@@ -108,7 +61,7 @@ ClausePtr rename_clause(const ClausePtr &c) {
     return c->rename_vars(ren);
 }
 
-void CHCCex::complete_recurrent_set(RecurrentSet& rs, const ClausePtr& clause, bool with_start) const{
+void CHCCex::complete_recurrent_set(RecurrentSet& rs, const ClausePtr& clause, const bool with_start) const{
 
     const auto rename = [&](const std::pair<FunAppPtr, BoolExprSet> &p) {
         Renaming ren;
@@ -130,8 +83,7 @@ void CHCCex::complete_recurrent_set(RecurrentSet& rs, const ClausePtr& clause, b
     };
 
     if (resolvents.contains(clause)) {
-        const auto cs = resolvents.at(clause);
-        for (const auto &c: cs | std::views::reverse) {
+        for (const auto cs = resolvents.at(clause); const auto &c: cs | std::views::reverse) {
             complete_recurrent_set(rs, c, with_start || c != cs.front());
         }
     } else if (accel.contains(clause)) {
@@ -238,11 +190,10 @@ RecurrentSet CHCCex::to_recurrent_set() const {
 }
 
 std::ostream& operator<<(std::ostream &s, const CHCCex &cex) {
-    const auto derived{cex.get_used_clauses()};
     std::unordered_map<ClausePtr, unsigned> indices;
     unsigned next {0};
     s << "clauses:" << std::endl;
-    for (const auto &[t, kind]: derived) {
+    for (const auto &[t, kind]: cex.used_clauses) {
         indices.emplace(t, next);
         s << "\t" << next << ": " << t << std::endl;
         switch (kind) {

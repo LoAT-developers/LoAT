@@ -126,15 +126,15 @@ ClausePtr CHCToITS::rule_to_clause(const RulePtr& rule, const ClausePtr& prototy
 CHCCex CHCToITS::transform_cex(const ITSSafetyCex &cex) {
     CHCCex res {chcs};
     for (const auto &[rule, kind]: cex.get_used_rules()) {
+        std::optional<ClausePtr> clause;
         switch (kind) {
             case ProofStepKind::IMPLICANT: {
                 const auto orig {cex.get_implicants().at(rule)};
                 const auto it{clause_map.find(orig.in())};
                 assert(it != clause_map.end());
                 const auto orig_clause{it->second};
-                const auto clause{rule_to_clause(rule, orig_clause)};
-                clause_map.emplace(rule, clause);
-                res.add_implicant(orig_clause, clause);
+                clause = rule_to_clause(rule, orig_clause);
+                res.add_implicant(orig_clause, *clause);
                 break;
             }
             case ProofStepKind::ACCEL: {
@@ -142,9 +142,8 @@ CHCCex CHCToITS::transform_cex(const ITSSafetyCex &cex) {
                 const auto it{clause_map.find(orig)};
                 assert(it != clause_map.end());
                 const auto orig_clause{it->second};
-                const auto clause{rule_to_clause(rule, orig_clause)};
-                clause_map.emplace(rule, clause);
-                res.add_accel(orig_clause, clause);
+                clause = rule_to_clause(rule, orig_clause);
+                res.add_accel(orig_clause, *clause);
                 break;
             }
             case ProofStepKind::RECURRENT_SET: {
@@ -152,9 +151,8 @@ CHCCex CHCToITS::transform_cex(const ITSSafetyCex &cex) {
                 const auto it{clause_map.find(orig)};
                 assert(it != clause_map.end());
                 const auto orig_clause{it->second};
-                const auto clause{rule_to_clause(rule, orig_clause)};
-                clause_map.emplace(rule, clause);
-                res.add_recurrent_set(orig_clause, clause);
+                clause = rule_to_clause(rule, orig_clause);
+                res.add_recurrent_set(orig_clause, *clause);
                 break;
             }
             case ProofStepKind::RESOLVENT: {
@@ -164,15 +162,17 @@ CHCCex CHCToITS::transform_cex(const ITSSafetyCex &cex) {
                     orig_clauses.emplace_back(clause_map.at(o));
                 }
                 const auto prototype {Clause::mk(orig_clauses.front()->get_premise(), top(), arith::one(), orig_clauses.back()->get_conclusion())};
-                const auto resolvent{rule_to_clause(rule, prototype)};
-                clause_map.emplace(rule, resolvent);
-                res.add_resolvent(orig_clauses, resolvent);
+                clause = rule_to_clause(rule, prototype);
+                res.add_resolvent(orig_clauses, *clause);
                 break;
             }
             case ProofStepKind::ORIG: {
+                clause = clause_map.at(rule);
                 break;
             }
         }
+        res.add_used_clause(*clause, kind);
+        clause_map.emplace(rule, *clause);
     }
     for (size_t i = 0; i < cex.num_transitions(); ++i) {
         const auto trans {cex.get_transition(i)};
