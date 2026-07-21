@@ -26,7 +26,7 @@ std::ostream& operator<<(std::ostream &s, const ITSCpxCex &cex) {
                         break;
                     }
                     case ProofStepKind::ACCEL: {
-                        s << "-" << t << "-> is subset of -" << cex.accel.at(t) << "->^+" << std::endl;
+                        s << "-" << t << "-> is subset of -" << cex.accel.at(t).in() << "->^+" << std::endl;
                         break;
                     }
                     case ProofStepKind::RESOLVENT: {

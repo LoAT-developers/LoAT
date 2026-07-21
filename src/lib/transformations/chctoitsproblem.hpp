@@ -4,6 +4,7 @@
 #include "chccex.hpp"
 #include "itssafetycex.hpp"
 #include "chcproblem.hpp"
+#include "chcrecurrentset.hpp"
 #include "itsmodel.hpp"
 #include "itsproblem.hpp"
 
@@ -23,13 +24,21 @@ class CHCToITS {
     LocationIdx next_loc = 2;
 
 public:
-    explicit CHCToITS(CHCPtr  chcs);
+    explicit CHCToITS(CHCPtr);
 
     CHCModel transform_model(const ITSModel &);
 
-    ClausePtr rule_to_clause(const RulePtr& rule, const ClausePtr& prototype) const;
-
     CHCCex transform_cex(const ITSSafetyCex &);
 
+    CHCRecurrentSet transform_recurrent_set(ITSRecurrentSet);
+
     ITSPtr transform();
+
+private:
+    ClausePtr rule_to_clause(RulePtr rule, LocationIdx src, LocationIdx dst) const;
+
+    ClausePtr rule_to_clause(RulePtr rule, ClausePtr prototype) const;
+
+    FunAppPtr to_funapp(const std::string&) const;
+
 };

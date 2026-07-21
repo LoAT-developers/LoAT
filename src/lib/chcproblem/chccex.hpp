@@ -3,7 +3,6 @@
 #include "chcproblem.hpp"
 #include "model.hpp"
 #include "proof.hpp"
-#include "recurrentset.hpp"
 
 class CHCCex {
 
@@ -33,7 +32,5 @@ public:
     const linked_hash_map<ClausePtr, std::vector<ClausePtr>>& get_resolvents() const;
     const std::vector<ClausePtr>& get_transitions() const;
     const std::vector<ModelPtr>& get_states() const;
-    void complete_recurrent_set(RecurrentSet& rs, const ClausePtr& clause, bool with_start) const;
-    RecurrentSet to_recurrent_set() const;
 
 };

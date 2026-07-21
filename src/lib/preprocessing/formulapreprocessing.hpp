@@ -90,7 +90,7 @@ class FormulaPreprocessor: public AbstractFormulaPreprocessor {
     std::function<bool(const Var&)> allow;
 
 public:
-    explicit FormulaPreprocessor(const Bools::Expr& in, const std::function<bool(const Var&)>& allow);
+    explicit FormulaPreprocessor(const Bools::Expr& in, const std::function<bool(const Var&)>& allow = theory::isTempVar);
 
     Bools::Expr process() override;
     ModelPtr transform_model(ModelPtr model) override;

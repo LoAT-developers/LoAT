@@ -38,11 +38,11 @@ public:
         bool is_sink;
     };
 
-    ITSPtr addRule(const RulePtr& p_rule, const RuleProperties& p_props, const linked_hash_set<RulePtr> &p_preds, const linked_hash_set<RulePtr> &p_succs) const;
-    ITSPtr addRule(const RulePtr& p_rule, const RulePtr& p_same_preds, const RulePtr& p_same_succs) const;
-    ITSPtr addLearnedRule(const RulePtr& p_rule, const RulePtr& p_same_preds, const RulePtr& p_same_succs) const;
-    std::pair<ITSPtr, RulePtr> addQuery(const Bools::Expr& p_err, const RulePtr& p_same_preds) const;
-    ITSPtr replaceRule(const RulePtr& p_to_replace, const RulePtr& p_replacement) const;
+    ITSPtr addRule(RulePtr p_rule, const RuleProperties& p_props, const linked_hash_set<RulePtr> &p_preds, const linked_hash_set<RulePtr> &p_succs) const;
+    ITSPtr addRule(RulePtr p_rule, RulePtr p_same_preds, RulePtr p_same_succs) const;
+    ITSPtr addLearnedRule(RulePtr p_rule, RulePtr p_same_preds, RulePtr p_same_succs) const;
+    ITSPtr addQuery(RulePtr p_err, RulePtr p_same_preds) const;
+    ITSPtr replaceRule(RulePtr p_to_replace, RulePtr p_replacement) const;
 
     VarSet getVars() const;
     CellSet getCells() const;

@@ -1,4 +1,4 @@
-#include "recurrentset.hpp"
+#include "chcrecurrentset.hpp"
 
 #include "formulapreprocessing.hpp"
 
@@ -26,25 +26,25 @@ FunAppPtr mk_template(const FunAppPtr& f) {
     return FunApp::mk(f->get_pred(), args);
 }
 
-void RecurrentSet::add(const FunAppPtr &f, const BoolExprSet &b) {
+void CHCRecurrentSet::add(const FunAppPtr &f, const BoolExprSet &b) {
     auto& [sig, rs] = get(f);
     const auto unif = FunApp::unify(f, sig);
     rs.insert(::simplify(sig, bools::mkAnd(b) && unif));
 }
 
-void RecurrentSet::add(const FunAppPtr &f, const Bools::Expr &b) {
+void CHCRecurrentSet::add(const FunAppPtr &f, const Bools::Expr &b) {
     add(f, BoolExprSet{b});
 }
 
-void RecurrentSet::add(const ClausePtr &c) {
+void CHCRecurrentSet::add(const ClausePtr &c) {
     clauses.insert(c);
 }
 
-std::pair<FunAppPtr, BoolExprSet>& RecurrentSet::get(const FunAppPtr &f) {
+std::pair<FunAppPtr, BoolExprSet>& CHCRecurrentSet::get(const FunAppPtr &f) {
     return map.emplace(f->get_pred(), std::pair{mk_template(f), BoolExprSet()}).first->second;
 }
 
-void RecurrentSet::simplify() {
+void CHCRecurrentSet::simplify() {
     for (auto &bs: map | std::views::values | std::views::values) {
         const auto b = OrSimplifier(bools::mkOr(bs)).process();
         bs.clear();
@@ -52,7 +52,7 @@ void RecurrentSet::simplify() {
     }
 }
 
-sexpresso::Sexp RecurrentSet::to_certificate() const {
+sexpresso::Sexp CHCRecurrentSet::to_certificate() const {
     sexpresso::Sexp res, recurrent_set;
     recurrent_set.addChild("recurrent-set");
     sexpresso::Sexp fun_defs;
@@ -122,6 +122,6 @@ sexpresso::Sexp RecurrentSet::to_certificate() const {
 }
 
 
-std::ostream& operator<<(std::ostream & s, const RecurrentSet & res) {
+std::ostream& operator<<(std::ostream & s, const CHCRecurrentSet & res) {
     return s << res.to_certificate().toString();
 };

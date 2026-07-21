@@ -13,7 +13,6 @@
 #include <unordered_set>
 #include <utility>
 
-#include "formulapreprocessing.hpp"
 #include "smtfactory.hpp"
 
 namespace adcl {
@@ -92,7 +91,7 @@ ADCL::ADCL(const ITSPtr& chcs, const std::function<void(const ITSCpxCex&)> &prin
     chcs(chcs),
     solver(SmtFactory::modelBuildingSolver(chcs->hasArrays() ? Logic::QF_AEA : Logic::QF_EA)),
     drop(true),
-    cex(chcs->getAllTransitions()),
+    cex(chcs),
     cpx_cex(chcs->getAllTransitions()),
     print_cpx_cex(print_cpx_cex) {
     solver->enableModels();
@@ -242,9 +241,7 @@ RulePtr ADCL::compute_resolvent(const RulePtr& idx, const Bools::Expr& implicant
     const auto tmp_var_renaming = trace.empty() ? Renaming() : trace.back().tmp_var_renaming;
     const auto last = idx->withGuard(implicant)->renameVars(tmp_var_renaming);
     if (trace.empty()) {
-        if (Config::Analysis::model) {
-            the_cex()->add_implicant(ITSCex::TransformationInfo(idx, last));
-        }
+        the_cex()->add_implicant(ITSCex::TransformationInfo(idx, last));
         return last;
     }
     const auto resolvent = Preprocess::chain({trace.back().resolvent, last});
@@ -454,7 +451,8 @@ ITSCex* ADCL::the_cex() {
 }
 
 std::unique_ptr<LearningState> ADCL::learn_clause(const RulePtr& rule, const Range& range) {
-    const auto simp {Preprocess::preprocessRule(rule)};
+    const auto rule_to_simp = std::make_shared<RulePreprocessor>(rule);
+    const auto simp = rule_to_simp->process();
     if (Config::Analysis::safety() && simp->getUpdate().isIdempotent()) {
         // The learned clause would be trivially redundant w.r.t. the looping suffix (but not necessarily w.r.t. a single clause).
         // Such clauses are pretty useless, so we do not store them.
@@ -462,7 +460,7 @@ std::unique_ptr<LearningState> ADCL::learn_clause(const RulePtr& rule, const Ran
         return std::make_unique<Unroll>(1);
     }
     if (Config::Analysis::log && simp->getId() != rule->getId()) {
-        std::cout << "simplified loop:\n" << simp << std::endl;
+        std::cout << "simplified loop:\n" << *simp << std::endl;
     }
     if (Config::Analysis::safety()) {
         if (simp->getUpdate().empty()) {
@@ -488,56 +486,45 @@ std::unique_ptr<LearningState> ADCL::learn_clause(const RulePtr& rule, const Ran
         return std::make_unique<Unroll>();
     }
     const bool nonterm_succeeded = Config::Analysis::tryNonterm() && nonterm != bot();
-    auto rule_for_cex = rule;
     if (Config::Analysis::model && (nonterm_succeeded || accel)) {
-        if (range.length() > 1) {
-            std::vector<RulePtr> rules;
-            std::vector<Renaming> subs;
-            for (unsigned i = range.start(); i <= range.end(); ++i) {
-                const auto e = trace.at(i);
-                if (is_orig_clause(e.clause_idx) && e.implicant != e.clause_idx) {
-                    the_cex()->add_implicant(ITSCex::TransformationInfo(e.clause_idx, e.implicant));
-                    rules.emplace_back(e.implicant);
-                } else {
-                    rules.emplace_back(e.clause_idx);
-                }
-                subs.emplace_back(e.tmp_var_renaming);
-            }
-            the_cex()->add_resolvent(ITSCex::ResolventInfo(rules, subs, rule));
-        } else {
-            // if it's a loop of length 1, use the implicant from the trace, where the variables haven't been renamed
-            const auto e = trace.at(range.start());
-            the_cex()->add_implicant(ITSCex::TransformationInfo(e.clause_idx, e.implicant));
-            rule_for_cex = e.implicant;
+        std::vector<RulePtr> rules;
+        std::vector<Renaming> subs;
+        for (unsigned i = range.start(); i <= range.end(); ++i) {
+            const auto e = trace.at(i);
+            rules.emplace_back(e.implicant);
+            subs.emplace_back(e.tmp_var_renaming);
         }
+        the_cex()->add_resolvent(ITSCex::ResolventInfo(rules, subs, rule));
+        the_cex()->add_implicant(ITSCex::TransformationInfo(rule, rule_to_simp, simp));
     }
     LearnedClauses res{.res = {}, .prefix = prefix, .period = chaining_info->size()};
     if (nonterm_succeeded) {
-        const auto simplified = Preprocess::preprocessFormula(nonterm);
-        const auto [new_chcs,query] = chcs->addQuery(simplified, trace.at(range.start()).clause_idx);
-        chcs = new_chcs;
-        res.res.emplace_back(query);
-        if (Config::Analysis::model) {
-            the_cex()->add_recurrent_set(rule_for_cex, query);
-        }
+        const auto nonterm_rule = Rule::mk(nonterm, Subs());
+        const auto nonterm_to_simplified = std::make_shared<RulePreprocessor>(nonterm_rule);
+        const auto simplified = nonterm_to_simplified->process();
+        chcs = chcs->addQuery(simplified, trace.at(range.start()).clause_idx);
+        res.res.emplace_back(simplified);
+        the_cex()->add_recurrent_set(simp, nonterm_rule);
+        the_cex()->add_implicant(ITSCex::TransformationInfo(nonterm_rule, nonterm_to_simplified, simplified));
         if (Config::Analysis::log) {
-            std::cout << "found certificate of non-termination: " << query << std::endl;
+            std::cout << "found certificate of non-termination: " << simplified << std::endl;
         }
     }
     if (accel) {
         // acceleration succeeded, simplify the result
-        if (auto simplified {Preprocess::preprocessRule(accel->rule)}; simplified->getUpdate() != simp->getUpdate()) {
+        const auto accel_to_simplified = std::make_shared<RulePreprocessor>(accel->rule);
+        if (auto simplified = accel_to_simplified->process(); simplified->getUpdate() != simp->getUpdate()) {
             // accelerated rule differs from the original one, update the result
             if (Config::Analysis::complexity()) {
+                // TODO add transformation for model
                 if (const auto inst {instantiate(n, simplified)}) {
                     simplified = *inst;
                 }
             }
+            the_cex()->add_accel(ITSCex::AccelInfo(simp, n, accel->rule));
+            the_cex()->add_implicant(ITSCex::TransformationInfo(accel->rule, accel_to_simplified, simplified));
             add_learned_clause(simplified, range);
             res.res.emplace_back(simplified);
-            if (Config::Analysis::model) {
-                the_cex()->add_accel(rule_for_cex, simplified);
-            }
             if (Config::Analysis::log) {
                 std::cout << "accelerated rule: " << *simplified << std::endl;
             }
@@ -661,9 +648,7 @@ bool ADCL::try_to_finish() {
                     set_cpx_witness(resolvent, solver->model(), arrays::nextConst<Arith>());
                 }
                 add_to_trace(Step(q, *implicant, Renaming(), Renaming(), Rule::mk(top(), Subs())));
-                if (Config::Analysis::model) {
-                    the_cex()->add_implicant(ITSCex::TransformationInfo(q, *implicant));
-                }
+                the_cex()->add_implicant(ITSCex::TransformationInfo(q, *implicant));
                 print_state();
                 unsat();
                 return true;
@@ -678,7 +663,7 @@ ITSSafetyCex ADCL::get_cex() {
     const auto model {solver->model()};
     cex.set_initial_state(model);
     std::optional<ModelPtr> last_model;
-    for (size_t i = 0; i + 1 < trace.size(); ++i) {
+    for (size_t i = 0; i < trace.size(); ++i) {
         const auto &t {trace.at(i)};
         if (last_model) {
             assert((*last_model)->eval(t.implicant->getGuard()));
@@ -686,8 +671,6 @@ ITSSafetyCex ADCL::get_cex() {
         last_model = model->composeBackwards(t.var_renaming);
         cex.do_step(t.implicant, *last_model);
     }
-    const auto &last {trace.back()};
-    cex.add_final_transition(last.implicant);
     return cex;
 }
 

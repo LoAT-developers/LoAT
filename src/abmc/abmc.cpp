@@ -7,14 +7,13 @@
 #include "vector.hpp"
 #include "rule.hpp"
 #include "dependencygraph.hpp"
-#include "formulapreprocessing.hpp"
 
 using namespace Config::ABMC;
 
 ABMC::ABMC(const ITSPtr& its):
     its(its),
     solver(SmtFactory::solver(its->hasArrays() ? Logic::QF_AEA : Logic::QF_EA)),
-    cex(its->getAllTransitions()) {}
+    cex(its) {}
 
 void ABMC::init() {
     vars.insert(trace_var->var());
@@ -216,8 +215,8 @@ std::optional<ABMC::Loop> ABMC::handle_loop(const unsigned backlink, const std::
     auto success{false};
     const auto nonterm_to_query = [&](const acceleration::Result& accel_res) {
         if (Config::Analysis::tryNonterm() && accel_res.nonterm != bot()) {
-            const auto [new_its,q] = its->addQuery(accel_res.nonterm, trace.at(backlink).first);
-            its = new_its;
+            const auto q = Rule::mk(accel_res.nonterm, Subs());
+            its = its->addQuery(q, trace.at(backlink).first);
             rule_map.emplace(q->getId(), q);
             if (Config::Analysis::model) {
                 cex.add_recurrent_set(simp, q);
@@ -258,7 +257,7 @@ std::optional<ABMC::Loop> ABMC::handle_loop(const unsigned backlink, const std::
                 success = true;
                 add_learned_clause(simplified, backlink);
                 if (Config::Analysis::model) {
-                    cex.add_accel(simp, accel_res.accel->rule);
+                    cex.add_accel(ITSCex::AccelInfo(simp, n, accel_res.accel->rule));
                     cex.add_implicant(ITSCex::TransformationInfo(accel_res.accel->rule, accel_to_simplified, simplified));
                 }
                 shortcut = simplified;
@@ -481,13 +480,12 @@ ITSModel ABMC::get_model() {
 ITSSafetyCex ABMC::get_cex() {
     const auto model{solver->model()};
     cex.set_initial_state(model->composeBackwards(subs.front()));
-    for (size_t i = 0; i < depth; ++i) {
+    for (size_t i = 0; i <= depth; ++i) {
         const auto r{subs.at(i + 1)};
         const auto current{model->composeBackwards(r)};
         const auto trans{trace.at(i).first};
         cex.do_step(trans, current);
     }
-    cex.add_final_transition(trace.back().first);
     return cex;
 }
 

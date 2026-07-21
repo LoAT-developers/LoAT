@@ -9,6 +9,18 @@ class ITSCex {
 
 public:
 
+    class AccelInfo {
+        RulePtr m_in;
+        ArrayReadPtr<Arith> m_n;
+        RulePtr m_out;
+
+    public:
+        explicit AccelInfo(RulePtr, ArrayReadPtr<Arith>, RulePtr);
+        RulePtr in() const;
+        RulePtr out() const;
+        ArrayReadPtr<Arith> n() const;
+    };
+
     class TransformationInfo {
         RulePtr m_in;
         std::shared_ptr<ModelTransformer> m_transformer;
@@ -41,7 +53,7 @@ public:
 protected:
 
     linked_hash_set<RulePtr> orig;
-    linked_hash_map<RulePtr, RulePtr> accel;
+    linked_hash_map<RulePtr, AccelInfo> accel;
     linked_hash_map<RulePtr, TransformationInfo> implicants;
     linked_hash_map<RulePtr, RulePtr> recurrent_set;
     linked_hash_map<RulePtr, ResolventInfo> resolvents;
@@ -56,12 +68,12 @@ public:
     void add_orig(const RulePtr& rule);
     void undo(const TransformationInfo&);
     void undo(const ResolventInfo&);
-    void add_accel(const RulePtr&, const RulePtr& res);
+    void add_accel(const AccelInfo&);
     void add_recurrent_set(const RulePtr&, const RulePtr& res);
     void add_resolvent(const ResolventInfo&);
     void add_implicant(const TransformationInfo&);
     const linked_hash_set<RulePtr> &get_orig() const;
-    const linked_hash_map<RulePtr, RulePtr> &get_accel() const;
+    const linked_hash_map<RulePtr, AccelInfo> &get_accel() const;
     const linked_hash_map<RulePtr, RulePtr> &get_recurrent_set() const;
     const linked_hash_map<RulePtr, TransformationInfo> &get_implicants() const;
     const linked_hash_map<RulePtr, ResolventInfo> &get_resolvents() const;

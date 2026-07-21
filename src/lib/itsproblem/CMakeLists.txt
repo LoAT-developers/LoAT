@@ -19,6 +19,8 @@ add_library(${PROJECT_NAME} OBJECT
     itscpxcex.cpp
     rulepreprocessing.hpp
     rulepreprocessing.cpp
+    itsrecurrentset.hpp
+    itsrecurrentset.cpp
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE

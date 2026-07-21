@@ -2,9 +2,9 @@
 
 #include "chcproblem.hpp"
 
-class RecurrentSet {
+class CHCRecurrentSet {
 
-    friend std::ostream& operator<<(std::ostream & lhs, const RecurrentSet & res);
+    friend std::ostream& operator<<(std::ostream & lhs, const CHCRecurrentSet & res);
 
     std::unordered_map<std::string, std::pair<FunAppPtr, BoolExprSet>> map;
     linked_hash_set<ClausePtr> clauses;

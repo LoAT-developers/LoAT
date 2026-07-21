@@ -1,10 +1,25 @@
 #include "itscex.hpp"
 #include "formulapreprocessing.hpp"
 #include "smtfactory.hpp"
+#include "config.hpp"
 
 #include <ranges>
 #include <stack>
 #include <utility>
+
+ITSCex::AccelInfo::AccelInfo(RulePtr p_in, ArrayReadPtr<Arith> p_n, RulePtr p_out): m_in(p_in), m_n(p_n), m_out(p_out) {}
+
+RulePtr ITSCex::AccelInfo::in() const {
+    return m_in;
+}
+
+RulePtr ITSCex::AccelInfo::out() const {
+    return m_out;
+}
+
+ArrayReadPtr<Arith> ITSCex::AccelInfo::n() const {
+    return m_n;
+}
 
 ITSCex::TransformationInfo::TransformationInfo(RulePtr p_in, RulePtr p_out) : m_in(std::move(p_in)),
                                                                               m_out(std::move(p_out)) {
@@ -76,7 +91,9 @@ ITSCex::ITSCex(const linked_hash_set<RulePtr> &orig) : orig(orig) {
 }
 
 void ITSCex::add_orig(const RulePtr &rule) {
-    orig.insert(rule);
+    if (Config::Analysis::model) {
+        orig.insert(rule);
+    }
 }
 
 void ITSCex::undo(const TransformationInfo& ti) {
@@ -109,10 +126,10 @@ std::vector<std::pair<RulePtr, ProofStepKind> > ITSCex::get_used_rules(const std
         auto ready{true};
         if (!done.contains(t)) {
             if (const auto ti{accel.get(t)}) {
-                if ((ready = done.contains(*ti))) {
+                if ((ready = done.contains(ti->in()))) {
                     derived.emplace_back(t, ProofStepKind::ACCEL);
                 } else {
-                    todo.push(*ti);
+                    todo.push(ti->in());
                 }
             } else if (const auto ti{implicants.get(t)}) {
                 if ((ready = done.contains(ti->in()))) {
@@ -150,30 +167,38 @@ std::vector<std::pair<RulePtr, ProofStepKind> > ITSCex::get_used_rules(const std
 }
 
 void ITSCex::add_recurrent_set(const RulePtr &ti, const RulePtr &res) {
-    assert(res->getGuard() != bot());
-    assert(is_known(ti));
-    recurrent_set.put(res, ti);
+    if (Config::Analysis::model) {
+        assert(res->getGuard() != bot());
+        assert(is_known(ti));
+        recurrent_set.put(res, ti);
+    }
 }
 
-void ITSCex::add_accel(const RulePtr &ti, const RulePtr &res) {
-    assert(ti->getGuard() != bot());
-    assert(is_known(ti));
-    if (res != ti) {
-        accel.put(res, ti);
+void ITSCex::add_accel(const AccelInfo &ai) {
+    if (Config::Analysis::model) {
+        assert(ai.in()->getGuard() != bot());
+        assert(is_known(ai.in()));
+        if (ai.in() != ai.out()) {
+            accel.put(ai.out(), ai);
+        }
     }
 }
 
 void ITSCex::add_resolvent(const ResolventInfo &ri) {
-    assert(ri.out()->getGuard() != bot());
-    assert(std::ranges::all_of(ri.in(), [&](const auto& r) { return is_known(r);}));
-    resolvents.put(ri.out(), ri);
+    if (Config::Analysis::model) {
+        assert(ri.out()->getGuard() != bot());
+        assert(std::ranges::all_of(ri.in(), [&](const auto& r) { return is_known(r);}));
+        resolvents.put(ri.out(), ri);
+    }
 }
 
 void ITSCex::add_implicant(const TransformationInfo &ti) {
-    assert(is_known(ti.in()));
-    assert(ti.out()->getGuard() != bot());
-    if (ti.in() != ti.out()) {
-        implicants.put(ti.out(), ti);
+    if (Config::Analysis::model) {
+        assert(is_known(ti.in()));
+        assert(ti.out()->getGuard() != bot());
+        if (ti.in() != ti.out()) {
+            implicants.put(ti.out(), ti);
+        }
     }
 }
 
@@ -181,7 +206,7 @@ const linked_hash_set<RulePtr> &ITSCex::get_orig() const {
     return orig;
 }
 
-const linked_hash_map<RulePtr, RulePtr> &ITSCex::get_accel() const {
+const linked_hash_map<RulePtr, ITSCex::AccelInfo> &ITSCex::get_accel() const {
     return accel;
 }
 

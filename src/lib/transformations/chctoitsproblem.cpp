@@ -9,49 +9,27 @@ const LocationIdx CHCToITS::err_loc = 1;
 
 CHCToITS::CHCToITS(CHCPtr chcs): chcs(std::move(chcs)) {}
 
+std::pair<LocationIdx, LocationIdx> locs(const RulePtr r) {
+    const auto loc_var = Var(ITSProblem::loc_var()->var());
+    EqualityPropagator prop {r->getGuard(), [&](const auto &x) {
+        return x == loc_var;
+    }};
+    prop.process();
+    const auto subs = prop.get_subs();
+    if (!subs.contains(loc_var)) {
+        throw std::logic_error("propagating loc_var failed");
+    }
+    const auto lhs_loc = *ITSProblem::loc_var()->subs(subs)->isInt();
+    const auto rhs_loc = *ITSProblem::loc_var()->subs(r->getUpdate())->isInt();
+    return {lhs_loc, rhs_loc};
+}
+
 CHCModel CHCToITS::transform_model(const ITSModel& m) {
-    const auto mk_fun_app = [&](const std::string& name) {
-        const auto sig = chcs->get_signature().at(name);
-        std::vector<Expr> args;
-        for (const auto& t: sig) {
-            switch (t.base) {
-                case theory::BaseType::Bool: {
-                    args.emplace_back(bools::mkLit(bools::mk(Bools::next(t.dim))));
-                }
-                case theory::BaseType::Int: {
-                    args.emplace_back(Arrays<Arith>::next(t.dim));
-                }
-                default: throw std::invalid_argument("unknown type");
-            }
-        }
-        return FunApp::mk(name, args);
-    };
     auto res = std::make_shared<CHCProblem>();
-    auto loc_var = Var(ITSProblem::loc_var()->var());
     for (const auto& r: m.its()->getAllTransitions()) {
-        EqualityPropagator prop {r->getGuard(), [&](const auto &x) {
-            return x == loc_var;
-        }};
-        prop.process();
-        const auto subs = prop.get_subs();
-        if (!subs.contains(loc_var)) {
-            throw std::logic_error("propagating loc_var failed");
-        }
-        const auto lhs_loc = *ITSProblem::loc_var()->subs(subs)->isInt();
-        const auto rhs_loc = *ITSProblem::loc_var()->subs(r->getUpdate())->isInt();
-        std::vector<FunAppPtr> premise;
-        if (lhs_loc != init_loc) {
-            const auto lhs = rev_loc_map.at(lhs_loc);
-            premise.emplace_back(mk_fun_app(lhs));
-        }
-        std::optional<FunAppPtr> conclusion;
-        if (rhs_loc != err_loc) {
-            const auto rhs = rev_loc_map.at(rhs_loc);
-            conclusion = mk_fun_app(rhs);
-        }
-        const auto prototype = Clause::mk(premise, top(), arith::one(), conclusion);
+        const auto [lhs_loc, rhs_loc] = locs(r);
         const auto it = clause_map.find(r);
-        const auto clause = it == clause_map.end() ? rule_to_clause(r, prototype) : it->second;
+        const auto clause = it == clause_map.end() ? rule_to_clause(r, lhs_loc, rhs_loc) : it->second;
         if (it == clause_map.end()) {
             clause_map.emplace(r, clause);
         }
@@ -60,63 +38,21 @@ CHCModel CHCToITS::transform_model(const ITSModel& m) {
     return {chcs, m.k()};
 }
 
-ClausePtr CHCToITS::rule_to_clause(const RulePtr& rule, const ClausePtr& prototype) const {
+ClausePtr CHCToITS::rule_to_clause(const RulePtr rule, const ClausePtr prototype) const {
+    const auto lhs_loc = prototype->is_fact() ? init_loc : loc_map.at(prototype->get_premise().front()->get_pred());
+    const auto rhs_loc = prototype->is_query() ? err_loc : loc_map.at((*prototype->get_conclusion())->get_pred());
+    return rule_to_clause(rule, lhs_loc, rhs_loc);
+}
+
+ClausePtr CHCToITS::rule_to_clause(const RulePtr rule, const LocationIdx src, const LocationIdx dst) const {
     std::vector<FunAppPtr> premise;
     std::optional<FunAppPtr> conclusion;
-    for (const auto& prem: prototype->get_premise()) {
-        std::vector<Expr> args;
-        size_t next_int_var {0};
-        std::unordered_map<size_t, unsigned> next_arr_var;
-        size_t next_bool_var {0};
-        for (const auto& x : prem->get_args()) {
-            theory::apply(
-                x,
-                [&](const Arith::Expr&) {
-                    const auto y{vars.at(next_int_var)};
-                    args.emplace_back(y);
-                    ++next_int_var;
-                },
-                [&](const Arrays<Arith>::Expr& e) {
-                    const auto& vec{avars.at(e->dim())};
-                    auto& next = next_arr_var.emplace(e->dim(), 0).first->second;
-                    args.emplace_back(vec.at(next));
-                    ++next;
-                },
-                [&](const Bools::Expr&) {
-                    const auto y{bvars.at(next_bool_var)};
-                    args.emplace_back(bools::mkLit(bools::mk(y)));
-                    ++next_bool_var;
-                }
-            );
-        }
-        premise.emplace_back(FunApp::mk(prem->get_pred(), args));
+    const auto signatures = chcs->get_signature();
+    if (src != init_loc) {
+        premise.emplace_back(to_funapp(rev_loc_map.at(src)));
     }
-    if (const auto conc {prototype->get_conclusion()}) {
-        std::vector<Expr> args;
-        size_t next_int_var {0};
-        std::unordered_map<size_t, unsigned> next_arr_var;
-        size_t next_bool_var {0};
-        const auto& up {rule->getUpdate()};
-        for (const auto& x : (*conc)->get_args()) {
-            theory::apply(
-                x,
-                [&](const Arith::Expr&) {
-                    args.emplace_back(up(vars.at(next_int_var)));
-                    ++next_int_var;
-                },
-                [&](const Arrays<Arith>::Expr& e) {
-                    const auto& vec = avars.at(e->dim());
-                    auto& next = next_arr_var.emplace(e->dim(), 0).first->second;
-                    args.emplace_back(up.get(vec.at(next)));
-                    ++next;
-                },
-                [&](const Bools::Expr&) {
-                    args.emplace_back(up(vars.at(next_bool_var)));
-                    ++next_bool_var;
-                }
-            );
-        }
-        conclusion = FunApp::mk((*conc)->get_pred(), args);
+    if (dst != err_loc) {
+        conclusion = to_funapp(rev_loc_map.at(dst))->subs(rule->getUpdate());
     }
     Subs subs;
     subs.update(ITSProblem::loc_var(), arith::mkConst(premise.empty() ? init_loc : loc_map.at(premise.front()->get_pred())));
@@ -138,7 +74,7 @@ CHCCex CHCToITS::transform_cex(const ITSSafetyCex &cex) {
                 break;
             }
             case ProofStepKind::ACCEL: {
-                const auto orig {cex.get_accel().at(rule)};
+                const auto orig {cex.get_accel().at(rule).in()};
                 const auto it{clause_map.find(orig)};
                 assert(it != clause_map.end());
                 const auto orig_clause{it->second};
@@ -182,6 +118,30 @@ CHCCex CHCToITS::transform_cex(const ITSSafetyCex &cex) {
         }
         const auto clause {clause_map.at(trans)};
         res.do_step(state, clause);
+    }
+    return res;
+}
+
+CHCRecurrentSet CHCToITS::transform_recurrent_set(ITSRecurrentSet rs) {
+    CHCRecurrentSet res;
+    for (const auto &f: chcs->get_signature() | std::views::keys) {
+        const auto loc = loc_map.at(f);
+        auto b = bools::mkOr(rs.get(loc));
+        const auto funapp = to_funapp(f);
+        const auto fvars = funapp->vars();
+        b = b->map([&](const auto &lit) {
+            if (const auto lvars = theory::vars(lit); std::ranges::any_of(lvars, [&](const auto x) {
+                return !fvars.contains(x);
+            })) {
+                return top();
+            }
+            return bools::mkLit(lit);
+        });
+        res.add(funapp, b);
+    }
+    for (const auto r: rs.rules()) {
+        const auto [lhs_loc, rhs_loc] = locs(r);
+        res.add(rule_to_clause(r, lhs_loc, rhs_loc));
     }
     return res;
 }
@@ -321,4 +281,37 @@ ITSPtr CHCToITS::transform() {
         its = its->addRule(rule, props, preds, succs);
     }
     return its;
+}
+
+FunAppPtr CHCToITS::to_funapp(const std::string& f) const {
+    const auto sig = chcs->get_signature().at(f);
+    std::vector<Expr> args;
+    size_t next_bool = 0;
+    std::unordered_map<size_t, size_t> next_int;
+    for (const auto&[base, dim]: sig) {
+        switch (base) {
+            case theory::BaseType::Bool: {
+                if (dim > 0) {
+                    throw std::invalid_argument("bool arrays are not yet supported");
+                }
+                const auto arg = bvars.at(next_bool);
+                ++next_bool;
+                args.emplace_back(bools::mkLit(bools::mk(arg)));
+                break;
+            }
+            case theory::BaseType::Int: {
+                auto &next = next_int.emplace(dim, 0).first->second;
+                std::optional<Expr> arg;
+                if (dim == 0) {
+                    arg = vars.at(next);
+                } else {
+                    arg = avars.at(dim).at(next);
+                }
+                ++next;
+                args.emplace_back(*arg);
+                break;
+            }
+        }
+    }
+    return FunApp::mk(f, args);
 }

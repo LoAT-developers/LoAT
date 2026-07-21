@@ -510,7 +510,7 @@ int main(int argc, char *argv[]) {
             }
             if (!Config::Analysis::cert.empty()) {
                 std::ofstream cert_file(Config::Analysis::cert);
-                cert_file << chc_cex.to_recurrent_set() << std::endl;
+                cert_file << chc2its->transform_recurrent_set(its_cex->to_recurrent_set()) << std::endl;
                 cert_file.close();
             } else {
                 std::cout << chc_cex;

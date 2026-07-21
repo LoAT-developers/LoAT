@@ -41,7 +41,7 @@ ITSPtr ITSProblem::removeRule(const RulePtr& p_transition) const {
     return std::make_shared<ITSProblem>(new_graph);
 }
 
-ITSPtr ITSProblem::addRule(const RulePtr& p_rule, const RuleProperties& p_props, const linked_hash_set<RulePtr> &p_preds, const linked_hash_set<RulePtr> &p_succs) const {
+ITSPtr ITSProblem::addRule(const RulePtr p_rule, const RuleProperties& p_props, const linked_hash_set<RulePtr> &p_preds, const linked_hash_set<RulePtr> &p_succs) const {
     auto new_graph = graph;
     new_graph.addNode(p_rule, p_preds, p_succs, p_props.is_loop);
     if (p_props.is_initial) {
@@ -53,28 +53,27 @@ ITSPtr ITSProblem::addRule(const RulePtr& p_rule, const RuleProperties& p_props,
     return std::make_shared<ITSProblem>(new_graph);
 }
 
-ITSPtr ITSProblem::addRule(const RulePtr &p_rule, const RulePtr &p_same_preds, const RulePtr &p_same_succs) const {
+ITSPtr ITSProblem::addRule(const RulePtr p_rule, const RulePtr p_same_preds, const RulePtr p_same_succs) const {
     const auto preds = graph.getPredecessors(p_same_preds);
     const auto succs = graph.getSuccessors(p_same_succs);
     RuleProperties props {.is_loop = succs.contains(p_same_preds), .is_initial = graph.isRoot(p_same_preds), .is_sink = graph.isSink(p_same_succs)};
     return addRule(p_rule, props, preds, succs);
 }
 
-ITSPtr ITSProblem::addLearnedRule(const RulePtr& p_rule, const RulePtr& p_same_preds, const RulePtr& p_same_succs) const {
+ITSPtr ITSProblem::addLearnedRule(const RulePtr p_rule, const RulePtr p_same_preds, const RulePtr p_same_succs) const {
     const auto preds = graph.getPredecessors(p_same_preds);
     const auto succs = graph.getSuccessors(p_same_succs);
     RuleProperties props {.is_loop = false, .is_initial = graph.isRoot(p_same_preds), .is_sink = graph.isSink(p_same_succs)};
     return addRule(p_rule, props, preds, succs);
 }
 
-std::pair<ITSPtr, RulePtr> ITSProblem::addQuery(const Bools::Expr& p_err, const RulePtr& p_same_preds) const {
+ITSPtr ITSProblem::addQuery(const RulePtr p_err, const RulePtr p_same_preds) const {
     const auto preds = graph.getPredecessors(p_same_preds);
-    const auto res {Rule::mk(p_err, Subs())};
     RuleProperties props {.is_loop = false, .is_initial = graph.isRoot(p_same_preds), .is_sink = true};
-    return {addRule(res, props, preds, {}), res};
+    return addRule(p_err, props, preds, {});
 }
 
-ITSPtr ITSProblem::replaceRule(const RulePtr& p_to_replace, const RulePtr& p_replacement) const {
+ITSPtr ITSProblem::replaceRule(const RulePtr p_to_replace, const RulePtr p_replacement) const {
     if (p_to_replace == p_replacement) {
         return shared_from_this();
     }

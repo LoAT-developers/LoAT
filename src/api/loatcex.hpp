@@ -14,7 +14,7 @@ public:
     explicit LoatCex(const std::shared_ptr<ITSCex> &cex)
         : m_cex(cex) {}
 
-    const linked_hash_map<RulePtr, RulePtr> &getAccelerations() const
+    const linked_hash_map<RulePtr, ITSCex::AccelInfo> &getAccelerations() const
     {
         return m_cex->get_accel();
     }

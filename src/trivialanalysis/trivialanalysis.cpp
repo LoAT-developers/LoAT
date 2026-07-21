@@ -5,7 +5,7 @@
 
 TrivialAnalysis::~TrivialAnalysis() {}
 
-TrivialAnalysis::TrivialAnalysis(const ITSPtr& its): its(its), cex(its->getAllTransitions()) {}
+TrivialAnalysis::TrivialAnalysis(const ITSPtr& its): its(its), cex(its) {}
 
 void TrivialAnalysis::init() {}
 
@@ -28,7 +28,7 @@ std::optional<SmtResult> TrivialAnalysis::do_step() {
             if (solver->check() == SmtResult::Sat) {
                 if (Config::Analysis::model) {
                     cex.set_initial_state(solver->model());
-                    cex.add_final_transition(r);
+                    cex.do_step(r, solver->model());
                 }
                 return SmtResult::Unsat;
             }

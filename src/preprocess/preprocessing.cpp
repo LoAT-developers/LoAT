@@ -323,7 +323,7 @@ namespace {
         }
 
         std::shared_ptr<ITSCex> transform_cex(std::shared_ptr<ITSCex> cex) const override {
-            for (const auto ci: m_chained) {
+            for (const auto& ci: m_chained) {
                 cex->undo(ci);
             }
             return cex;
