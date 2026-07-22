@@ -228,7 +228,7 @@ void LoopAcceleration::run() {
         res.status = acceleration::Arrays;
     } else {
         chain();
-        switch (SmtFactory::check(Preprocess::chain({rule, rule->renameTmpVars().first})->getGuard())) {
+        switch (SmtFactory::check(rule->getGuard() && rule->getGuard()->subs(rule->getUpdate()))) {
             case SmtResult::Unsat:
                 res.status = acceleration::PseudoLoop;
                 return;
