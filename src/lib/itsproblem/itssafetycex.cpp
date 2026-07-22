@@ -131,7 +131,8 @@ Bools::Expr ITSSafetyCex::instantiate_post(const RulePtr t, const ModelPtr m) co
     return bools::mkAnd(res);
 }
 
-Bools::Expr ITSSafetyCex::instantiate_tmp(const Bools::Expr b, const ModelPtr m, const CellSet& keep) const {
+template <class T>
+T instantiate_tmp(const T b, const ModelPtr m, const CellSet& keep = CellSet()) {
     Subs subs;
     for (const auto &x: b->cells()) {
         if (theory::isTempCell(x) && !keep.contains(x)) {
@@ -178,7 +179,7 @@ void ITSSafetyCex::complete_recurrent_set(ITSRecurrentSet& rs, const RulePtr rul
         const auto ti = implicants.at(rule);
         complete_recurrent_set(rs, ti.in(), ti.transform_model(model), with_start);
     } else {
-        rs.add(rule);
+        rs.add(instantiate_tmp(rule, model));
         if (with_start) {
             const auto applicable = instantiate_tmp(rule->getGuard(), model);
             const auto& already_reached = rs.get(dst);

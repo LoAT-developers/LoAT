@@ -29,6 +29,5 @@ public:
 private:
     Bools::Expr instantiate_pre(ModelPtr) const;
     Bools::Expr instantiate_post(RulePtr, ModelPtr) const;
-    Bools::Expr instantiate_tmp(Bools::Expr, ModelPtr, const CellSet& keep = CellSet()) const;
 
 };
