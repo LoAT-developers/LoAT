@@ -351,8 +351,12 @@ int main(int argc, char *argv[]) {
     std::optional<ITSModel> its_model;
     std::optional<ITSSafetyCex> its_cex;
     auto preprocessor{std::make_shared<ITSPreprocessor>(*its)};
-    if (preprocessor->process() && Config::Analysis::log) {
-        std::cout << "Simplified ITS\n" << *its << std::endl;
+    const auto preprocessed = preprocessor->process();
+    if (preprocessed != its) {
+        its = preprocessed;
+        if (Config::Analysis::log) {
+            std::cout << "Simplified ITS\n" << *its << std::endl;
+        }
     }
     auto trivial_analysis = TrivialAnalysis(*its);
     auto res = trivial_analysis.analyze();
@@ -373,8 +377,12 @@ int main(int argc, char *argv[]) {
             CHCToITS reversed_chc2its{reverse->reverse()};
             auto reversed{reversed_chc2its.transform()};
             auto backward_preprocessor{std::make_shared<ITSPreprocessor>(reversed)};
-            if (backward_preprocessor->process() && Config::Analysis::log) {
-                std::cout << "Simplified reversed ITS\n" << reversed << std::endl;
+            const auto preprocessed = backward_preprocessor->process();
+            if (preprocessed != reversed) {
+                reversed = preprocessed;
+                if (Config::Analysis::log) {
+                    std::cout << "Simplified reversed ITS\n" << reversed << std::endl;
+                }
             }
             std::unique_ptr<StepwiseAnalysis> f, b;
             switch (Config::Analysis::engine) {

@@ -482,7 +482,9 @@ std::unique_ptr<LearningState> ADCL::learn_clause(const RulePtr& rule, const Ran
         nonterm,
         prefix,
         chaining_info] = LoopAcceleration::accelerate(simp, config);
-    if (status == acceleration::PseudoLoop) {
+    // acceleration returns PseudoLoop if the loop cannot be unrolled *when preserving the values of temporary variables
+    // here, we also care about runs that modify the values of temporary variables
+    if (status == acceleration::PseudoLoop && SmtFactory::check(Preprocess::chain(std::vector{simp, simp->renameTmpVars().first})->getGuard()) == SmtResult::Unsat) {
         return std::make_unique<Unroll>();
     }
     const bool nonterm_succeeded = Config::Analysis::tryNonterm() && nonterm != bot();

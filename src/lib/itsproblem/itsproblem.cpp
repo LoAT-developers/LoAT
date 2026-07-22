@@ -134,7 +134,7 @@ std::pair<ITSPtr, linked_hash_set<ITSProblem::DG::Edge>> ITSProblem::refineDepen
 }
 
 size_t ITSProblem::size() const {
-    return graph.size();
+    return graph.edgecount();
 }
 
 bool ITSProblem::hasArrays() const {

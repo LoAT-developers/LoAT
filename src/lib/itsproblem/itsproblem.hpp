@@ -17,7 +17,8 @@ public:
     using DG = DependencyGraph<RulePtr>;
 
     ITSProblem();
-    ITSProblem(const DG& p_graph);
+
+    explicit ITSProblem(const DG& p_graph);
 
     // True iff there are no rules
     bool isEmpty() const;

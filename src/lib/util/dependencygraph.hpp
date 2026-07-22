@@ -24,7 +24,7 @@ public:
             if (contains_snd) {
                 if (predecessors.at(snd).insert(fst).second) {
                     successors.at(fst).insert(snd);
-                    ++edgecount;
+                    ++m_edgecount;
                 } else {
                     changed = false;
                 }
@@ -51,8 +51,8 @@ public:
         }
         predecessors.emplace(node, preds);
         successors.emplace(node, succs);
-        edgecount += preds.size();
-        edgecount += succs.size();
+        m_edgecount += preds.size();
+        m_edgecount += succs.size();
         for (const auto &p: preds) {
             successors.at(p).insert(node);
         }
@@ -128,7 +128,7 @@ public:
     void removeEdge(Node from, Node to) {
         successors.at(from).erase(to);
         predecessors.at(to).erase(from);
-        --edgecount;
+        --m_edgecount;
     }
 
     void removeEdges(const linked_hash_set<Edge> &remove) {
@@ -202,14 +202,18 @@ public:
         for (const auto &p: predecessors.at(node)) {
             successors.at(p).erase(node);
         }
-        edgecount -= predecessors.at(node).size();
-        edgecount -= successors.at(node).size();
+        m_edgecount -= predecessors.at(node).size();
+        m_edgecount -= successors.at(node).size();
         predecessors.erase(node);
         successors.erase(node);
     }
 
-    size_t size() const {
-        return edgecount;
+    size_t edgecount() const {
+        return m_edgecount;
+    }
+
+    size_t nodecount() const {
+        return nodes.size();
     }
 
     bool has_cycle(const Node& node) {
@@ -248,7 +252,7 @@ private:
     linked_hash_set<Node> nodes {};
     std::unordered_map<Node, linked_hash_set<Node>> successors {};
     std::unordered_map<Node, linked_hash_set<Node>> predecessors {};
-    size_t edgecount {0};
+    size_t m_edgecount {0};
 
 };
 
