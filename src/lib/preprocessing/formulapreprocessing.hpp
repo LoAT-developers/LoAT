@@ -1,5 +1,6 @@
 #pragma once
 
+#include "intfm.hpp"
 #include "subs.hpp"
 #include "theory.hpp"
 
@@ -73,7 +74,7 @@ public:
 
 class IntegerFourierMotzkin: public AbstractFormulaPreprocessor {
 
-    std::vector<std::pair<ArithVarPtr, std::vector<Arith::Expr>>> lower_bound_map;
+    IntegerFourierMotzkinResult res;
     std::function<bool(const Var&)> allow;
 
 public:

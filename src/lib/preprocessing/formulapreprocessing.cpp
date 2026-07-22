@@ -74,24 +74,44 @@ ModelPtr OrSimplifier::transform_model(ModelPtr model) {
     return model;
 }
 
-IntegerFourierMotzkin::IntegerFourierMotzkin(const Bools::Expr &in, const std::function<bool(const Var&)>& allow): AbstractFormulaPreprocessor(in), allow(allow) {}
+IntegerFourierMotzkin::IntegerFourierMotzkin(const Bools::Expr &in, const std::function<bool(const Var&)>& allow): AbstractFormulaPreprocessor(in), res(in), allow(allow) {}
 
 Bools::Expr IntegerFourierMotzkin::process() {
-    const auto [res, lb] = integerFourierMotzkin(in, allow);
-    lower_bound_map = lb;
-    return res;
+    res = integerFourierMotzkin(in, allow);
+    return res.t;
 }
 
 ModelPtr IntegerFourierMotzkin::transform_model(ModelPtr model) {
-    for (const auto& [x,lbs]: lower_bound_map | std::views::reverse) {
-        auto max_val = model->eval(lbs.front());
-        for (const auto& lb: lbs) {
-            const auto val = model->eval(lb);
-            if (val > max_val) {
-                max_val = val;
+    for (const auto& [x, bounds]: res.bounds | std::views::reverse) {
+        if (!bounds.lower.empty()) {
+            auto max_val = model->evalToRational(bounds.lower.front());
+            for (const auto& lb: bounds.lower) {
+                const auto val = model->evalToRational(lb);
+                if (val > max_val) {
+                    max_val = val;
+                }
             }
+            Int div = mp::abs(mp::numerator(max_val)) / mp::abs(mp::denominator(max_val));
+            Int mod = mp::abs(mp::numerator(max_val)) % mp::abs(mp::denominator(max_val));
+            Int val = max_val >= 0 ? div : -div;
+            val = mod == 0 ? val : val + 1;
+            model = model->put(x, val);
+        } else if (!bounds.upper.empty()) {
+            auto min_val = model->evalToRational(bounds.upper.front());
+            for (const auto& ub: bounds.upper) {
+                const auto val = model->evalToRational(ub);
+                if (val < min_val) {
+                    min_val = val;
+                }
+            }
+            Int div = mp::abs(mp::numerator(min_val)) / mp::abs(mp::denominator(min_val));
+            Int mod = mp::abs(mp::numerator(min_val)) % mp::abs(mp::denominator(min_val));
+            Int val = min_val >= 0 ? div : -div;
+            val = mod == 0 ? val : val - 1;
+            model = model->put(x, val);
+        } else {
+            model = model->put(x, 0);
         }
-        model = model->put(x, max_val);
     }
     return model;
 }

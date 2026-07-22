@@ -4,11 +4,15 @@
 
 #include <unordered_set>
 
-std::pair<Bools::Expr, std::vector<std::pair<ArithVarPtr, std::vector<Arith::Expr>>>> integerFourierMotzkin(const Bools::Expr& e, const std::function<bool(const ArrayVarPtr<Arith> &)> &allow) {
+using Result = IntegerFourierMotzkinResult;
+
+IntegerFourierMotzkinResult::IntegerFourierMotzkinResult(Bools::Expr t): t(std::move(t)) {}
+
+Result integerFourierMotzkin(const Bools::Expr& e, const std::function<bool(const ArrayVarPtr<Arith> &)> &allow) {
+    Result res {e};
     if (!e->isConjunction()) {
-        return {e, {}};
+        return res;
     }
-    std::vector<std::pair<ArithVarPtr, std::vector<Arith::Expr>>> lower_bound_map;
     auto all_lits {e->lits()};
     auto& lits {all_lits.get<Arith::Lit>()};
 
@@ -43,8 +47,6 @@ std::pair<Bools::Expr, std::vector<std::pair<ArithVarPtr, std::vector<Arith::Exp
         std::vector<Arith::Expr> lower_bounds;
         std::vector<Arith::Lit> eliminated_lits;
         auto may_be_dually_bounded {true};
-        auto lower_bounded {false};
-        auto upper_bounded {false};
         // used for heuristic for detecting cases where we get an exponential blow-up
         size_t explosive_lower {0};
         size_t explosive_upper {0};
@@ -63,14 +65,12 @@ std::pair<Bools::Expr, std::vector<std::pair<ArithVarPtr, std::vector<Arith::Exp
                 if (const auto coeff{*term->coeff(var)}; coeff->is(1) == 1) {
                     // we have var + p > 0, i.e., var >= -p+1
                     lower_bounds.push_back(arith::mkPlus({-term, var, arith::one()}));
-                    lower_bounded = true;
                     if (is_explosive(var, term)) {
                         ++explosive_upper;
                     }
                 } else if (coeff->is(-1)) {
                     // we have -var + p > 0, i.e., p-1 >= var
                     upper_bounds.push_back(arith::mkPlus({term, var, arith::mkConst(-1)}));
-                    upper_bounded = true;
                     if (is_explosive(var, term)) {
                         ++explosive_lower;
                     }
@@ -80,16 +80,16 @@ std::pair<Bools::Expr, std::vector<std::pair<ArithVarPtr, std::vector<Arith::Exp
                         // if the variable bounded from both sides, then we need divisibility constraints to eliminate it
                         may_be_dually_bounded = false;
                         if (*int_coeff > 0) {
-                            lower_bounded = true;
+                            lower_bounds.emplace_back(arith::mkPlus({-term, coeff * var, arith::one()})->divide(*int_coeff));
                         } else {
-                            upper_bounded = true;
+                            upper_bounds.push_back(arith::mkPlus({term, coeff * var, arith::mkConst(-1)})->divide(-*int_coeff));
                         }
                     } else {
                         // non-constant coefficient
                         goto abort;
                     }
                 }
-                if (!may_be_dually_bounded && lower_bounded && upper_bounded) {
+                if (!may_be_dually_bounded && !lower_bounds.empty() && !upper_bounds.empty()) {
                     goto abort;
                 }
                 if (explosive_upper > 1 && explosive_lower > 1) {
@@ -109,7 +109,7 @@ std::pair<Bools::Expr, std::vector<std::pair<ArithVarPtr, std::vector<Arith::Exp
             }
         }
         eliminated.insert(var);
-        lower_bound_map.emplace_back(var, lower_bounds);
+        res.bounds.emplace_back(var, Result::Bounds{.lower=lower_bounds, .upper=upper_bounds});
         if (Config::Analysis::doLogPreproc()) {
             std::cout << "eliminated " << var << "; lower bounds: " << lower_bounds << "; upper bounds: " << upper_bounds << std::endl;
         }
@@ -117,7 +117,8 @@ std::pair<Bools::Expr, std::vector<std::pair<ArithVarPtr, std::vector<Arith::Exp
 abort:  ; //this symbol could not be eliminated, try the next one
     }
     if (eliminated.empty()) {
-        return {e, {}};
+        return res;
     }
-    return {bools::mkAnd(all_lits), lower_bound_map};
+    res.t = bools::mkAnd(all_lits);
+    return res;
 }
