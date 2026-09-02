@@ -91,6 +91,7 @@ ModelPtr IntegerFourierMotzkin::transform_model(ModelPtr model) {
                     max_val = val;
                 }
             }
+            // compute ceil
             Int div = mp::abs(mp::numerator(max_val)) / mp::abs(mp::denominator(max_val));
             Int mod = mp::abs(mp::numerator(max_val)) % mp::abs(mp::denominator(max_val));
             Int val = max_val >= 0 ? div : -div;
@@ -104,6 +105,7 @@ ModelPtr IntegerFourierMotzkin::transform_model(ModelPtr model) {
                     min_val = val;
                 }
             }
+            // compute floor
             Int div = mp::abs(mp::numerator(min_val)) / mp::abs(mp::denominator(min_val));
             Int mod = mp::abs(mp::numerator(min_val)) % mp::abs(mp::denominator(min_val));
             Int val = min_val >= 0 ? div : -div;

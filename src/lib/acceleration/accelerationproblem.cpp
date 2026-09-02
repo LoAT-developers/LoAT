@@ -212,7 +212,7 @@ bool AccelerationProblem::recurrence(const Lit &lit) {
         const auto g {bools::mkLit(lit)};
         res.formula.push_back(g);
         if (Config::Analysis::doLogAccel()) {
-            std::cout << lit << ": montonic increase yields " << g << std::endl;
+            std::cout << lit << ": monotonic increase yields " << g << std::endl;
         }
     }
     solver->pop();

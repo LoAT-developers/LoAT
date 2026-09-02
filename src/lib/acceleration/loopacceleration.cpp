@@ -230,7 +230,12 @@ void LoopAcceleration::run() {
         chain();
         switch (SmtFactory::check(rule->getGuard() && rule->getGuard()->subs(rule->getUpdate()))) {
             case SmtResult::Unsat:
-                res.status = acceleration::PseudoLoop;
+                if (config.tryNonterm) {
+                    try_nonterm();
+                }
+                if (res.nonterm == bot()) {
+                    res.status = acceleration::PseudoLoop;
+                }
                 return;
             case SmtResult::Unknown:
                 res.status = acceleration::NotSat;
