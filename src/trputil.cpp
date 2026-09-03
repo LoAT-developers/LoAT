@@ -548,7 +548,7 @@ bool TRPUtil::refine_abstraction(const Range& range) {
         const auto& frame = trace.at(i);
         const auto& subs = get_subs(i, 1);
         if (frame.id > last_orig_clause) {
-            const auto current = rule_map.at(frame.id);
+            const auto current = frame.implicant;
             const auto conc = concretization.at(frame.id);
             assert(current->isAnd());
             assert(conc->isAnd());
