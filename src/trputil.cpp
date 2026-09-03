@@ -489,6 +489,23 @@ void TRPUtil::add_blocking_clauses(unsigned depth) {
     }
 }
 
+std::optional<ModelPtr> extend_model(const ArithVarPtr n, const ModelPtr model, const Bools::Expr b) {
+    Subs subs;
+    for (const auto& c: b->cells()) {
+        theory::apply(c, [&](const ArrayReadPtr<Arith>& c) {
+            subs.update(c, arith::mkConst(model->get(c)));
+        }, [&](const Bools::Var& c) {
+            subs.put(c, model->get(c) ? top() : bot());
+        });
+    }
+    auto solver = SmtFactory::modelBuildingSolver(Logic::QF_LA);
+    solver->add(b->subs(subs));
+    if (solver->check() == SmtResult::Sat) {
+        return model->put(n, solver->model()->get(n));
+    }
+    return std::nullopt;
+}
+
 std::optional<Int> TRPUtil::add_blocking_clauses(const Range &range, ModelPtr model) {
     const auto n {trp.get_n()};
     for (const auto &[id, b] : rule_map) {
@@ -504,22 +521,15 @@ std::optional<Int> TRPUtil::add_blocking_clauses(const Range &range, ModelPtr mo
             continue;
         }
         if (vars.contains(n->var())) {
-            auto bounds = b->getBounds(n);
-            // learned clauses always contain the literal n>0, so 1 should always be a bound
-            assert(!bounds.empty());
-            for (const auto &bound: bounds) {
-                const auto c = model->evalToRational(bound.bound);
-                if (mp::denominator(c) == 1) {
-                    model = model->put(n, mp::numerator(c));
-                    if (model->eval(b)) {
-                        Bools::Expr projected{
-                            mbp::int_mbp(b, model, mbp_kind, [&](const auto &x) {
-                                return x == Cell(n);
-                            })
-                        };
-                        add_blocking_clause(range, id, projected);
-                        return id;
-                    }
+            if (const auto m = extend_model(n, model, b)) {
+                if ((*m)->eval(b)) {
+                    Bools::Expr projected{
+                        mbp::int_mbp(b, *m, mbp_kind, [&](const auto &x) {
+                            return x == Cell(n);
+                        })
+                    };
+                    add_blocking_clause(range, id, projected);
+                    return id;
                 }
             }
         } else if (model->eval(b)) {
