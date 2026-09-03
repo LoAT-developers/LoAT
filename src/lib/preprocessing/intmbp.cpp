@@ -64,30 +64,7 @@ Bools::Expr int_mbp(const Bools::Expr &t, const ModelPtr &model, const ArithVarP
             ++it;
         }
     }
-    if (lb.empty() || ub.empty()) {
-        // easy case: no lower (or upper) bound, so all constraints involving x can
-        // be satisfied by choosing a sufficiently small (large) value for x
-        return t->map(
-            [&](const auto &lit) {
-                return std::visit(
-                    Overload{
-                        [&](const Arith::Lit &l) {
-                            if (l->has(x)) {
-                                return top();
-                            }
-                            return bools::mkLit(lit);
-                        },
-                        [&](const Bools::Lit &) {
-                            return bools::mkLit(lit);
-                        },
-                        [](const Arrays<Arith>::Lit &) -> Bools::Expr {
-                            throw std::invalid_argument("real mbp does not support arrays");
-                        }
-                    },
-                    lit);
-            });
-    }
-    // In Cooper's QE procedure, we'd now sacale all literals so that the coefficient of x is flcm.
+    // In Cooper's QE procedure, we'd now scale all literals so that the coefficient of x is flcm.
     // We can't do that explicitly, as our expressions are normalized automatically.
     // So instead, we collect all divisibility constraints / bounds for flcm * x in the sets below.
     // Equivalently, assume that we substituted flcm * x with a fresh variable x', and the sets below contain the divisibility constraints / bounds for x'.
@@ -121,7 +98,9 @@ Bools::Expr int_mbp(const Bools::Expr &t, const ModelPtr &model, const ArithVarP
     // The decision depends on the given mode.
     // If the mode is IntMbp, then we prefer upper to lower bounds iff there are fewer upper than lower bounds.
     Arith::Expr substitute {arith::zero()};
-    if (mode == Config::TRPConfig::UpperIntMbp || (mode == Config::TRPConfig::IntMbp && scaled_ub.size() < scaled_lb.size())) {
+    if (lb.empty() && ub.empty()) {
+        substitute = arith::mkMod(arith::mkConst(flcm * model->get(x)), arith::mkConst(mlcm));
+    } else if (mode == Config::TRPConfig::UpperIntMbp || (mode == Config::TRPConfig::IntMbp && scaled_ub.size() < scaled_lb.size())) {
         // start from the closest upper bound
         auto closest_upper{*scaled_ub.begin()};
         auto min_val{model->eval(closest_upper)};
