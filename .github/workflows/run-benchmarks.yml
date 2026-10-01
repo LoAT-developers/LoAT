@@ -42,13 +42,14 @@ on:
       benchmarks:
         required: true
         type: choice
-        default: chc25-lia-lin
+        default: chc26-lia-lin
         options:
         - chc22-lia-lin
         - chc23-lia-lin
         - chc24-lia-lin
         - chc25-lia-lin
         - chc25-lia-lin-arrays
+        - chc26-lia-lin
         - tpdb-ari-termination
         - tpdb-ari-complexity
         - sv-arrays
@@ -87,6 +88,11 @@ jobs:
 
       - if: ${{ startsWith(inputs.release, 'HEAD') }}
         uses: ./actions/.github/actions/get-loat-build
+
+      - if: ${{ inputs.benchmarks == 'chc26-lia-lin' }}
+        uses: ./actions/.github/actions/chc26-lia-lin
+        with:
+          pat: ${{ secrets.LOAT_DEVELOPERS_PAT }}
 
       - if: ${{ inputs.benchmarks == 'chc25-lia-lin-arrays' }}
         uses: ./actions/.github/actions/chc25-lia-lin-arrays
