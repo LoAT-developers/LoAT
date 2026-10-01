@@ -98,7 +98,8 @@ Bools::Expr int_mbp(const Bools::Expr &t, const ModelPtr &model, const ArithVarP
     // The decision depends on the given mode.
     // If the mode is IntMbp, then we prefer upper to lower bounds iff there are fewer upper than lower bounds.
     Arith::Expr substitute {arith::zero()};
-    if (lb.empty() && ub.empty()) {
+    const auto inf = lb.empty() || ub.empty();
+    if (inf) {
         substitute = arith::mkMod(arith::mkConst(flcm * model->get(x)), arith::mkConst(mlcm));
     } else if (mode == Config::TRPConfig::UpperIntMbp || (mode == Config::TRPConfig::IntMbp && scaled_ub.size() < scaled_lb.size())) {
         // start from the closest upper bound
@@ -142,11 +143,13 @@ Bools::Expr int_mbp(const Bools::Expr &t, const ModelPtr &model, const ArithVarP
         substitute = closest_lower + arith::mkConst(1 + i_l_val);
     }
     // re-add the literals for x', but replace x' with the substitute computed above
-    for (const auto &l : scaled_lb) {
-        arith_lits.insert(arith::mkGt(substitute, l));
-    }
-    for (const auto &u : scaled_ub) {
-        arith_lits.insert(arith::mkLt(substitute, u));
+    if (!inf) {
+        for (const auto &l : scaled_lb) {
+            arith_lits.insert(arith::mkGt(substitute, l));
+        }
+        for (const auto &u : scaled_ub) {
+            arith_lits.insert(arith::mkLt(substitute, u));
+        }
     }
     for (const auto &d : scaled_divs) {
         arith_lits.insert(arith::mkEq(arith::mkMod(substitute + d.res, arith::mkConst(d.modulo)), arith::zero()));
