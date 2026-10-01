@@ -538,7 +538,7 @@ std::optional<Int> TRPUtil::add_blocking_clauses(const Range &range, const Model
 
 bool TRPUtil::refine_abstraction(const Range& range) {
     BoolExprSet assumptions, pre_post_assumptions;
-    std::unordered_map<Bools::Expr, std::pair<Int, Lit>> assumption_to_refinement;
+    std::unordered_map<Bools::Expr, std::pair<Int, Bools::Expr>> assumption_to_refinement;
     bool is_model = true;
     for (unsigned i = range.start(); i <= range.end(); ++i) {
         const auto& frame = trace.at(i);
@@ -546,24 +546,22 @@ bool TRPUtil::refine_abstraction(const Range& range) {
         if (frame.id > last_orig_clause) {
             const auto current = frame.implicant;
             const auto conc = concretization.at(frame.id);
-            assert(current->isConjunction());
-            assert(conc->isConjunction());
-            const auto current_children = current->lits();
+            std::cout << current << std::endl;
+            assert(current->isTheoryLit() || current->isAnd());
+            assert(conc->isTheoryLit() || conc->isAnd());
+            const auto current_children = current->isTheoryLit() ? BoolExprSet{current} : current->getChildren();
             if (conc != current) {
-                for (const auto& c: conc->lits()) {
+                const auto conc_children = conc->isTheoryLit() ? BoolExprSet{conc} : conc->getChildren();
+                for (const auto& c: conc->getChildren()) {
                     if (!current_children.contains(c)) {
-                        theory::apply(c, [&](const auto& c) {
-                            const auto assumption = c->renameVars(subs);
-                            is_model &= (*model)->eval(assumption);
-                            const auto assum = bools::mkLit(assumption);
-                            assumptions.insert(assum);
-                            const auto vars = c->vars();
-                            if (std::ranges::all_of(vars, theory::isProgVar) || std::ranges::all_of(
-                                    vars, theory::isPostVar)) {
-                                pre_post_assumptions.insert(assum);
-                            }
-                            assumption_to_refinement.emplace(assum, std::pair(frame.id, c));
-                        });
+                        const auto assumption = c->renameVars(subs);
+                        is_model &= (*model)->eval(assumption);
+                        assumptions.insert(assumption);
+                        const auto vars = c->vars();
+                        if (std::ranges::all_of(vars, theory::isProgVar) || std::ranges::all_of(vars, theory::isPostVar)) {
+                            pre_post_assumptions.insert(assumption);
+                        }
+                        assumption_to_refinement.emplace(assumption, std::pair(frame.id, c));
                     }
                 }
             }
@@ -586,7 +584,7 @@ bool TRPUtil::refine_abstraction(const Range& range) {
                             std::cout << "refining " << id << ": " << current << " with " << refinement << std::endl;
                         }
                         refined.insert(id);
-                        const auto t = current && bools::mkLit(refinement);
+                        const auto t = current && refinement;
                         rule_map.put(id, t);
                         projections.erase(id);
                         add_projection(id, t->subs(Subs::build(trp.get_n(), arith::one())));
