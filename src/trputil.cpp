@@ -229,9 +229,7 @@ Int TRPUtil::add_learned_clause(const Range &range, const Bools::Expr &accel) {
         assert(accel->isAnd());
         for (const auto &c: accel->getChildren()) {
             const auto vars = c->vars();
-            if (vars.contains(ITSProblem::loc_var()->var())
-                || vars.contains(ITSProblem::loc_var()->var()->postVar())
-                || vars.contains(trace_var->var())) {
+            if (vars.contains(trace_var->var())) {
                 lits.emplace(c);
             }
         }
@@ -491,12 +489,16 @@ void TRPUtil::add_blocking_clauses(unsigned depth) {
 
 std::optional<ModelPtr> extend_model(const ArithVarPtr n, const ModelPtr model, const Bools::Expr b) {
     Subs subs;
-    for (const auto& c: b->cells()) {
-        theory::apply(c, [&](const ArrayReadPtr<Arith>& c) {
-            subs.update(c, arith::mkConst(model->get(c)));
-        }, [&](const Bools::Var& c) {
-            subs.put(c, model->get(c) ? top() : bot());
-        });
+    for (const auto &c: b->cells()) {
+        theory::apply(
+            c,
+            [&](const ArrayReadPtr<Arith> &c) {
+                if (c != n) {
+                    subs.update(c, arith::mkConst(model->get(c)));
+                }
+            }, [&](const Bools::Var &c) {
+                subs.put(c, model->get(c) ? top() : bot());
+            });
     }
     auto solver = SmtFactory::modelBuildingSolver(Logic::QF_LA);
     solver->add(b->subs(subs));
@@ -542,7 +544,7 @@ std::optional<Int> TRPUtil::add_blocking_clauses(const Range &range, ModelPtr mo
 
 bool TRPUtil::refine_abstraction(const Range& range) {
     BoolExprSet assumptions, pre_post_assumptions;
-    std::unordered_map<Bools::Expr, std::pair<Int, Bools::Expr>> assumption_to_refinement;
+    std::unordered_map<Bools::Expr, std::pair<Int, Lit>> assumption_to_refinement;
     bool is_model = true;
     for (unsigned i = range.start(); i <= range.end(); ++i) {
         const auto& frame = trace.at(i);
@@ -550,20 +552,24 @@ bool TRPUtil::refine_abstraction(const Range& range) {
         if (frame.id > last_orig_clause) {
             const auto current = frame.implicant;
             const auto conc = concretization.at(frame.id);
-            assert(current->isAnd());
-            assert(conc->isAnd());
-            const auto current_children = current->getChildren();
+            assert(current->isConjunction());
+            assert(conc->isConjunction());
+            const auto current_children = current->lits();
             if (conc != current) {
-                for (const auto& c: conc->getChildren()) {
+                for (const auto& c: conc->lits()) {
                     if (!current_children.contains(c)) {
-                        const auto assumption = c->renameVars(subs);
-                        is_model &= (*model)->eval(assumption);
-                        assumptions.insert(assumption);
-                        const auto vars = c->vars();
-                        if (std::ranges::all_of(vars, theory::isProgVar) || std::ranges::all_of(vars, theory::isPostVar)) {
-                            pre_post_assumptions.insert(assumption);
-                        }
-                        assumption_to_refinement.emplace(assumption, std::pair(frame.id, c));
+                        theory::apply(c, [&](const auto& c) {
+                            const auto assumption = c->renameVars(subs);
+                            is_model &= (*model)->eval(assumption);
+                            const auto assum = bools::mkLit(assumption);
+                            assumptions.insert(assum);
+                            const auto vars = c->vars();
+                            if (std::ranges::all_of(vars, theory::isProgVar) || std::ranges::all_of(
+                                    vars, theory::isPostVar)) {
+                                pre_post_assumptions.insert(assum);
+                            }
+                            assumption_to_refinement.emplace(assum, std::pair(frame.id, c));
+                        });
                     }
                 }
             }
@@ -586,7 +592,7 @@ bool TRPUtil::refine_abstraction(const Range& range) {
                             std::cout << "refining " << id << ": " << current << " with " << refinement << std::endl;
                         }
                         refined.insert(id);
-                        const auto t = current && refinement;
+                        const auto t = current && bools::mkLit(refinement);
                         if (Config::Analysis::model) {
                             its->replaceRule(its2safety.formula_to_rule(rule_map.at(id)), its2safety.formula_to_rule(t));
                         }
