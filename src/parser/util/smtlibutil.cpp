@@ -206,7 +206,7 @@ bool isInt(const std::string &s) {
 
 Arrays<Arith>::Expr parseArray(const sexpresso::Sexp &exp, SMTLibParsingState &state) {
     if (exp.isString()) {
-        const auto name{exp.str()};
+        const auto& name{exp.str()};
         if (const auto binding = state.get_array_binding(name)) {
             return *binding;
         }
@@ -233,7 +233,7 @@ Arrays<Arith>::Expr parseArray(const sexpresso::Sexp &exp, SMTLibParsingState &s
 
 Arith::Expr parseArithExpr(const sexpresso::Sexp &exp, SMTLibParsingState &state) {
     if (exp.isString()) {
-        if (const auto name {exp.str()}; isInt(name)) {
+        if (const auto& name {exp.str()}; isInt(name)) {
             return arith::mkConst(Int(name));
         } else {
             if (const auto binding = state.get_arith_binding(name)) {
@@ -253,10 +253,10 @@ Arith::Expr parseArithExpr(const sexpresso::Sexp &exp, SMTLibParsingState &state
     }
     if (name == "let") {
         state.push();
-        auto declarations{exp[1]};
+        const auto& declarations{exp[1]};
         std::unordered_map<std::string, Expr> newBindings;
         for (unsigned i = 0; i < declarations.childCount(); ++i) {
-            auto decl{declarations[i]};
+            const auto& decl{declarations[i]};
             const auto declName{decl[0].str()};
             state.add_binding(declName, parseArithExpr(decl[1], state));
         }
@@ -293,6 +293,14 @@ Arith::Expr parseArithExpr(const sexpresso::Sexp &exp, SMTLibParsingState &state
     if (name == "mod" || name == "div") {
         const auto fst {parseArithExpr(exp[1], state)};
         const auto snd {parseArithExpr(exp[2], state)};
+        if (const auto denominator = snd->isInt()) {
+            if (auto res = fst->divide(*denominator); res->isIntegral()) {
+                if (name == "div") {
+                    return res;
+                }
+                return arith::zero();
+            }
+        }
         const auto div {arrays::nextConst<Arith>()};
         const auto mod {arrays::nextConst<Arith>()};
         std::vector<Bools::Expr> constr;
@@ -342,7 +350,7 @@ theory::Type getType(const sexpresso::Sexp &exp, const SMTLibParsingState &state
     }
     std::vector<Expr> args;
     if (child.isString()) {
-        const auto name{child.str()};
+        const auto& name{child.str()};
         if (name == "true" || name == "false") {
             return theory::Type::Bool;
         }
@@ -379,7 +387,7 @@ Expr parseExpr(const sexpresso::Sexp& exp, SMTLibParsingState& state, const theo
 
 Bools::Expr parseBoolExpr(const sexpresso::Sexp &exp, SMTLibParsingState &state) {
     if (exp.isString()) {
-        const auto name {exp.str()};
+        const auto& name {exp.str()};
         if (name == "true") {
             return top();
         }
