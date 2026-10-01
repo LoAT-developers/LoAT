@@ -6,6 +6,13 @@
 #include "variantset.hpp"
 
 template <class T>
+VarSet ArrayLit<T>::vars() const {
+    VarSet res;
+    collectVars(res);
+    return res;
+}
+
+template <class T>
 void ArrayEq<T>::syntacticImplicant(const ModelPtr& m, LitSet& res) const {
     if (const auto self = cpp::assume_not_null(this->shared_from_this()); m->eval(self)) {
         res.insert(arrays::mkEq(m_lhs->syntacticImplicant(m, res), m_rhs->syntacticImplicant(m, res)));

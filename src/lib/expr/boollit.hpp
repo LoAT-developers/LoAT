@@ -52,6 +52,7 @@ public:
     BoolLitPtr renameVars(const Renaming &map) const;
     BoolExprPtr subs(const Subs &subs) const;
     void syntacticImplicant(ModelPtr, LitSet&) const;
+    VarSet vars() const;
 
 };
 

@@ -111,3 +111,9 @@ BoolExprPtr BoolLit::subs(const Subs& subs) const {
 void BoolLit::syntacticImplicant(ModelPtr m, LitSet& res) const {
     res.insert(cpp::assume_not_null(shared_from_this()));
 }
+
+VarSet BoolLit::vars() const {
+    VarSet res;
+    res.insert(var);
+    return res;
+}

@@ -39,6 +39,7 @@ public:
     virtual ArrayLitPtr<T> renameVars(const Renaming&) const = 0;
     virtual void collectVars(VarSet&) const = 0;
     virtual void collectCells(CellSet&) const = 0;
+    VarSet vars() const;
     virtual bool isTriviallyFalse() const = 0;
     virtual std::optional<ArrayEqPtr<T>> isArrayEq() const = 0;
     virtual std::optional<ArrayNeqPtr<T>> isArrayNeq() const = 0;
