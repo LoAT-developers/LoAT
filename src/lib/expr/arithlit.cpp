@@ -93,21 +93,36 @@ bool ArithLit::isLinear(const std::optional<linked_hash_set<ArithVarPtr>> &vars)
 
 bool ArithLit::getBounds(const ArithVarPtr& n, linked_hash_set<Bound> &res) const {
     if (kind != Kind::Neq) {
-        if (const auto optSolved{l->solve(n)}) {
+        if (auto optSolved{l->solve(n)}) {
             switch (kind) {
             case Kind::Eq:
                 res.emplace(*optSolved, BoundKind::Equality);
                 return true;
             case Kind::Gt: {
-                const auto coeff{*l->coeff(n)};
-                if (const auto r{***coeff->isRational()}) {
-                    if (r > 0) {
-                        res.emplace(*optSolved + arith::one(), BoundKind::Lower);
-                        return true;
+                if ((*optSolved)->isIntegral()) {
+                    const auto coeff{*l->coeff(n)};
+                    if (const auto r{***coeff->isRational()}) {
+                        if (r > 0) {
+                            res.emplace(*optSolved + arith::one(), BoundKind::Lower);
+                            return true;
+                        }
+                        if (r < 0) {
+                            res.emplace(*optSolved - arith::one(), BoundKind::Upper);
+                            return true;
+                        }
                     }
-                    if (r < 0) {
-                        res.emplace(*optSolved - arith::one(), BoundKind::Upper);
-                        return true;
+                } else {
+                    optSolved = (l - arith::one())->solve(n);
+                    const auto coeff{*l->coeff(n)};
+                    if (const auto r{***coeff->isRational()}) {
+                        if (r > 0) {
+                            res.emplace(*optSolved, BoundKind::Lower);
+                            return true;
+                        }
+                        if (r < 0) {
+                            res.emplace(*optSolved, BoundKind::Upper);
+                            return true;
+                        }
                     }
                 }
             }

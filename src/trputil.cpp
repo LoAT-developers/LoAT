@@ -546,7 +546,6 @@ bool TRPUtil::refine_abstraction(const Range& range) {
         if (frame.id > last_orig_clause) {
             const auto current = frame.implicant;
             const auto conc = concretization.at(frame.id);
-            std::cout << current << std::endl;
             assert(current->isTheoryLit() || current->isAnd());
             assert(conc->isTheoryLit() || conc->isAnd());
             const auto current_children = current->isTheoryLit() ? BoolExprSet{current} : current->getChildren();
