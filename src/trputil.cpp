@@ -546,12 +546,10 @@ bool TRPUtil::refine_abstraction(const Range& range) {
         if (frame.id > last_orig_clause) {
             const auto current = frame.implicant;
             const auto conc = concretization.at(frame.id);
-            assert(current->isTheoryLit() || current->isAnd());
-            assert(conc->isTheoryLit() || conc->isAnd());
-            const auto current_children = current->isTheoryLit() ? BoolExprSet{current} : current->getChildren();
+            const auto current_children = current->isAnd() ? current->getChildren() : BoolExprSet{current};
             if (conc != current) {
-                const auto conc_children = conc->isTheoryLit() ? BoolExprSet{conc} : conc->getChildren();
-                for (const auto& c: conc->getChildren()) {
+                const auto conc_children = conc->isAnd() ? conc->getChildren() : BoolExprSet{conc};
+                for (const auto& c: conc_children) {
                     if (!current_children.contains(c)) {
                         const auto assumption = c->renameVars(subs);
                         is_model &= (*model)->eval(assumption);
