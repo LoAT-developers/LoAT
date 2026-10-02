@@ -139,7 +139,7 @@ std::optional<SmtResult> ADCLSat::do_step() {
         trace.empty()
             ? std::optional<Int>{}
             : std::optional{trace.back().id};
-    if (!backtracking && (!last || dg_over_approx.getSinks().contains(*last))) {
+    if (!backtracking && (Config::Analysis::abstraction_refinement || !last || dg_over_approx.getSinks().contains(*last))) {
         solver->push();
         solver->add(t.err()->renameVars(get_subs(trace.size(), 1)));
         switch (solver->check()) {
