@@ -226,7 +226,7 @@ Int TRPUtil::add_learned_clause(const Range &range, const Bools::Expr &accel) {
         assert(accel->isAnd());
         for (const auto &c: accel->getChildren()) {
             const auto vars = c->vars();
-            if (vars.contains(trace_var->var())) {
+            if (vars.contains(trace_var->var()) || vars.contains(its->getLocVar()->var()) || vars.contains(its->getLocVar()->var()->postVar())) {
                 lits.emplace(c);
             }
         }
