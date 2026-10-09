@@ -37,7 +37,6 @@ protected:
     ITSPtr its;
     TRP trp;
     Renaming post_to_pre;
-    Int last_orig_clause;
     const ArithVarPtr safety_var {arrays::nextConst<Arith>()};
     DependencyGraph<Bools::Expr> dependency_graph {};
     std::unordered_map<Int, Bools::Expr> projections {};

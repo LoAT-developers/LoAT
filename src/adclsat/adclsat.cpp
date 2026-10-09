@@ -16,22 +16,6 @@ ADCLSat::ADCLSat(const ITSPtr& its, const Config::TRPConfig &config): TRPUtil(it
     for (const auto &[id,trans]: rule_map) {
         rev.emplace(trans, id);
     }
-    for (const auto &[id,trans]: rule_map) {
-        const auto preds {t.get_dg().getPredecessors(trans)};
-        const auto succs {t.get_dg().getSuccessors(trans)};
-        for (const auto &p: preds) {
-            dg_over_approx.addEdge(rev.at(p), id);
-        }
-        for (const auto &s: succs) {
-            dg_over_approx.addEdge(id, rev.at(s));
-        }
-        if (t.get_dg().getRoots().contains(trans)) {
-            dg_over_approx.markRoot(id);
-        }
-        if (t.get_dg().getSinks().contains(trans)) {
-            dg_over_approx.markSink(id);
-        }
-    }
     // for the first set of blocking clauses
     solver->push();
 }
@@ -109,17 +93,6 @@ bool ADCLSat::handle_loop(const Range& range) {
         id = add_learned_clause(range, ti);
         projected = rule_map.at(id)->subs(Subs::build(trp.get_n(), arith::one()));
     }
-    const auto fst_elem {trace.at(range.start())};
-    const auto last_elem {trace.at(range.end())};
-    const auto preds {dg_over_approx.getPredecessors(fst_elem.id)};
-    const auto succs {dg_over_approx.getSuccessors(last_elem.id)};
-    dg_over_approx.addNode(id, preds, succs, true);
-    if (dg_over_approx.getRoots().contains(fst_elem.id)) {
-        dg_over_approx.markRoot(id);
-    }
-    if (dg_over_approx.getSinks().contains(last_elem.id)) {
-        dg_over_approx.markSink(id);
-    }
     add_projection(id, projected);
     while (trace.size() > range.start()) {
         trace.pop_back();
@@ -139,7 +112,7 @@ std::optional<SmtResult> ADCLSat::do_step() {
         trace.empty()
             ? std::optional<Int>{}
             : std::optional{trace.back().id};
-    if (!backtracking && (!last || dg_over_approx.getSinks().contains(*last))) {
+    if (!backtracking) {
         solver->push();
         solver->add(t.err()->renameVars(get_subs(trace.size(), 1)));
         switch (solver->check()) {
@@ -190,24 +163,54 @@ std::optional<SmtResult> ADCLSat::do_step() {
         next_start = range->start() + 1;
         next_length = range->length();
     }
-    const auto subs{get_subs(trace.size(), 1)};
-    solver->push();
-    add_blocking_clauses(trace.size());
-    if (!trace.empty() && trace.back().id > last_orig_clause) {
-        solver->add(arith::mkNeq(trace_var, arith::mkConst(trace.back().id))->renameVars(subs));
-    }
-    solver->push();
-    const auto ids = last ? dg_over_approx.getSuccessors(*last) : dg_over_approx.getRoots();
-    std::vector<Bools::Expr> steps;
-    for (const auto& id: ids) {
-        steps.emplace_back(encode_transition(rule_map.at(id), id));
+    std::vector<Bools::Expr> steps, without_id;
+    for (const auto& [id, transition]: rule_map) {
+        steps.emplace_back(encode_transition(transition, id));
+        without_id.emplace_back(transition);
     }
     const auto step {bools::mkOr(steps)};
+    const auto subs{get_subs(trace.size(), 1)};
+    solver->push(); // push blocking clauses
+    add_blocking_clauses(trace.size());
+    if (!trace.empty() && trace.back().id < 0) {
+        solver->add(arith::mkNeq(trace_var, arith::mkConst(trace.back().id))->renameVars(subs));
+    }
+    solver->push(); // push step
     solver->add(step->renameVars(subs));
     switch (solver->check()) {
         case SmtResult::Unknown:
             return SmtResult::Unknown;
         case SmtResult::Unsat: {
+            const auto all = bools::mkOr(t.trans());
+            solver->pop(); // pop step
+            solver->push(); // push concretization
+            solver->add(all->renameVars(subs));
+            const auto abstraction = bools::mkOr(without_id);
+            solver->add(!abstraction->renameVars(subs));
+            if (solver->check() == SmtResult::Sat) {
+                const auto model = solver->model()->composeBackwards(subs);
+                solver->pop(); // pop concretization
+                solver->pop(); // pop blocking clauses
+                const auto [imp_non_bool, imp_bool] = model->structuralImplicant(all);
+                const auto transition = trp.mbp(imp_non_bool && imp_bool, model, theory::isTempCell);
+                const auto id = next_id;
+                ++next_id;
+                concretization.emplace(id, transition);
+                BoolExprSet lits;
+                assert(transition->isAnd());
+                for (const auto &c: transition->getChildren()) {
+                    const auto vars = c->vars();
+                    if (vars.contains(trace_var->var()) || vars.contains(its->getLocVar()->var()) || vars.contains(its->getLocVar()->var()->postVar())) {
+                        lits.emplace(c);
+                    }
+                }
+                rule_map.emplace(id, bools::mkAnd(lits));
+                if (Config::Analysis::log) {
+                    std::cout << "***** Sample *****" << std::endl;
+                    std::cout << transition << std::endl;
+                }
+                return {};
+            }
             if (trace.empty()) {
                 return safe ? SmtResult::Sat : SmtResult::Unknown;
             }
@@ -227,7 +230,7 @@ std::optional<SmtResult> ADCLSat::do_step() {
         case SmtResult::Sat:
             model = solver->model();
             solver->push();
-            solver->add(arith::mkGt(trace_var, arith::mkConst(last_orig_clause)));
+            solver->add(arith::mkGeq(trace_var, arith::zero()));
             if (solver->check() == SmtResult::Sat) {
                 model = solver->model();
             }
@@ -245,7 +248,7 @@ std::optional<SmtResult> ADCLSat::do_step() {
     const auto m{(*model)->composeBackwards(subs)};
     const auto [imp_non_bool, imp_bool] = m->structuralImplicant(trans);
     const auto imp = trp.mbp(imp_non_bool && imp_bool, m, theory::isTempCell);
-    solver->add(imp->renameVars(subs));
+    solver->add(encode_transition(imp, id)->renameVars(subs));
     const auto smt_res{solver->check()};
     assert(smt_res == SmtResult::Sat);
     trace.emplace_back(id, imp);
