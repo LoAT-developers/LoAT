@@ -5,6 +5,7 @@
 class ADCLSat final: public TRPUtil {
 
     bool backtracking {false};
+    DependencyGraph<Int> dg_over_approx;
 
     bool handle_loop(const Range&);
 
