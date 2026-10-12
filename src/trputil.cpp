@@ -35,7 +35,8 @@ TRPUtil::TRPUtil(
       t(its2safety.transform()),
       its(its),
       trp(t.pre_to_post(), config),
-      post_to_pre(t.pre_to_post().invert()) {
+      post_to_pre(t.pre_to_post().invert()),
+      last_orig_clause(t.trans().size() - 1) {
     if (Config::Analysis::log) {
         std::cout << "safetyproblem:\n"
                   << t << std::endl;
@@ -76,11 +77,9 @@ TRPUtil::TRPUtil(
         }
         solver->add(t.init()->map(linearize));
     } else {
-        if (!Config::Analysis::abstraction_refinement) {
-            for (const auto &trans : t.trans()) {
-                if (rule_map.emplace(next_id, trans).second) {
-                    ++next_id;
-                }
+        for (const auto &trans : t.trans()) {
+            if (rule_map.emplace(next_id, trans).second) {
+                ++next_id;
             }
         }
         solver->add(t.init());
@@ -96,7 +95,7 @@ std::optional<Range> TRPUtil::has_looping_infix(unsigned next_start, const unsig
                 (*model)->get(safety_var->renameVars(get_subs(start + i, 1))) < 0) {
                 continue;
                 }
-            if (dependency_graph.hasEdge(trace[start + i].implicant, trace[start].implicant) && (i > 0 || trace[start].id >= 0)) {
+            if (dependency_graph.hasEdge(trace[start + i].implicant, trace[start].implicant) && (i > 0 || trace[start].id <= last_orig_clause)) {
                 if (i == 0) {
                     if (const auto loop {trace[start].implicant}; SmtFactory::check(loop->renameVars(get_subs(0,1)) && loop->renameVars(get_subs(1,1))) == SmtResult::Unsat) {
                         continue;
@@ -158,7 +157,7 @@ std::pair<Bools::Expr, ModelPtr> TRPUtil::compress(const Range &range) {
     for (long i = range.end(); i >= 0 && i >= static_cast<long>(range.start()); --i) {
         const auto id = trace[i].id;
         Bools::Expr rule = top();
-        if (Config::Analysis::abstraction_refinement) {
+        if (Config::Analysis::abstraction_refinement && id > last_orig_clause) {
             rule = concretization.at(id);
         } else {
             rule = trace[i].implicant;
@@ -209,9 +208,8 @@ Bools::Expr TRPUtil::encode_transition(const Bools::Expr &t, const Int &id) cons
 }
 
 Int TRPUtil::add_learned_clause(const Range &range, const Bools::Expr &accel) {
-    const Int id = -next_id;
     if (Config::Analysis::log) {
-        std::cout << "learned transition: " << accel << " with id " << id << " (";
+        std::cout << "learned transition: " << accel << " with id " << next_id << " (";
         for (int i = range.start(); i <= range.end(); ++i) {
             std::cout << trace.at(i).id;
             if (i != range.end()) {
@@ -220,6 +218,7 @@ Int TRPUtil::add_learned_clause(const Range &range, const Bools::Expr &accel) {
         }
         std::cout << ")" << std::endl;
     }
+    const auto id = next_id;
     ++next_id;
     if (Config::Analysis::abstraction_refinement) {
         concretization.emplace(id, accel);
@@ -335,7 +334,7 @@ bool TRPUtil::build_cex() {
     }
     std::stack<Int> todo;
     for (const auto &e: trace) {
-        if (e.id < 0 && !accel.contains(e.id)) {
+        if (e.id > last_orig_clause && !accel.contains(e.id)) {
             todo.push(e.id);
         }
     }
@@ -358,7 +357,7 @@ bool TRPUtil::build_cex() {
         const auto &loop {learned_to_loop.at(current)};
         auto ready {true};
         for (const auto& id : loop | std::views::keys) {
-            if (id < 0 && !accel.contains(id)) {
+            if (id > last_orig_clause && !accel.contains(id)) {
                 todo.push(id);
                 ready = false;
             }
@@ -369,7 +368,7 @@ bool TRPUtil::build_cex() {
         todo.pop();
         std::optional<Bools::Expr> trans;
         for (const auto &[next_id, next_t]: loop) {
-            const auto next = next_id < 0 ? accel.at(next_id) : next_t;
+            const auto next = next_id > last_orig_clause ? accel.at(next_id) : next_t;
             trans = trans ? std::get<Bools::Expr>(Preprocess::chain(*trans, next)) : next;
         }
         if (SmtFactory::check(*trans) != SmtResult::Sat) {
@@ -420,14 +419,14 @@ bool TRPUtil::build_cex() {
     }
     std::optional<Bools::Expr> trans;
     for (const auto &e: trace) {
-        const auto next = e.id < 0 ? accel.at(e.id) : e.implicant;
+        const auto next = e.id > last_orig_clause ? accel.at(e.id) : e.implicant;
         trans = trans ? std::get<Bools::Expr>(Preprocess::chain(*trans, next)) : next;
     }
     return SmtFactory::check(t.init() && *trans && t.err()->renameVars(t.pre_to_post())) == SmtResult::Sat;
 }
 
 void TRPUtil::add_projection(const Int& id, const Bools::Expr& projection) {
-    projections.emplace(id, !projection || bools::mkLit(arith::mkLeq(trace_var, arith::mkConst(id))));
+    projections.emplace(id, !projection || bools::mkLit(arith::mkGeq(trace_var, arith::mkConst(id))));
 }
 
 void TRPUtil::add_blocking_clause(const Range &range, const Int &id, const Bools::Expr loop) {
@@ -440,7 +439,7 @@ void TRPUtil::add_blocking_clause(const Range &range, const Int &id, const Bools
         if (range.length() == 1) {
             disjuncts.emplace_back(
                 bools::mkLit(
-                    arith::mkLeq(
+                    arith::mkGeq(
                         trace_var->renameVars(s),
                         arith::mkConst(id))));
         }
@@ -455,7 +454,7 @@ void TRPUtil::add_blocking_clause(const Range &range, const Int &id, const Bools
         }
         it->second.insert(bools::mkOr(disjuncts));
     } else if (range.length() == 1) {
-        it->second.insert((!loop || bools::mkLit(arith::mkLeq(trace_var, arith::mkConst(id))))->renameVars(s));
+        it->second.insert((!loop || bools::mkLit(arith::mkGeq(trace_var, arith::mkConst(id))))->renameVars(s));
     } else {
         it->second.insert(!loop->renameVars(s));
     }
@@ -506,14 +505,14 @@ bool extend_model(const ArithVarPtr n, ModelPtr model, const Bools::Expr b) {
 std::optional<Int> TRPUtil::add_blocking_clauses(const Range &range, const ModelPtr& model) {
     const auto n {trp.get_n()};
     for (const auto &[id, b] : rule_map) {
-        const auto is_orig_clause {id >= 0};
+        const auto is_orig_clause {id <= last_orig_clause};
         if (Config::Analysis::termination() && is_orig_clause) {
             continue;
         }
         if (range.length() == 1 && is_orig_clause) {
             continue;
         }
-        auto vars {b->vars()};
+        const auto vars {b->vars()};
         if (is_orig_clause && std::any_of(vars.begin(), vars.end(), theory::isTempVar)) {
             continue;
         }
@@ -543,22 +542,24 @@ bool TRPUtil::refine_abstraction(const Range& range) {
     bool is_model = true;
     for (unsigned i = range.start(); i <= range.end(); ++i) {
         const auto& frame = trace.at(i);
-        const auto &subs = get_subs(i, 1);
-        const auto current = frame.implicant;
-        const auto conc = concretization.at(frame.id);
-        const auto current_children = current->isAnd() ? current->getChildren() : BoolExprSet{current};
-        if (conc != current) {
-            const auto conc_children = conc->isAnd() ? conc->getChildren() : BoolExprSet{conc};
-            for (const auto &c: conc_children) {
-                if (!current_children.contains(c)) {
-                    const auto assumption = c->renameVars(subs);
-                    is_model &= (*model)->eval(assumption);
-                    assumptions.insert(assumption);
-                    const auto vars = c->vars();
-                    if (std::ranges::all_of(vars, theory::isProgVar) || std::ranges::all_of(vars, theory::isPostVar)) {
-                        pre_post_assumptions.insert(assumption);
+        const auto& subs = get_subs(i, 1);
+        if (frame.id > last_orig_clause) {
+            const auto current = frame.implicant;
+            const auto conc = concretization.at(frame.id);
+            const auto current_children = current->isAnd() ? current->getChildren() : BoolExprSet{current};
+            if (conc != current) {
+                const auto conc_children = conc->isAnd() ? conc->getChildren() : BoolExprSet{conc};
+                for (const auto& c: conc_children) {
+                    if (!current_children.contains(c)) {
+                        const auto assumption = c->renameVars(subs);
+                        is_model &= (*model)->eval(assumption);
+                        assumptions.insert(assumption);
+                        const auto vars = c->vars();
+                        if (std::ranges::all_of(vars, theory::isProgVar) || std::ranges::all_of(vars, theory::isPostVar)) {
+                            pre_post_assumptions.insert(assumption);
+                        }
+                        assumption_to_refinement.emplace(assumption, std::pair(frame.id, c));
                     }
-                    assumption_to_refinement.emplace(assumption, std::pair(frame.id, c));
                 }
             }
         }
