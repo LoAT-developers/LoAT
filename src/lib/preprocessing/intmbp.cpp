@@ -2,6 +2,11 @@
 #include "mbputil.hpp"
 #include "smtfactory.hpp"
 
+Bools::Expr mbp::int_cvp(const Bools::Expr &trans, const ModelPtr& model, Config::TRPConfig::MbpKind mode, const std::function<bool(const Cell&)> &eliminate) {
+    const auto imp = model->structuralImplicant(trans);
+    return mbp::int_mbp(imp.first && imp.second, model, mode, eliminate);
+}
+
 Bools::Expr int_mbp(const Bools::Expr &t, const ModelPtr &model, const ArithVarPtr& x, const Config::TRPConfig::MbpKind mode) {
     assert (t->isStructualImplicant());
     // divisibility constraints for x

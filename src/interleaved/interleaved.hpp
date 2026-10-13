@@ -5,8 +5,6 @@
 
 class Interleaved {
 
-private:
-
 StepwiseAnalysis &f;
 StepwiseAnalysis &b;
 StepwiseAnalysis *active;

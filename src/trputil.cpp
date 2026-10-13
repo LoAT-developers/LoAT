@@ -38,63 +38,27 @@ TRPUtil::TRPUtil(
       post_to_pre(t.pre_to_post().invert()),
       last_orig_clause(t.trans().size() - 1) {
     if (Config::Analysis::log) {
-        std::cout << "safetyproblem:\n"
-                  << t << std::endl;
+        std::cout << "safetyproblem:\n" << t << std::endl;
     }
     vars.insert(trace_var->var());
     vars.insert(trp.get_n()->var());
-    if (Config::Analysis::termination()) {
-        vars.insert(safety_var->var());
-    }
     for (const auto &x : t.vars()) {
         theory::apply(x, [&](const auto &x) {
             vars.insert(x->isPostVar() ? x->progVar() : x);
         });
     }
     solver->enableModels();
-    if (Config::Analysis::termination()) {
-        const auto linearize{
-            [&](const auto& lit) {
-                return std::visit(
-                    Overload{
-                        [](const Arith::Lit& l) {
-                            if (!l->isLinear()) {
-                                return top();
-                            }
-                            return bools::mkLit(l);
-                        },
-                        [](const auto& l) {
-                            return bools::mkLit(l);
-                        }
-                    },
-                    lit);
-            }
-        };
-        for (const auto &trans : t.trans()) {
-            if (const auto lin{trans->map(linearize)}; rule_map.emplace(next_id, lin).second) {
-                ++next_id;
-            }
+    for (const auto &trans: t.trans()) {
+        if (rule_map.emplace(next_id, trans).second) {
+            ++next_id;
         }
-        solver->add(t.init()->map(linearize));
-    } else {
-        for (const auto &trans : t.trans()) {
-            if (rule_map.emplace(next_id, trans).second) {
-                ++next_id;
-            }
-        }
-        solver->add(t.init());
     }
+    solver->add(t.init());
 }
 
 std::optional<Range> TRPUtil::has_looping_infix(unsigned next_start, const unsigned next_length) {
     for (unsigned i = next_length - 1; i < trace.size(); ++i) {
         for (unsigned start = next_start; start + i < trace.size(); ++start) {
-            if (Config::Analysis::termination() &&
-                i > 0 &&
-                (*model)->get(safety_var->renameVars(get_subs(start, 1))) >= 0 &&
-                (*model)->get(safety_var->renameVars(get_subs(start + i, 1))) < 0) {
-                continue;
-                }
             if (dependency_graph.hasEdge(trace[start + i].implicant, trace[start].implicant) && (i > 0 || trace[start].id <= last_orig_clause)) {
                 if (i == 0) {
                     if (const auto loop {trace[start].implicant}; SmtFactory::check(loop->renameVars(get_subs(0,1)) && loop->renameVars(get_subs(1,1))) == SmtResult::Unsat) {
@@ -273,56 +237,6 @@ std::tuple<Bools::Expr, Bools::Expr, ModelPtr> TRPUtil::specialize(const Range &
     return {res_non_bool, res_bool, model};
 }
 
-std::optional<Arith::Expr> TRPUtil::prove_term(const Bools::Expr& loop, const ModelPtr &model) {
-    const auto &ptp {t.pre_to_post()};
-    for (const auto lits {loop->lits().get<Arith::Lit>()}; const auto &l: lits) {
-        if (l->isGt()) {
-            auto lhs{l->lhs()};
-            if (const auto vars{lhs->vars()};
-                (std::ranges::all_of(vars, theory::isProgVar) && model->eval(lhs) > model->eval(lhs->renameVars(ptp)))
-                || (std::ranges::all_of(vars, theory::isPostVar) && model->eval(
-                    lhs->renameVars(post_to_pre)) > model->eval(lhs))) {
-                if (Config::Analysis::log) {
-                    std::cout << "found ranking function " << lhs << std::endl;
-                }
-                return lhs;
-            }
-        }
-    }
-    const auto solver {SmtFactory::modelBuildingSolver(Logic::QF_LA)};
-    std::vector<Arith::Expr> bounded;
-    std::vector<Arith::Expr> decreasing;
-    std::unordered_map<ArithVarPtr, ArithVarPtr> coeffs;
-    for (const auto &[pre,post]: ptp.get<Arrays<Arith>>()) {
-        if (pre == its->getLocVar()->var()) {
-            continue;
-        }
-        const auto pre_cell {arrays::readConst(pre)};
-        const auto post_cell {arrays::readConst(post)};
-        const auto coeff {arrays::nextConst<Arith>()};
-        coeffs.emplace(arrays::readConst(pre), coeff);
-        const auto pre_val {arith::mkConst(model->get(pre_cell))};
-        const auto post_val {arith::mkConst(model->get(post_cell))};
-        bounded.emplace_back(coeff * pre_val);
-        decreasing.emplace_back(coeff * pre_val - coeff * post_val);
-    }
-    solver->add(arith::mkGt(arith::mkPlus(std::move(bounded)), arith::zero()));
-    solver->add(arith::mkGt(arith::mkPlus(std::move(decreasing)), arith::zero()));
-    if (solver->check() == SmtResult::Sat) {
-        const auto rf_model {solver->model()};
-        std::vector<Arith::Expr> addends;
-        for (const auto &[x,coeff]: coeffs) {
-            addends.emplace_back(arith::mkConst(rf_model->get(coeff)) * x);
-        }
-        auto rf {arith::mkPlus(std::move(addends))};
-        if (Config::Analysis::log) {
-            std::cout << "found ranking function " << rf << std::endl;
-        }
-        return rf;
-    }
-    return {};
-}
-
 bool TRPUtil::build_cex() {
     safe = false;
     if (trace.empty()) {
@@ -433,27 +347,7 @@ void TRPUtil::add_blocking_clause(const Range &range, const Int &id, const Bools
     const auto s{get_subs(range.start(), range.length())};
     auto &map{blocked_per_step.emplace(range.end(), std::map<Int, BoolExprSet>()).first->second};
     auto it{map.emplace(id, BoolExprSet()).first};
-    if (Config::Analysis::termination()) {
-        std::vector<Bools::Expr> disjuncts;
-        disjuncts.emplace_back(!loop->renameVars(s));
-        if (range.length() == 1) {
-            disjuncts.emplace_back(
-                bools::mkLit(
-                    arith::mkGeq(
-                        trace_var->renameVars(s),
-                        arith::mkConst(id))));
-        }
-        if ((*model)->get(safety_var->renameVars(get_subs(range.start(), 1))) >= 0) {
-            const auto last_s {get_subs(range.end(), 1)};
-            const auto no_safety_loop{bools::mkLit(arith::mkLt(safety_var->renameVars(last_s), arith::zero()))};
-            disjuncts.emplace_back(no_safety_loop);
-        } else {
-            const auto first_s {get_subs(range.start(), 1)};
-            const auto no_term_loop{bools::mkLit(arith::mkGeq(safety_var->renameVars(first_s), arith::zero()))};
-            disjuncts.emplace_back(no_term_loop);
-        }
-        it->second.insert(bools::mkOr(disjuncts));
-    } else if (range.length() == 1) {
+    if (range.length() == 1) {
         it->second.insert((!loop || bools::mkLit(arith::mkGeq(trace_var, arith::mkConst(id))))->renameVars(s));
     } else {
         it->second.insert(!loop->renameVars(s));
@@ -506,9 +400,6 @@ std::optional<Int> TRPUtil::add_blocking_clauses(const Range &range, const Model
     const auto n {trp.get_n()};
     for (const auto &[id, b] : rule_map) {
         const auto is_orig_clause {id <= last_orig_clause};
-        if (Config::Analysis::termination() && is_orig_clause) {
-            continue;
-        }
         if (range.length() == 1 && is_orig_clause) {
             continue;
         }

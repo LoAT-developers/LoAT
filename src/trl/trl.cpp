@@ -30,30 +30,10 @@ TRL::LoopStatus TRL::handle_loop(const Range &range) {
         return LoopStatus::NoLoop;
     }
     auto loop = loop_non_bool && loop_bool;
-    Bools::Expr termination_argument {top()};
-    if (Config::Analysis::termination()) {
-        if (const auto rf {prove_term(loop, model)}) {
-            termination_argument =
-                bools::mkAnd(
-                    std::vector{
-                        arith::mkGt(*rf, arith::zero()),
-                        arith::mkGt(
-                            (*rf)->renameVars(post_to_pre),
-                            (*rf)->renameVars(t.pre_to_post()))
-                    });
-            loop_non_bool = loop_non_bool && termination_argument;
-            loop = loop && termination_argument;
-        } else {
-            return LoopStatus::Failure;
-        }
-    }
     if (TRPUtil::add_blocking_clauses(range, model)) {
         return LoopStatus::Success;
     }
     auto ti = kind == TRP::Transitive ? loop : trp.compute(loop_non_bool, loop_bool, model);
-    if (Config::Analysis::termination()) {
-        ti = ti && termination_argument;
-    }
     Int id;
     Bools::Expr projected{top()};
     const auto n {trp.get_n()};
@@ -87,7 +67,7 @@ void TRL::build_trace() {
         const auto rule{encode_transition(rule_map.at(id), id)};
         const auto comp{(*model)->composeBackwards(s)};
         const auto [non_bool_imp, bool_imp] = comp->structuralImplicant(rule);
-        const auto imp= bools::mkAnd(BoolExprSet{non_bool_imp, bool_imp, Arith::mkEq(trace_var, arith::mkConst(id))});
+        const auto imp = bools::mkAnd(BoolExprSet{non_bool_imp, bool_imp, Arith::mkEq(trace_var, arith::mkConst(id))});
         if (prev) {
             dependency_graph.addEdge(prev->first, imp);
         }
@@ -100,9 +80,6 @@ void TRL::build_trace() {
             std::cout << t.implicant << std::endl;
         }
         std::cout << "trace var: " << trace_var << std::endl;
-        if (Config::Analysis::termination()) {
-            std::cout << "safety var: " << safety_var << std::endl;
-        }
         std::cout << "run:" << std::endl;
         for (unsigned i = 0; i < trace.size(); ++i) {
             std::cout << (*model)->composeBackwards(get_subs(i, 1))->toString(vars) << std::endl;
@@ -134,9 +111,6 @@ std::optional<SmtResult> TRL::do_step() {
             solver->pop();
             solver->push();
             solver->add(step->renameVars(s));
-            if (Config::Analysis::termination() && depth > 0) {
-                solver->add(bools::mkLit(arith::mkGeq(safety_var->renameVars(get_subs(depth - 1, 1)), safety_var->renameVars(s))));
-            }
             add_blocking_clauses(depth);
             switch (solver->check()) {
                 case SmtResult::Unsat:
@@ -207,4 +181,8 @@ ITSModel TRL::get_model() {
     }
     const auto sp_model{bools::mkOr(res)};
     return its2safety.transform_model(sp_model);
+}
+
+std::pair<Int, ITSPtr> TRL::get_certificate() {
+
 }

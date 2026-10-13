@@ -38,7 +38,6 @@ protected:
     TRP trp;
     Renaming post_to_pre;
     Int last_orig_clause;
-    const ArithVarPtr safety_var {arrays::nextConst<Arith>()};
     DependencyGraph<Bools::Expr> dependency_graph {};
     std::unordered_map<Int, Bools::Expr> projections {};
     linked_hash_map<Int, Bools::Expr> accel;
@@ -56,7 +55,6 @@ protected:
     Int add_learned_clause(const Range &range, const Bools::Expr &accel);
     std::pair<Bools::Expr, Bools::Expr> specialize(const Bools::Expr& e, const ModelPtr &model, const std::function<bool(const Cell&)> &eliminate) const;
     std::tuple<Bools::Expr, Bools::Expr, ModelPtr> specialize(const Range &range, const std::function<bool(const Cell&)> &eliminate);
-    std::optional<Arith::Expr> prove_term(const Bools::Expr& loop, const ModelPtr &model);
     bool build_cex();
     void add_projection(const Int& id, const Bools::Expr& projection);
     void add_blocking_clauses(unsigned depth);

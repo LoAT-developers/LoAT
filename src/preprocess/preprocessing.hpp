@@ -11,8 +11,6 @@ class Preprocessor {
 
     bool success{false};
 
-    SmtResult status{SmtResult::Unknown};
-
     ITSPtr its;
 
     Chain chain;

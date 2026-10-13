@@ -365,6 +365,11 @@ ArithVarPtr TRP::get_n() const {
     return n;
 }
 
+Bools::Expr TRP::cvp(const Bools::Expr &trans, const ModelPtr &model, const std::function<bool(const Cell &)> &eliminate) const {
+    const auto imps = model->structuralImplicant(trans);
+    return mbp(imps.first && imps.second, model, eliminate);
+}
+
 Bools::Expr TRP::mbp(const Bools::Expr &trans, const ModelPtr &model, const std::function<bool(const Cell &)> &eliminate) const {
     if (!model->eval(trans)) {
         std::cout << "mbp: not a model" << std::endl;

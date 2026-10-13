@@ -243,8 +243,7 @@ std::optional<SmtResult> ADCLSat::do_step() {
     }
     const auto trans{rule_map.at(id)};
     const auto m{(*model)->composeBackwards(subs)};
-    const auto [imp_non_bool, imp_bool] = m->structuralImplicant(trans);
-    const auto imp = trp.mbp(imp_non_bool && imp_bool, m, theory::isTempCell);
+    const auto imp = trp.cvp(trans, m, theory::isTempCell);
     solver->add(imp->renameVars(subs));
     const auto smt_res{solver->check()};
     assert(smt_res == SmtResult::Sat);
