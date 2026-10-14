@@ -24,6 +24,7 @@ on:
         - adcl
         - adcl_sat
         - bmc
+        - bmcar
         - kind
       direction:
         required: true
