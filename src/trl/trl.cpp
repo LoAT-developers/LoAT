@@ -11,6 +11,10 @@
 #include "realqe.hpp"
 #include "loopacceleration.hpp"
 
+TRL::TRL(const SafetyProblem& sp, const ArithVarPtr loc_var, const Config::TRPConfig &config) : TRPUtil(sp, loc_var, config) {
+    build_step();
+}
+
 TRL::TRL(const ITSPtr& its, const Config::TRPConfig &config) : TRPUtil(its, config) {
     build_step();
 }
@@ -180,9 +184,19 @@ ITSModel TRL::get_model() {
         res.push_back(last->renameVars(s2));
     }
     const auto sp_model{bools::mkOr(res)};
-    return its2safety.transform_model(sp_model);
+    return its2safety->transform_model(sp_model);
 }
 
-std::pair<Int, ITSPtr> TRL::get_certificate() {
+BoolExprSet TRL::get_learned_transitions() {
+    BoolExprSet res;
+    for (const auto& [id,t]: rule_map) {
+        if (id > last_orig_clause) {
+            res.insert(t);
+        }
+    }
+    return res;
+}
 
+unsigned TRL::get_depth() {
+    return depth;
 }

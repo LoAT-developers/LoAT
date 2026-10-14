@@ -26,8 +26,11 @@ class TRL final : public TRPUtil {
 
 public:
     ~TRL() override = default;
+    explicit TRL(const SafetyProblem&, ArithVarPtr loc_var, const Config::TRPConfig &config);
     explicit TRL(const ITSPtr& its, const Config::TRPConfig &config);
     std::optional<SmtResult> do_step() override;
     ITSModel get_model() override;
+    BoolExprSet get_learned_transitions();
+    unsigned get_depth();
 
 };

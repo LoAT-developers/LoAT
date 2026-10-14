@@ -1,5 +1,6 @@
 #include "main.hpp"
 
+#include "bmcar.hpp"
 #include "abmc.hpp"
 #include "accelerationproblem.hpp"
 #include "bmc.hpp"
@@ -120,6 +121,8 @@ void parseFlags(const int argc, char *argv[]) {
                 Config::Analysis::engine = Config::Analysis::BMC;
             } else if (boost::iequals("kind", str)) {
                 Config::Analysis::engine = Config::Analysis::KIND;
+            } else if (boost::iequals("bmcar", str)) {
+                Config::Analysis::engine = Config::Analysis::BMCAR;
             } else if (boost::iequals("trl", str)) {
                 Config::Analysis::engine = Config::Analysis::TRL;
             } else if (boost::iequals("adcl_sat", str)) {
@@ -434,6 +437,14 @@ int main(int argc, char *argv[]) {
                     res = r.analyze();
                     if (Config::Analysis::model && !Config::Analysis::complexity() && res == SmtResult::Unsat) {
                         its_cex = r.get_cex();
+                    }
+                    break;
+                }
+                case Config::Analysis::BMCAR: {
+                    BMCAR bmcar{*its};
+                    res = bmcar.analyze();
+                    if (Config::Analysis::model) {
+                        throw std::invalid_argument("BMCAR does not yet support models");
                     }
                     break;
                 }

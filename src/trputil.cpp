@@ -27,16 +27,7 @@ const Config::TRPConfig TRPUtil::backwardConfig{
     .recurrent_pseudo_bounds = true,
     .recurrent_bounds = true};
 
-TRPUtil::TRPUtil(
-    const ITSPtr &its,
-    const Config::TRPConfig &config)
-    : mbp_kind(config.mbpKind),
-      its2safety(its),
-      t(its2safety.transform()),
-      its(its),
-      trp(t.pre_to_post(), config),
-      post_to_pre(t.pre_to_post().invert()),
-      last_orig_clause(t.trans().size() - 1) {
+void TRPUtil::init() {
     if (Config::Analysis::log) {
         std::cout << "safetyproblem:\n" << t << std::endl;
     }
@@ -54,6 +45,33 @@ TRPUtil::TRPUtil(
         }
     }
     solver->add(t.init());
+}
+
+TRPUtil::TRPUtil(
+    const SafetyProblem &t,
+    const ArithVarPtr loc_var,
+    const Config::TRPConfig &config)
+    : mbp_kind(config.mbpKind),
+      t(t),
+      loc_var(loc_var),
+      trp(t.pre_to_post(), config),
+      post_to_pre(t.pre_to_post().invert()),
+      last_orig_clause(t.trans().size() - 1) {
+    init();
+}
+
+TRPUtil::TRPUtil(
+    const ITSPtr &its,
+    const Config::TRPConfig &config)
+    : mbp_kind(config.mbpKind),
+      its2safety(its),
+      t(its2safety->transform()),
+      its(its),
+      loc_var(its->getLocVar()),
+      trp(t.pre_to_post(), config),
+      post_to_pre(t.pre_to_post().invert()),
+      last_orig_clause(t.trans().size() - 1) {
+    init();
 }
 
 std::optional<Range> TRPUtil::has_looping_infix(unsigned next_start, const unsigned next_length) {
@@ -190,7 +208,7 @@ Int TRPUtil::add_learned_clause(const Range &range, const Bools::Expr &accel) {
         assert(accel->isAnd());
         for (const auto &c: accel->getChildren()) {
             const auto vars = c->vars();
-            if (vars.contains(trace_var->var()) || vars.contains(its->getLocVar()->var()) || vars.contains(its->getLocVar()->var()->postVar())) {
+            if (vars.contains(trace_var->var()) || vars.contains(loc_var->var()) || vars.contains(loc_var->var()->postVar())) {
                 lits.emplace(c);
             }
         }
@@ -501,5 +519,5 @@ ITSSafetyCex TRPUtil::get_cex() {
         }
     }
     res.set_final_state((*model)->composeBackwards(get_subs(depth, 1)));
-    return its2safety.transform_cex(res);
+    return its2safety->transform_cex(res);
 }

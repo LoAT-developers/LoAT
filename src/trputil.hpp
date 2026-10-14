@@ -26,7 +26,7 @@ protected:
     std::vector<std::vector<Renaming>> subs {};
     VarSet vars {};
     const Config::TRPConfig::MbpKind mbp_kind;
-    ITSToSafety its2safety;
+    std::optional<ITSToSafety> its2safety;
     SafetyProblem t;
     std::optional<ModelPtr> model;
     const ArithVarPtr trace_var {arrays::nextConst<Arith>()};
@@ -34,7 +34,8 @@ protected:
     std::unordered_map<Int, Bools::Expr> concretization;
     Int next_id {0};
     rule_map_t rule_map {};
-    ITSPtr its;
+    std::optional<ITSPtr> its;
+    ArithVarPtr loc_var;
     TRP trp;
     Renaming post_to_pre;
     Int last_orig_clause;
@@ -47,6 +48,8 @@ protected:
     std::optional<ModelPtr> last_model;
 
     TRPUtil(const ITSPtr &its, const Config::TRPConfig &config);
+    TRPUtil(const SafetyProblem&, ArithVarPtr loc_var, const Config::TRPConfig &config);
+    void init();
 
     std::optional<Range> has_looping_infix(unsigned next_start, unsigned next_length);
     std::pair<Bools::Expr, ModelPtr> compress(const Range &range);
