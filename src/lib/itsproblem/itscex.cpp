@@ -72,7 +72,10 @@ void ITSCex::add_resolvent(const std::vector<RulePtr> &rules, const RulePtr& res
 }
 
 void ITSCex::add_implicant(const RulePtr& rule, const RulePtr& imp) {
-    implicants.emplace(imp, rule);
+    if (rule != imp) {
+        assert(!implicants.contains(rule));
+        implicants.emplace(imp, rule);
+    }
 }
 
 const linked_hash_map<RulePtr, RulePtr> &ITSCex::get_accel() const {

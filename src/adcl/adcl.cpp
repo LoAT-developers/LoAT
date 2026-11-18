@@ -199,6 +199,9 @@ void ADCL::backtrack() {
 }
 
 void ADCL::add_to_trace(const Step &step) {
+    if (Config::Analysis::model) {
+        the_cex()->add_implicant(step.clause_idx, step.implicant);
+    }
     trace.emplace_back(step);
     blocked_clauses.emplace_back();
 }
@@ -646,9 +649,6 @@ bool ADCL::try_to_finish() {
                     set_cpx_witness(resolvent, solver->model(), arrays::nextConst<Arith>());
                 }
                 add_to_trace(Step(q, *implicant, Renaming(), Renaming(), Rule::mk(top(), Subs())));
-                if (Config::Analysis::model) {
-                    the_cex()->add_implicant(q, *implicant);
-                }
                 print_state();
                 unsat();
                 return true;
