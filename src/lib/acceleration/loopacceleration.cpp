@@ -227,37 +227,56 @@ void LoopAcceleration::run() {
         res.status = acceleration::Arrays;
     } else {
         chain();
-        switch (SmtFactory::check(rule->getGuard() && rule->getGuard()->subs(rule->getUpdate()))) {
-            case SmtResult::Unsat:
-                res.status = acceleration::PseudoLoop;
-                return;
-            case SmtResult::Unknown:
-                res.status = acceleration::NotSat;
-                return;
-            case SmtResult::Sat: {
-                removeTrivialUpdates();
-                compute_closed_form();
-                if (rec && !config.tryNonlinear && !rec->closed_form.isLinear()) {
-                    res.status = acceleration::Nonlinear;
-                } else {
-                    const auto guard_vars = rule->getGuard()->vars();
-                    if (rec && std::ranges::any_of(rec->assumed_to_be_unconstrained, [&](const auto& var) {
-                        return guard_vars.contains(var);
-                    })) {
-                        rec = {};
-                        res.status = acceleration::ClosedFormFailed;
-                    }
-                    accelerate();
-                    if (config.tryNonterm && res.nonterm == bot()) {
-                        try_nonterm();
-                    }
-                    prepend_prefix();
-                    if (res.accel) {
-                        res.status = acceleration::Success;
-                    } else if (res.nonterm != bot()) {
-                        res.status = acceleration::Nonterminating;
-                    }
+        auto try_accel = config.tryAccel;
+        if (try_accel) {
+            // check if the loop can be executed at least twice, where temporary variables keep their values
+            // otherwise, acceleration is pointless, but we may still be able to prove non-termination
+            switch (SmtFactory::check(rule->getGuard() && rule->getGuard()->subs(rule->getUpdate()))) {
+                case SmtResult::Unsat: {
+                    res.status = acceleration::PseudoLoop;
+                    try_accel = false;
+                    break;
                 }
+                case SmtResult::Unknown: {
+                    res.status = acceleration::NotSat;
+                    try_accel = false;
+                    break;
+                }
+                case SmtResult::Sat: {
+                    break;
+                }
+            }
+        }
+        removeTrivialUpdates();
+        if (!try_accel) {
+            if (config.tryNonterm) {
+                try_nonterm();
+                if (res.nonterm != bot()) {
+                    res.status = acceleration::Nonterminating;
+                }
+            }
+            return;
+        }
+        compute_closed_form();
+        if (rec && !config.tryNonlinear && !rec->closed_form.isLinear()) {
+            res.status = acceleration::Nonlinear;
+        } else {
+            const auto guard_vars = rule->getGuard()->vars();
+            if (rec && std::ranges::any_of(rec->assumed_to_be_unconstrained, [&](const auto &var) {
+                return guard_vars.contains(var);
+            })) {
+                rec = {};
+                res.status = acceleration::ClosedFormFailed;
+            }
+            accelerate();
+            if (config.tryNonterm && res.nonterm == bot()) {
+                try_nonterm();
+            }
+            prepend_prefix();
+            if (res.accel) {
+                res.status = acceleration::Success;
+            } else if (res.nonterm != bot()) {
+                res.status = acceleration::Nonterminating;
             }
         }
     }

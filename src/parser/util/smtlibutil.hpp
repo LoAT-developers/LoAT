@@ -59,7 +59,7 @@ public:
 
 };
 
-theory::Type getType(const sexpresso::Sexp &exp, const SMTLibParsingState &state);
+std::optional<theory::Type> getType(const sexpresso::Sexp &exp, const SMTLibParsingState &state);
 
 Expr parseExpr(const sexpresso::Sexp &exp, SMTLibParsingState &state, theory::Type type);
 

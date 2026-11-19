@@ -343,7 +343,7 @@ Arith::Expr parseArithExpr(const sexpresso::Sexp &exp, SMTLibParsingState &state
     throw std::invalid_argument("unknown operator " + name + " when parsing " + exp.toString());
 }
 
-theory::Type getType(const sexpresso::Sexp &exp, const SMTLibParsingState &state) {
+std::optional<theory::Type> getType(const sexpresso::Sexp &exp, const SMTLibParsingState &state) {
     auto child{exp};
     while (!child.isString() && (child[0].str() == "ite" || child[0].str() == "let")) {
         child = child[2];
@@ -360,7 +360,7 @@ theory::Type getType(const sexpresso::Sexp &exp, const SMTLibParsingState &state
         if (const auto type = state.get_type(name)) {
             return *type;
         }
-        throw std::invalid_argument("unknown symbol " + name);
+        return std::nullopt;
     }
     if (const auto name = child[0].str(); name == "and" || name == "or" || name == "not" || name == "<" || name == "<=" || name == ">" || name == ">=" || name == "=" || name == "distinct" || name == "exists") {
         return theory::Type::Bool;
@@ -415,7 +415,7 @@ Bools::Expr parseBoolExpr(const sexpresso::Sexp &exp, SMTLibParsingState &state)
         for (unsigned i = 0; i < size; ++i) {
             const auto& decl {declarations[i]};
             const auto declName {decl[0].str()};
-            state.add_binding(declName, parseExpr(decl[1], state, getType(decl[1], state)));
+            state.add_binding(declName, parseExpr(decl[1], state, *getType(decl[1], state)));
         }
         auto res {parseBoolExpr(exp[2], state) && state.refinement()};
         state.pop();
@@ -482,11 +482,20 @@ Bools::Expr parseBoolExpr(const sexpresso::Sexp &exp, SMTLibParsingState &state)
             return bools::mkAnd(lits);
         }
         if (f == "=" || f == "distinct") {
-            auto [base, dim] = getType(exp[1], state);
+            std::optional<theory::Type> type;
+            for (unsigned i = 1; i < exp.childCount(); ++i) {
+                if ((type = getType(exp[i], state))) {
+                    break;
+                }
+            }
+            if (!type) {
+                throw std::invalid_argument("failed to infer the type of the arguments of a polymorphic function: " + exp.toString());
+            }
+            auto [base, dim] = *type;
             std::vector<Bools::Expr> lits;
             const auto build_lits = [&]<class T>(const auto& parse) {
-                std::vector<typename T::Expr> args;
                 const auto size = exp.childCount();
+                std::vector<typename T::Expr> args;
                 for (unsigned i = 1; i < size; ++i) {
                     args.emplace_back(parse(exp[i], state));
                 }

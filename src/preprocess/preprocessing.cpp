@@ -113,7 +113,7 @@ bool remove_identity_clauses(const ITSPtr& its) {
  * Motivating example: f(x,y) -> f(-x,z) :|: (y=0 /\ z=1) \/ (y=1 /\ z=0)
  * In contrast to its implicants, it can be unrolled to obtain simpler closed forms.
  */
-bool unroll(const ITSPtr& its) {
+bool Preprocessor::unroll(const ITSPtr& its) {
     auto success{false};
     for (const auto &r : its->getAllTransitions()) {
         if (its->isSimpleLoop(r) && !r->getGuard()->isConjunction()) {
@@ -127,6 +127,7 @@ bool unroll(const ITSPtr& its) {
                         << res << std::endl;
                 }
                 its->addRule(res, r, r);
+                unrolled.emplace_back(res, std::vector(period, r));
             }
         }
     }

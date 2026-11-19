@@ -483,6 +483,7 @@ std::unique_ptr<LearningState> ADCL::learn_clause(const RulePtr& rule, const Mod
         chcs->getCost(simp)};
     const auto [status, accel, nonterm, prefix, period] {LoopAcceleration::accelerate(simp, config)};
     if (status == acceleration::PseudoLoop) {
+        if (Config::Analysis::log) std::cout << "pseudo loop" << std::endl;
         return std::make_unique<Unroll>();
     }
     LearnedClauses res{.res = {}, .prefix = prefix, .period = period};

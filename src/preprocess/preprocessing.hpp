@@ -21,6 +21,8 @@ class Preprocessor {
 
     ITSSafetyCex cex;
 
+    std::vector<std::pair<RulePtr, std::vector<RulePtr>>> unrolled;
+
 public:
     explicit Preprocessor(const ITSPtr& its);
 
@@ -28,7 +30,11 @@ public:
 
     template <class CEX>
     CEX transform_cex(const CEX &cex) const {
-        auto transformed {chain.transform_cex(cex)};
+        CEX transformed = cex;
+        for (const auto &[resolvent, rules]: unrolled | std::views::reverse) {
+            transformed.add_resolvent(rules, resolvent);
+        }
+        transformed = chain.transform_cex(transformed);
         transformed = rule_preproc.transform_cex(transformed);
         return transformed;
     }
@@ -42,5 +48,7 @@ public:
     const ITSSafetyCex& get_cex() const;
 
     std::optional<SmtResult> check_empty_clauses(const ITSPtr& its);
+
+    bool unroll(const ITSPtr& its);
 
 };
