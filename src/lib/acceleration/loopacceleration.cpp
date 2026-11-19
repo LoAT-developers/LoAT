@@ -233,7 +233,11 @@ void LoopAcceleration::run() {
             // otherwise, acceleration is pointless, but we may still be able to prove non-termination
             switch (SmtFactory::check(rule->getGuard() && rule->getGuard()->subs(rule->getUpdate()))) {
                 case SmtResult::Unsat: {
-                    res.status = acceleration::PseudoLoop;
+                    if (SmtFactory::check(Preprocess::chain({rule, rule->renameTmpVars()})->getGuard()) == SmtResult::Unsat) {
+                        res.status = acceleration::PseudoLoop;
+                    } else {
+                        res.status = acceleration::AccelerationFailed;
+                    }
                     try_accel = false;
                     break;
                 }
