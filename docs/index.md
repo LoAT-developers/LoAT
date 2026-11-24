@@ -48,7 +48,7 @@ Here, unsatisfiability of the [runnning example](example.smt2) from our paper on
 
 A typical usage of LoAT for analyzing termination looks as follows:
 ```
-loat-static --format ari --engine adcl --mode termination example.ari
+loat-static --engine adcl --mode termination example.ari
 NO
 
 LoAT:  595a95cf76ac783e87ce760ec4ccfeca66d93d43
@@ -88,6 +88,13 @@ Since all of these formats have been discontinued at TermComp, they are no longe
 
 The techniques implemented in LoAT are described in the following publications (in reversed chronological order):
 
+* [Accelerated Bounded Model Checking with LoAT](https://doi.org/10.1016/j.scico.2026.103497)\
+  F. Frohn and J. Giesl\
+  Science of Computer Programming, 253, 2026
+* [Accelerating Loops with Arrays](https://arxiv.org/abs/2605.19499)\
+  F. Frohn and J. Giesl\
+  TACAS '26\
+  Winner of the Best Paper Award
 * [Infinite State Model Checking by Learning Transitive Relations](https://arxiv.org/abs/2502.04761)\
   F. Frohn and J. Giesl\
   CADE '25
@@ -149,6 +156,11 @@ Nowadays, LoAT and [KoAT](https://koat.verify.rwth-aachen.de/) compete together 
 
 Since 2022, [AProVE](http://aprove.informatik.rwth-aachen.de/) is using LoAT in its backend to prove non-termination of C programs.
 
+* [TermComp 2026](http://termination-portal.org/wiki/Termination_Competition_2026)
+  * Termination of Integer Transition Systems
+    * best tool for proving non-termination
+  * Complexity of Integer Transition Systems
+    * 1st place (with KoAT)
 * [TermComp 2025](http://termination-portal.org/wiki/Termination_Competition_2025)
   * Termination of Integer Transition Systems
     * best tool for proving non-termination
